@@ -1,19 +1,26 @@
 <Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="BankManager.App" RequestedThemeVariant="Dark">
+  <!-- Recursos globais: as classes aplicadas em Ui.cs e MainWindow.cs selecionam os estilos abaixo. -->
   <Application.Styles>
+    <!-- Fluent fornece os templates dos controles; os estilos seguintes personalizam a identidade visual. -->
     <FluentTheme />
+    <!-- Base visual e tipografia. A fonte Inter é registrada na configuração do AppBuilder. -->
     <Style Selector="Window"><Setter Property="FontFamily" Value="Inter, sans-serif"/><Setter Property="FontSize" Value="15"/><Setter Property="Background" Value="#11151D"/></Style>
+    <!-- Hierarquia do texto: padrão, ajuda, título da página, título de seção e valores monetários. -->
     <Style Selector="TextBlock"><Setter Property="Foreground" Value="#F0F2F8"/></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#A6B0C2"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
     <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="29"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     <Style Selector="TextBlock.section"><Setter Property="FontSize" Value="19"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     <Style Selector="TextBlock.money"><Setter Property="FontSize" Value="29"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+    <!-- Área de clique confortável; classes distinguem ação principal, navegação e exclusão. -->
     <Style Selector="Button"><Setter Property="MinHeight" Value="42"/><Setter Property="Padding" Value="16,10"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Cursor" Value="Hand"/></Style>
     <Style Selector="Button.primary"><Setter Property="Background" Value="#B6A1FF"/><Setter Property="Foreground" Value="#191326"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     <Style Selector="Button.nav"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Background" Value="Transparent"/><Setter Property="Margin" Value="0,3"/></Style>
     <Style Selector="Button.active"><Setter Property="Background" Value="#302942"/><Setter Property="Foreground" Value="#CEBEFF"/></Style>
     <Style Selector="Button.danger"><Setter Property="Foreground" Value="#FFB4B4"/></Style>
+    <!-- Alturas mínimas dos campos mantêm os formulários consistentes. -->
     <Style Selector="TextBox"><Setter Property="MinHeight" Value="42"/><Setter Property="CornerRadius" Value="7"/></Style>
     <Style Selector="ComboBox"><Setter Property="MinHeight" Value="42"/><Setter Property="HorizontalAlignment" Value="Stretch"/></Style>
+    <!-- Card envolve indicadores, grupos de informações e lançamentos de despesa. -->
     <Style Selector="Border.card"><Setter Property="Background" Value="#1C222E"/><Setter Property="BorderBrush" Value="#2C3443"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="22"/></Style>
   </Application.Styles>
 </Application>

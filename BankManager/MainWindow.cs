@@ -8,29 +8,42 @@ using BankManager.Core;
 using static BankManager.Ui;
 
 namespace BankManager;
+/// <summary>
+/// Coordena navegação, estado mensal e formulários. Compõe controles em C# e delega cálculos e persistência ao Core.
+/// </summary>
 public sealed class MainWindow : Window
 {
+    // Estado ativo: só é trocado após persistência bem-sucedida. Não editar diretamente nos formulários.
     private BudgetData data = new();
     private LocalStore? store;
+    // Distingue orçamento vazio válido de falha de leitura; evita salvar por cima de uma base não carregada.
     private bool ready;
     private DateOnly month = Dates.Month(DateOnly.FromDateTime(DateTime.Today));
+    // A estrutura fixa permanece; Render substitui apenas o conteúdo da página e atualiza os indicadores.
     private readonly ContentControl page = new();
     private readonly TextBlock monthLabel = Text("");
     private readonly TextBlock notice = Text("");
     private readonly List<Button> navigation = [];
+    // Índices de página: 0 resumo, 1 pessoas, 2 despesas, 3 previsões, 4 dados/ajuda.
     private int currentPage;
+    // Filtros são mantidos na janela para sobreviver à reconstrução da página após um salvamento.
     private string filter = "";
     private int statusFilter;
     private int categoryFilter;
+    /// <summary>
+    /// Monta a estrutura fixa da janela, tenta carregar os dados e exibe recuperação se a abertura falhar.
+    /// </summary>
     public MainWindow()
     {
         Title = "BankManager · Finanças em equilíbrio"; Width = 1220; Height = 840; MinWidth = 960; MinHeight = 640;
+        // Estrutura fixa: menu lateral, cabeçalho com mês, aviso global e área rolável de conteúdo.
         var sidebar = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Background = Brush.Parse("#171C26") };
         sidebar.Children.Add(new Border { Padding = new Thickness(24, 30), Child = Stack(Text("◈  BankManager", "section"), Text("Finanças em equilíbrio", "muted")) });
         var menu = new StackPanel { Margin = new Thickness(14, 16), Spacing = 4 };
         string[] labels = ["⌂   Visão geral", "♙   Pessoas e rendas", "☷   Despesas", "↗   Previsões", "⚙   Dados e ajuda"];
         for (var i = 0; i < labels.Length; i++)
         {
+            // Copia o índice para que cada callback navegue à página correspondente, em vez do valor final do laço.
             var index = i; var button = Button(labels[i], () => { currentPage = index; Render(); }, "nav"); navigation.Add(button); menu.Children.Add(button);
         }
         Grid.SetRow(menu, 1); sidebar.Children.Add(menu);
@@ -47,18 +60,26 @@ public sealed class MainWindow : Window
         var root = new Grid { ColumnDefinitions = new ColumnDefinitions("224,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
         try
         {
+            // A pasta alternativa permite executar testes sem tocar nos dados reais da conta.
             store = new LocalStore(Environment.GetEnvironmentVariable("BANKMANAGER_DATA_DIR"));
             data = store.Load(); ready = true;
         }
         catch (Exception ex) { ShowError(ex); }
+        // Libera o bloqueio de armazenamento mesmo quando a base falhou ao carregar.
         Closed += (_, _) => store?.Dispose();
         Render();
     }
+    /// <summary>
+    /// Navega entre competências e limita o ano a 2099 para que a previsão do mês seguinte permaneça no domínio suportado.
+    /// </summary>
     private void ChangeMonth(int direction)
     {
         var next = month.AddMonths(direction);
         if (next.Year is >= 2000 and <= 2099) { month = next; Render(); }
     }
+    /// <summary>
+    /// Traduz exceções para o aviso global, exibindo detalhes de negócio e mensagens genéricas para erros técnicos.
+    /// </summary>
     private void ShowError(Exception ex)
     {
         notice.Text = ex switch
@@ -70,20 +91,31 @@ public sealed class MainWindow : Window
         };
         notice.IsVisible = true;
     }
+    /// <summary>
+    /// Executa ações assíncronas disparadas pela interface e encaminha falhas para o aviso global.
+    /// </summary>
     private async Task Run(Func<Task> action)
     {
         try { notice.IsVisible = false; await action(); }
         catch (Exception ex) { ShowError(ex); }
     }
+    /// <summary>
+    /// Aplica uma alteração a uma cópia profunda, salva e só então adota o novo estado e reconstrói a página.
+    /// </summary>
     private void Commit(Action<BudgetData> change)
     {
         if (store is null || !ready) throw new BudgetException("Os dados ainda não estão disponíveis.");
+        // Se a alteração ou Save lançar uma exceção, a atribuição de data não ocorre e o estado ativo permanece.
         var next = LocalStore.Clone(data); change(next); store.Save(next); data = next; Render();
     }
+    /// <summary>
+    /// Atualiza mês e navegação e reconstrói a página selecionada; enquanto os dados não estão prontos, oferece recuperação.
+    /// </summary>
     private void Render()
     {
         monthLabel.Text = month.ToString("MMMM 'de' yyyy", Money.Culture);
         for (var i = 0; i < navigation.Count; i++) navigation[i].Classes.Set("active", i == currentPage);
+        // Falha ao abrir não significa uma base nova: a edição comum fica bloqueada até recuperação válida.
         if (!ready)
         {
             page.Content = Stack(Text("Seus dados precisam de atenção", "title"), Text("Não vamos substituir um arquivo que não pôde ser aberto. Feche outras janelas do aplicativo ou restaure uma cópia válida.", "muted"),
@@ -93,12 +125,21 @@ public sealed class MainWindow : Window
         }
         page.Content = currentPage switch { 1 => PeoplePage(), 2 => ExpensesPage(), 3 => ForecastPage(), 4 => SettingsPage(), _ => Dashboard() };
     }
+    /// <summary>
+    /// Compõe título e explicação curta de uma página usando os estilos compartilhados.
+    /// </summary>
     private static Control Heading(string title, string subtitle) => Stack(Text(title, "title"), Text(subtitle, "muted"));
+    /// <summary>
+    /// Compõe um indicador monetário com rótulo, cor e contexto sobre o valor apresentado.
+    /// </summary>
     private static Control Metric(string label, decimal amount, string hint, string color = "#F0F2F8")
     {
         var value = Text(Money.Format(amount), "money"); value.Foreground = Brush.Parse(color);
         return Card(Stack(Text(label, "muted"), value, Text(hint, "muted")));
     }
+    /// <summary>
+    /// Monta o resumo do mês, a orientação inicial, o alerta de rendas ausentes e os próximos pagamentos em aberto.
+    /// </summary>
     private Control Dashboard()
     {
         var expenses = FinanceEngine.Expenses(data, month); var income = data.People.Sum(p => FinanceEngine.Income(data, p.Id, month)); var total = expenses.Sum(e => e.Amount);
@@ -110,6 +151,7 @@ public sealed class MainWindow : Window
             result.Children.Add(Card(Stack(Text("Vamos organizar suas finanças?", "section"), Text("1. Cadastre quem faz parte da casa e a renda deste mês.\n2. Adicione despesas individuais ou compartilhadas.\n3. Veja a divisão e acompanhe o pagamento.", "muted"), Button("Cadastrar primeira pessoa", () => _ = Run(() => EditPerson()), "primary"))));
             return result;
         }
+        // Registro ausente é diferente de renda explicitamente zero; ambos entram como zero no cálculo.
         var missing = data.People.Where(p => !data.Incomes.Any(i => i.PersonId == p.Id && i.Month == month)).ToList();
         if (missing.Count > 0) result.Children.Add(Card(Text("Renda ainda não informada neste mês: " + string.Join(", ", missing.Select(p => p.Name)) + ". Informe a renda em Pessoas e rendas; até lá, ela será considerada zero.", "muted")));
         result.Children.Add(BalanceCard());
@@ -129,6 +171,9 @@ public sealed class MainWindow : Window
         }
         return result;
     }
+    /// <summary>
+    /// Apresenta responsabilidades, quitação e sobra por pessoa, além de avisos de rateio sem renda disponível.
+    /// </summary>
     private Control BalanceCard()
     {
         var panel = Stack(Text("Uma divisão que considera cada pessoa", "section"), Text("Disponível para dividir = renda do mês − despesas individuais. Despesas compartilhadas proporcionais usam esse valor como peso.", "muted"));
@@ -141,6 +186,9 @@ public sealed class MainWindow : Window
         foreach (var warning in FinanceEngine.Expenses(data, month).Select(e => FinanceEngine.Allocate(data, e).Warning).Where(w => w is not null).Distinct()) panel.Children.Add(Text(warning!, "muted"));
         return Card(panel);
     }
+    /// <summary>
+    /// Lista pessoas e renda da competência, com edição e exclusão protegida por referências no histórico.
+    /// </summary>
     private Control PeoplePage()
     {
         var panel = Stack(Heading("Pessoas e rendas", "Informe a renda líquida: o dinheiro que realmente entra no mês selecionado."),
@@ -153,6 +201,7 @@ public sealed class MainWindow : Window
             panel.Children.Add(Card(Stack(Columns(Stack(Text(person.Name, "section"), Text(data.Incomes.Any(i => i.PersonId == person.Id && i.Month == month) ? "Renda informada neste mês" : "Renda não informada neste mês", "muted")), Text(Money.Format(income), "money")),
                 Row(Button("Editar pessoa / renda", () => _ = Run(() => EditPerson(person))), Button("Excluir pessoa", () => _ = Run(async () =>
                 {
+                    // Não permite apagar referências utilizadas em nenhum mês, evitando despesas sem responsável.
                     if (data.Expenses.Any(e => e.Participants.Contains(person.Id))) throw new BudgetException("Esta pessoa possui despesas no histórico. Remova ou reatribua essas despesas antes de excluí-la.");
                     if (await Confirm(this, "Excluir pessoa?", $"Excluir {person.Name} e todos os seus registros de renda?")) Commit(d => { d.People.RemoveAll(p => p.Id == person.Id); d.Incomes.RemoveAll(i => i.PersonId == person.Id); });
                 }), "danger")))));
@@ -160,18 +209,25 @@ public sealed class MainWindow : Window
         if (data.People.Count > 0) panel.Children.Add(BalanceCard());
         return panel;
     }
+    /// <summary>
+    /// Copia rendas da competência anterior apenas para pessoas sem registro no mês selecionado, após confirmação.
+    /// </summary>
     private async Task CopyIncome()
     {
         var previous = data.Incomes.Where(i => i.Month == month.AddMonths(-1) && !data.Incomes.Any(current => current.Month == month && current.PersonId == i.PersonId)).ToList();
         if (previous.Count == 0) throw new BudgetException("Não há rendas anteriores para copiar. Rendas já informadas neste mês não são substituídas.");
         if (await Confirm(this, "Copiar rendas?", $"Preencher {previous.Count} renda(s) ainda não informada(s) com os valores do mês anterior?")) Commit(d => d.Incomes.AddRange(previous.Select(i => i with { Month = month })));
     }
+    /// <summary>
+    /// Monta a busca e os filtros da lista mensal; atualiza apenas a lista quando um filtro muda.
+    /// </summary>
     private Control ExpensesPage()
     {
         var search = Input(filter, "Buscar uma despesa…");
         var status = Combo(["Todos os pagamentos", "Em aberto", "Pagos"], statusFilter);
         var category = Combo(new[] { "Todas as categorias" }.Concat(BudgetRules.Categories), categoryFilter);
         var list = new StackPanel { Spacing = 12 };
+        // Função local captura os filtros e reconstrói apenas os cartões que correspondem à busca.
         void Refresh()
         {
             list.Children.Clear();
@@ -187,6 +243,9 @@ public sealed class MainWindow : Window
         return Stack(Heading("Despesas, sem complicação", "Registre uma conta, uma compra detalhada ou uma dívida parcelada."),
             Row(Button("+  Nova despesa", () => _ = Run(() => EditExpense()), "primary")), Columns(search, status, category), list);
     }
+    /// <summary>
+    /// Apresenta um lançamento e seu rateio; permite alternar quitação, editar ou excluir apenas esse lançamento.
+    /// </summary>
     private Control ExpenseCard(Expense expense)
     {
         var state = expense.Paid ? "Pago" : expense.DueDate < DateOnly.FromDateTime(DateTime.Today) ? "Em atraso" : "Em aberto";
@@ -202,6 +261,9 @@ public sealed class MainWindow : Window
         if (allocation.Warning is not null) panel.Children.Add(Text(allocation.Warning, "muted"));
         return Card(panel);
     }
+    /// <summary>
+    /// Exibe a previsão para o mês seguinte ao selecionado e explica a base histórica e os compromissos considerados.
+    /// </summary>
     private Control ForecastPage()
     {
         var target = month.AddMonths(1); var predictions = FinanceEngine.Forecasts(data, target);
@@ -213,40 +275,61 @@ public sealed class MainWindow : Window
             panel.Children.Add(Card(Columns(Stack(Text(prediction.Category, "section"), Text($"Média histórica: {Money.Format(prediction.Historical)} · {prediction.Months} mês(es) de base\nJá lançado: {Money.Format(prediction.Scheduled)}", "muted")), Stack(Text(Money.Format(prediction.Estimate), "money"), Text(prediction.Months < 3 ? "Pouco histórico: acompanhe de perto" : "Estimativa baseada em 3 meses", "muted")))));
         return panel;
     }
+    /// <summary>
+    /// Reúne exportação, importação, recuperação e explicações acessíveis sobre as regras e limites do aplicativo.
+    /// </summary>
     private Control SettingsPage() => Stack(Heading("Seus dados, sob seu controle", "O aplicativo funciona localmente e não exige cadastro nem conexão com a internet."),
         Card(Stack(Text("Backup e recuperação", "section"), Text("Cada salvamento mantém uma cópia da versão anterior. Exporte backups regularmente para outra pasta ou dispositivo. Os arquivos contêm informações financeiras em texto legível: guarde-os em um local privado.", "muted"),
             Row(Button("Exportar backup", () => _ = Run(Export), "primary"), Button("Importar backup", () => _ = Run(Import))), Button("Recuperar versão anterior", () => _ = Run(Recover)), Text($"Pasta local: {store?.DirectoryPath}", "muted"))),
         Card(Stack(Text("Entenda a divisão", "section"), Text("Individual: uma pessoa paga tudo.\nIgual: o valor é dividido igualmente entre os selecionados.\nProporcional: quem tem mais renda disponível assume uma parcela maior. Despesas individuais, pagas ou em aberto, são descontadas da renda antes da divisão. Todas as despesas proporcionais do mês usam essa mesma base.\n\nExemplo: rendas disponíveis de R$ 3.000 e R$ 1.000 dividem uma conta de R$ 800 em R$ 600 e R$ 200. Quem não tem renda disponível recebe peso zero. Se todos tiverem peso zero, a conta é dividida igualmente, com aviso. Centavos restantes são distribuídos sem alterar o total.", "muted"))),
         Card(Stack(Text("Dívidas, listas e histórico", "section"), Text("Para uma dívida, informe o valor total já com os juros negociados e o número de parcelas. A primeira data é o primeiro vencimento. O aplicativo distribui o total; não calcula taxas bancárias.\n\nUma lista soma quantidade × preço de cada item. Não cadastre a mesma compra novamente como outra despesa. Marcar como pago quita o lançamento inteiro para todos os responsáveis; pagamentos parciais não são registrados nesta versão.\n\nO saldo planejado considera todas as despesas do mês, inclusive as pagas. Alterar rendas ou despesas individuais recalcula o rateio daquele mês. Parcelas são editadas e excluídas individualmente.", "muted"))));
+    /// <summary>
+    /// Solicita um arquivo local e grava uma cópia validada dos dados atuais fora da pasta interna.
+    /// </summary>
     private async Task Export()
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Exportar backup", SuggestedFileName = $"bankmanager-{DateTime.Today:yyyy-MM-dd}.json", DefaultExtension = "json", FileTypeChoices = [new FilePickerFileType("Backup JSON") { Patterns = ["*.json"] }] });
+        // Fechar o seletor de arquivo equivale a cancelar; nada é gravado.
         if (file is null) return;
         var path = file.TryGetLocalPath() ?? throw new BudgetException("Escolha uma pasta local.");
         RejectInternalPath(path); LocalStore.Export(path, data); notice.Text = "Backup exportado com sucesso."; notice.IsVisible = true;
     }
+    /// <summary>
+    /// Rejeita arquivos diretamente na pasta interna para proteger a base, o backup e o bloqueio de acesso.
+    /// </summary>
     private void RejectInternalPath(string path)
     {
         if (store is not null && string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(store.DirectoryPath)), StringComparison.OrdinalIgnoreCase))
             throw new BudgetException("Escolha um arquivo fora da pasta interna do aplicativo.");
     }
+    /// <summary>
+    /// Valida o backup selecionado antes da confirmação e substitui o estado somente depois de salvar com sucesso.
+    /// </summary>
     private async Task Import()
     {
         if (store is null) throw new BudgetException("Feche outra instância do aplicativo antes de importar dados.");
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Importar backup", AllowMultiple = false, FileTypeFilter = [new FilePickerFileType("Backup JSON") { Patterns = ["*.json"] }] });
         if (files.Count == 0) return;
         var path = files[0].TryGetLocalPath() ?? throw new BudgetException("Escolha um arquivo local.");
+        // Lê e valida todo o arquivo antes de pedir autorização para substituir o histórico.
         RejectInternalPath(path); var imported = LocalStore.Read(path);
         if (!await Confirm(this, "Substituir os dados atuais?", $"Backup validado: {imported.People.Count} pessoa(s), {imported.Expenses.Count} despesa(s). A importação substitui todo o histórico atual. A versão anterior fica na cópia automática.")) return;
         store.Save(imported); data = imported; ready = true; Render();
     }
+    /// <summary>
+    /// Lê a cópia automática, confirma a substituição e salva seu conteúdo como base atual antes de atualizar a tela.
+    /// </summary>
     private async Task Recover()
     {
         if (store is null || !File.Exists(store.BackupPath)) throw new BudgetException("Não há cópia automática disponível. Você pode importar um backup exportado anteriormente.");
         var backup = LocalStore.Read(store.BackupPath);
         if (!await Confirm(this, "Recuperar versão anterior?", $"Restaurar {backup.People.Count} pessoa(s) e {backup.Expenses.Count} despesa(s)? Os dados atuais serão substituídos.")) return;
+        // Save mantém a base substituída como cópia anterior; a recuperação também segue a gravação normal.
         store.Save(backup); data = backup; ready = true; Render();
     }
+    /// <summary>
+    /// Abre o cadastro ou edição de pessoa. O nome é global, mas a renda salva pertence apenas ao mês selecionado.
+    /// </summary>
     private async Task EditPerson(Person? person = null)
     {
         var name = Input(person?.Name, "Ex.: Ana", 80);
@@ -262,6 +345,7 @@ public sealed class MainWindow : Window
                 Commit(d =>
                 {
                     if (person is null) d.People.Add(edited); else d.People[d.People.FindIndex(p => p.Id == person.Id)] = edited;
+                    // Substitui somente a chave pessoa/mês atual, preservando rendas das outras competências.
                     d.Incomes.RemoveAll(i => i.PersonId == edited.Id && i.Month == month);
                     d.Incomes.Add(new MonthlyIncome { PersonId = edited.Id, Month = month, Amount = income });
                 }); dialog.Close();
@@ -270,7 +354,13 @@ public sealed class MainWindow : Window
         }, "primary")));
         await dialog.ShowDialog(this);
     }
+    /// <summary>
+    /// Produz a mensagem local dos formulários sem exibir stack traces ou detalhes internos ao usuário.
+    /// </summary>
     private static string FriendlyError(Exception ex) => ex is BudgetException ? ex.Message : ex is IOException or UnauthorizedAccessException ? "Não foi possível salvar. Verifique espaço em disco, permissões e acesso à pasta. Nenhuma alteração foi aplicada." : "Não foi possível concluir. Revise os campos e tente novamente.";
+    /// <summary>
+    /// Abre o editor com um rascunho local, itens e responsáveis; prévia e salvamento compartilham a mesma validação.
+    /// </summary>
     private async Task EditExpense(Expense? existing = null)
     {
         if (data.People.Count == 0) { currentPage = 1; Render(); throw new BudgetException("Cadastre pelo menos uma pessoa antes de adicionar despesas."); }
@@ -282,7 +372,7 @@ public sealed class MainWindow : Window
         var split = Combo(["Individual · uma pessoa", "Igual · partes iguais", "Proporcional · renda disponível"], (int)(existing?.Split ?? (data.People.Count == 1 ? SplitMode.Individual : SplitMode.AvailableIncome)));
         var paid = new CheckBox { Content = "Esta despesa já foi paga", IsChecked = existing?.Paid ?? false };
         var participants = data.People.Select((p, i) => (Person: p, Check: new CheckBox { Content = p.Name, IsChecked = existing?.Participants.Contains(p.Id) ?? true })).ToList();
-        // Individual mode behaves like a radio choice while shared modes permit multiple people.
+        // No modo individual, as caixas funcionam como uma escolha exclusiva; nos demais, permitem várias pessoas.
         foreach (var participant in participants)
             participant.Check.IsCheckedChanged += (_, _) =>
             {
@@ -300,11 +390,13 @@ public sealed class MainWindow : Window
         var peoplePanel = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var p in participants) { p.Check.Margin = new Thickness(0, 0, 20, 6); peoplePanel.Children.Add(p.Check); }
         var itemList = new StackPanel { Spacing = 8 };
+        // Copia os itens do lançamento para que remover/adicionar no formulário não altere o histórico ao cancelar.
         var items = existing?.Items.Select(i => i with { }).ToList() ?? [];
         var itemName = Input(null, "Nome do item", 100); var quantity = Input("1", "Quantidade", 10); var price = Input(null, "Preço (R$)", 12);
         var itemTotal = Text("", "muted");
         var error = Text(""); error.Foreground = Brush.Parse("#FFB4B4");
         var preview = Text("", "muted");
+        // Reconstrói itens e total do rascunho. Com itens, o valor manual fica bloqueado; a prévia antiga é descartada.
         void RefreshItems()
         {
             itemList.Children.Clear();
@@ -318,6 +410,7 @@ public sealed class MainWindow : Window
             itemTotal.Text = items.Count == 0 ? "Sem itens: informe o valor total diretamente." : $"{items.Count} item(ns) · Total: {Money.Format(items.Sum(i => i.Total))}";
             preview.Text = "";
         }
+        // O item só entra na lista após validação de quantidade, preço e total acumulado.
         var addItem = Button("+ Adicionar item", () =>
         {
             try
@@ -336,8 +429,10 @@ public sealed class MainWindow : Window
         var expander = new Expander { Header = "Lista de itens da compra", Content = itemPanel, IsExpanded = items.Count > 0, HorizontalAlignment = HorizontalAlignment.Stretch };
         if (existing?.InstallmentCount > 1) expander.IsEnabled = false;
         RefreshItems();
+        // Converte os campos em lançamentos candidatos, valida o conjunto completo e não grava nada em disco.
         List<Expense> BuildEntries()
         {
+            // Evita perder um item digitado que ainda não foi confirmado pelo botão Adicionar item.
             if (!string.IsNullOrWhiteSpace(itemName.Text) || !string.IsNullOrWhiteSpace(price.Text)) throw new BudgetException("Há um item não adicionado. Clique em “Adicionar item” ou limpe seus campos antes de salvar.");
             if (!DateOnly.TryParseExact(date.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var due)) throw new BudgetException("Vencimento: informe uma data válida no formato dd/mm/aaaa.");
             BudgetRules.Date(due);
@@ -350,6 +445,7 @@ public sealed class MainWindow : Window
                 Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
                 InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1
             };
+            // Cadastro pode expandir uma compra em parcelas; edição preserva a identidade de um lançamento existente.
             var entries = existing is null ? BudgetRules.Installments(entry, count) : [entry];
             var candidate = LocalStore.Clone(data); if (existing is not null) candidate.Expenses.RemoveAll(e => e.Id == existing.Id); candidate.Expenses.AddRange(entries); BudgetRules.Validate(candidate);
             return entries;
@@ -364,6 +460,7 @@ public sealed class MainWindow : Window
             {
                 try
                 {
+                    // A prévia usa uma cópia já contendo a edição, pois despesas individuais alteram a base do rateio.
                     var entries = BuildEntries(); var candidate = LocalStore.Clone(data); if (existing is not null) candidate.Expenses.RemoveAll(e => e.Id == existing.Id); candidate.Expenses.AddRange(entries);
                     var allocation = FinanceEngine.Allocate(candidate, entries[0]);
                     preview.Text = (entries.Count > 1 ? $"Primeira de {entries.Count} parcelas: {Money.Format(entries[0].Amount)}\n" : "") + string.Join("\n", allocation.Amounts.Select(a => $"{data.People.First(p => p.Id == a.Key).Name}: {Money.Format(a.Value)}")) + (allocation.Warning is null ? "" : "\n" + allocation.Warning); error.Text = "";
@@ -375,6 +472,7 @@ public sealed class MainWindow : Window
         {
             try
             {
+                // Repete a validação no salvamento: a prévia não substitui a conferência dos campos atuais.
                 var entries = BuildEntries();
                 Commit(d => { if (existing is not null) d.Expenses.RemoveAll(e => e.Id == existing.Id); d.Expenses.AddRange(entries); }); dialog.Close();
             }

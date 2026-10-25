@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- Aplicativo desktop: WinExe evita uma janela de console extra no Windows. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
@@ -6,8 +7,10 @@
     <Product>BankManager</Product>
     <Description>Gestão financeira pessoal e familiar</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Garante verificação de bindings compilados caso novas telas passem a utilizá-los. -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
+  <!-- Core fornece as regras; Desktop, Fluent e Inter fornecem backend, tema e tipografia. -->
   <ItemGroup>
     <ProjectReference Include="../BankManager.Core/BankManager.Core.csproj" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />

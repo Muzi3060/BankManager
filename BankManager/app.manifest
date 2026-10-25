@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <assemblyIdentity version="1.0.0.0" name="BankManager.Desktop" />
+  <!-- O executável usa os privilégios da conta atual e não solicita elevação de administrador. -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false" /></requestedPrivileges></security>
   </trustInfo>
+  <!-- Identifica compatibilidade com a família moderna do Windows para as APIs de versão do sistema. -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application><supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /></application>
   </compatibility>
+  <!-- A interface acompanha o DPI do monitor e permite suporte a caminhos longos no sistema. -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>

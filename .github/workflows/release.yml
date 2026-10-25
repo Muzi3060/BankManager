@@ -1,5 +1,6 @@
 name: Build and release
 
+# Branches e PRs validam o projeto; tags v* também acionam a publicação da release.
 on:
   push:
     branches: [main]
@@ -7,12 +8,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Somente o job de release recebe permissão de escrita; os demais precisam apenas ler o código.
 permissions:
   contents: read
 
 jobs:
   package:
     name: Test and package (${{ matrix.runtime }})
+    # Falhas em um sistema não cancelam o outro, preservando o diagnóstico dos dois destinos.
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # Impede publicar uma tag cujo número diverge da versão declarada no aplicativo.
       - name: Verify release version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: python
@@ -41,6 +45,7 @@ jobs:
         run: dotnet build BankManager.sln -c Release -m:1 --disable-build-servers
       - name: Domain and persistence tests
         run: dotnet run --project BankManager.Tests -c Release --no-build
+      # No runner Linux, Xvfb fornece o display para os testes de janela real.
       - name: UI integration tests (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -49,6 +54,7 @@ jobs:
           xvfb-run -a dotnet run --project BankManager.UiTests -c Release --no-build
       - name: Publish and archive
         run: python scripts/package.py --runtime ${{ matrix.runtime }}
+      # Artifacts ficam disponíveis também em builds comuns; dados pessoais nunca entram no pacote.
       - uses: actions/upload-artifact@v4
         with:
           name: BankManager-${{ matrix.runtime }}
@@ -56,6 +62,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Publica somente tags e somente após todos os destinos terminarem com sucesso.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: package
@@ -68,6 +75,7 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
+      # O token temporário do GitHub é passado via ambiente, sem ser gravado no repositório.
       - name: Publish portable packages
         env:
           GH_TOKEN: ${{ github.token }}
