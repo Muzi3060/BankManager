@@ -1,0 +1,40 @@
+# Compilação, publicação e testes
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.trx
+*.coverage*
+
+# IDEs e arquivos locais
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+core
+core.*
+
+# Credenciais e configuração privada
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+.agents/
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Dados financeiros e backups pessoais: nunca publicar
+financas.json
+financas.backup.json
+bankmanager-*.json
+.lock
