@@ -2,6 +2,8 @@
 
 Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10 e Avalonia 12.1.4**. Interface em português, tema escuro, menu lateral e armazenamento local. Começa vazio, sem dados fictícios na base do usuário.
 
+**Sobre o desenvolvimento:** este projeto foi desenvolvido com **vibe coding**, usando o Codex para gerar e ajustar o código a partir de instruções em linguagem natural. A proposta, os requisitos e as decisões de produto foram definidos pelo autor do projeto.
+
 ![Visão geral com dados temporários do teste](docs/visao-geral.png)
 
 ## Baixar pronto e compartilhar
