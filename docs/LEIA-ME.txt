@@ -1,0 +1,53 @@
+BankManager 1.0 — Finanças em equilíbrio
+
+Este pacote inclui o .NET. Não é necessário instalar SDK, Rider ou Visual Studio.
+Use o pacote correspondente ao seu computador: Windows x64 ou Linux x64.
+
+WINDOWS (PC Intel/AMD de 64 bits)
+1. Extraia TODO o arquivo ZIP para uma pasta, por exemplo Documentos\BankManager.
+2. Abra a pasta extraída e dê dois cliques em BankManager.exe.
+3. Se quiser, crie um atalho desse arquivo na área de trabalho.
+Não execute de dentro do ZIP e não mova apenas o EXE: mantenha os outros arquivos.
+O aplicativo não é assinado digitalmente; o Windows pode exibir um aviso de editor
+não identificado. Confira se o download veio de github.com/Muzi3060/BankManager.
+Não é necessário executar como administrador.
+
+LINUX (desktop Intel/AMD de 64 bits)
+1. Extraia TODO o arquivo .tar.gz para uma pasta da sua conta.
+2. Dentro da pasta extraída, abra BankManager ou execute no terminal:
+   ./Iniciar.sh
+3. Se a permissão de execução foi perdida durante a cópia, execute:
+   chmod +x BankManager Iniciar.sh
+   ./Iniciar.sh
+Use uma distribuição desktop atual baseada em glibc, como Ubuntu 24.04 ou mais nova,
+com X11 ou XWayland. Alpine/musl, ARM e servidores sem interface gráfica não são
+alvos destes pacotes. O .NET está incluído, mas bibliotecas de sistema continuam
+necessárias. Em Ubuntu/Debian, se houver erro de biblioteca ausente:
+   sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libicu-dev libssl-dev
+Em uma sessão Wayland, mantenha também o XWayland instalado.
+O uso normal não precisa de sudo ou privilégios de administrador.
+
+PRIMEIROS PASSOS
+1. Cadastre as pessoas e a renda do mês em Pessoas e rendas.
+2. Adicione suas despesas e escolha quem paga e como dividir.
+3. Use as setas do mês para consultar o histórico.
+4. Em Dados e ajuda, exporte um backup regularmente para outra pasta/dispositivo.
+
+DADOS E ATUALIZAÇÕES
+Seus dados ficam na pasta de dados do usuário, separada do programa. O caminho
+exato aparece em Dados e ajuda. No Windows, normalmente é
+%LOCALAPPDATA%\BankManager; no Linux, normalmente ~/.local/share/BankManager.
+Os dados e backups são legíveis, sem criptografia. Não envie backups pessoais
+junto com o aplicativo. Cada amigo começa com a sua própria base vazia.
+
+Para atualizar: exporte um backup, feche o aplicativo, extraia a nova versão em
+outra pasta e abra o novo executável. Não é necessário copiar dados para a pasta
+do programa. Para remover o aplicativo, exclua sua pasta; os dados ficam guardados
+na pasta local do usuário até que você decida removê-los separadamente.
+
+SUPORTE E CÓDIGO
+Repositório: https://github.com/Muzi3060/BankManager
+Downloads: https://github.com/Muzi3060/BankManager/releases/latest
+Problemas: https://github.com/Muzi3060/BankManager/issues
+
+Consulte THIRD-PARTY-NOTICES.txt e licenses/ para as licenças das dependências.

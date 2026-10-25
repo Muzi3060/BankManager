@@ -4,7 +4,22 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 ![Visão geral com dados temporários do teste](docs/visao-geral.png)
 
-## Executar
+## Baixar pronto e compartilhar
+
+**[Baixar a versão mais recente](https://github.com/Muzi3060/BankManager/releases/latest)**
+
+| Computador do seu amigo | Arquivo | Como abrir |
+| --- | --- | --- |
+| Windows 64 bits (Intel/AMD) | `BankManager-1.0.0-win-x64.zip` | Extrair **tudo** e abrir `BankManager.exe` |
+| Linux 64 bits (Intel/AMD) | `BankManager-1.0.0-linux-x64.tar.gz` | Extrair **tudo** e executar `./Iniciar.sh` na pasta |
+
+Os pacotes já incluem o .NET. Seu amigo não precisa instalar SDK, Rider ou Visual Studio. Envie o **link da release** ou o **arquivo compactado completo** por um serviço de arquivos/pendrive. Não envie só o executável, nem seus backups financeiros. Veja [as instruções incluídas no pacote](docs/LEIA-ME.txt).
+
+São versões portáteis, sem instalador e sem assinatura digital. O Windows pode avisar que o editor não foi identificado. No Linux, é necessário desktop com X11/XWayland e bibliotecas do sistema; não há suporte nesses pacotes a ARM ou Alpine/musl. A interface é testada no Linux; o uso visual no Windows ainda exige validação manual.
+
+Para atualizar, exporte um backup e feche o aplicativo antes de extrair a nova versão em outra pasta. Seus dados ficam na pasta local da conta do sistema, separados dos executáveis.
+
+## Executar a partir do código
 
 Requer SDK .NET 10 e ambiente gráfico. No Rider, abra `BankManager.sln`, selecione o projeto **BankManager** e execute. Configure o SDK .NET 10 caso a IDE esteja usando uma instalação antiga.
 
@@ -68,7 +83,7 @@ Os arquivos ficam em `Environment.SpecialFolder.LocalApplicationData/BankManager
 - No Unix, pasta privada (`0700`) e dados novos privados (`0600`). No Windows, aplicam-se as permissões da pasta do usuário.
 - Não há sincronização, envio de dados, execução de scripts nem carregamento de conteúdo remoto a partir dos arquivos importados.
 
-**Os dados não são criptografados**. Backups contêm informações legíveis e precisam ser guardados com cuidado. Proteção contra alguém com acesso à conta do sistema requer segurança do próprio dispositivo. Testes e validações reduzem riscos, mas não constituem garantia de ausência de todas as falhas ou auditoria independente. Não há instaladores assinados nem validação nativa em Windows/macOS nesta entrega.
+**Os dados não são criptografados**. Backups contêm informações legíveis e precisam ser guardados com cuidado. Proteção contra alguém com acesso à conta do sistema requer segurança do próprio dispositivo. Testes e validações reduzem riscos, mas não constituem garantia de ausência de todas as falhas ou auditoria independente. Não há instaladores assinados. O pipeline compila e executa testes do domínio em Windows e Linux; os testes da interface são executados no Linux. macOS não tem pacote de distribuição nesta entrega.
 
 ## Estrutura e testes
 
@@ -98,3 +113,33 @@ BANKMANAGER_SCREENSHOT="$PWD/docs/visao-geral.png" dotnet run --project BankMana
 - [Actual Budget: orçamento de acompanhamento](https://actualbudget.org/docs/getting-started/tracking-budget/): visão de receitas, despesas e comparação entre planejamento e resultado.
 
 A implementação de rateio e previsão é própria, com as regras descritas acima; não reproduz o motor contábil desses produtos.
+
+## Gerar novos pacotes
+
+Requer SDK .NET 10, Python 3.11+ e acesso ao NuGet para obter os runtimes:
+
+```bash
+python3 scripts/package.py
+# Ou apenas um destino:
+python3 scripts/package.py --runtime linux-x64
+python3 scripts/package.py --runtime win-x64
+```
+
+No Windows, use `python` no lugar de `python3`. O script escolhe o SDK em `~/.dotnet` quando disponível; `BANKMANAGER_DOTNET` permite indicar outro executável. Os arquivos finais ficam em `artifacts/releases/`, com checksums SHA-256, e as pastas publicadas em `artifacts/publish/`. São publicações **self-contained**, sem trimming, para preservar a serialização e os componentes dinâmicos da interface.
+
+Para conferir o download no Linux, no diretório dos arquivos:
+
+```bash
+sha256sum -c BankManager-1.0.0-linux-x64.tar.gz.sha256
+```
+
+No PowerShell, execute `Get-FileHash .\BankManager-1.0.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
+
+O workflow [Build and release](.github/workflows/release.yml) compila, testa e empacota nos runners nativos de Windows e Linux. Em pushes na `main`, os arquivos ficam nos artifacts da execução. Para uma nova release:
+
+1. Atualize `Version` em `BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
+2. Faça commit e push dessas mudanças.
+3. Crie e envie uma tag correspondente, por exemplo `git tag v1.0.1` e `git push origin v1.0.1`.
+4. O workflow publica os pacotes na página Releases somente após todos os jobs passarem.
+
+Referências: [publicação desktop do Avalonia no Linux](https://docs.avaloniaui.net/docs/deployment/linux) e [modelos de distribuição do .NET](https://learn.microsoft.com/en-us/dotnet/core/deploying/).

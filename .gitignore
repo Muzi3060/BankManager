@@ -38,3 +38,7 @@ financas.json
 financas.backup.json
 bankmanager-*.json
 .lock
+
+# Ferramentas de empacotamento
+__pycache__/
+*.pyc

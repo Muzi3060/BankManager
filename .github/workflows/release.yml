@@ -1,0 +1,77 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Test and package (${{ matrix.runtime }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            runtime: linux-x64
+          - os: windows-latest
+            runtime: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: python
+        run: |
+          import os, xml.etree.ElementTree as ET
+          version = ET.parse('BankManager/BankManager.csproj').findtext('./PropertyGroup/Version')
+          assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Tag must match csproj Version'
+      - name: Build
+        run: dotnet build BankManager.sln -c Release -m:1 --disable-build-servers
+      - name: Domain and persistence tests
+        run: dotnet run --project BankManager.Tests -c Release --no-build
+      - name: UI integration tests (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libx11-6 libice6 libsm6 libfontconfig1
+          xvfb-run -a dotnet run --project BankManager.UiTests -c Release --no-build
+      - name: Publish and archive
+        run: python scripts/package.py --runtime ${{ matrix.runtime }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BankManager-${{ matrix.runtime }}
+          path: artifacts/releases/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish portable packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" release-assets/*
+          --verify-tag --title "BankManager $GITHUB_REF_NAME"
+          --notes-file docs/RELEASE-NOTES.md
