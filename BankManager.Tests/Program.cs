@@ -150,6 +150,50 @@ Test("Malformed and unsupported JSON cannot import", () =>
     }
     finally { File.Delete(path); }
 });
+// A preferência de tema é gravada em settings.json e lida de volta; o padrão é seguir o sistema.
+Test("Theme preference roundtrip and default", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        Equal(ThemePreference.Auto, SettingsStore.Load(path).Theme);
+        SettingsStore.Save(path, new AppSettings { Theme = ThemePreference.Dark });
+        Equal(ThemePreference.Dark, SettingsStore.Load(path).Theme);
+        Equal(true, File.ReadAllText(Path.Combine(path, SettingsStore.FileName)).Contains("\"Dark\""));
+    }
+    finally { Directory.Delete(path, true); }
+});
+
+// Preferência corrompida ou com valor desconhecido nunca impede abrir o app: volta ao padrão.
+Test("Corrupt settings fall back to defaults", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(path);
+    try
+    {
+        foreach (var json in new[] { "{", "null", "{\"Theme\":\"Roxo\"}", "{\"Theme\":99}", "" })
+        {
+            File.WriteAllText(Path.Combine(path, SettingsStore.FileName), json);
+            Equal(ThemePreference.Auto, SettingsStore.Load(path).Theme);
+        }
+    }
+    finally { Directory.Delete(path, true); }
+});
+
+// Trocar o tema não pode tocar nos dados financeiros: o financas.json fica byte a byte igual.
+Test("Saving settings leaves financial data untouched", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); d.Expenses.Add(Bill(d, 800)); store.Save(d);
+        var before = File.ReadAllBytes(store.FilePath);
+        SettingsStore.Save(path, new AppSettings { Theme = ThemePreference.Light });
+        Equal(true, before.SequenceEqual(File.ReadAllBytes(store.FilePath)));
+        Equal(false, File.ReadAllText(store.FilePath).Contains("Theme"));
+    }
+    finally { Directory.Delete(path, true); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

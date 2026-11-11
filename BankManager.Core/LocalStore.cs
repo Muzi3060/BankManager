@@ -34,12 +34,17 @@ public sealed class LocalStore : IDisposable
     /// <param name="directory">Pasta alternativa para testes; quando nula, utiliza a pasta local de dados do usuário.</param>
     public LocalStore(string? directory = null)
     {
-        DirectoryPath = directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager");
+        DirectoryPath = DefaultDirectory(directory);
         Directory.CreateDirectory(DirectoryPath);
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(DirectoryPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         try { lease = new FileStream(Path.Combine(DirectoryPath, ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
         catch (IOException) { throw new BudgetException("Não foi possível abrir os dados. Feche outra janela do BankManager e tente novamente."); }
     }
+    /// <summary>
+    /// Resolve a pasta de dados: a indicada (testes) ou a pasta local da conta, compartilhada com as preferências.
+    /// </summary>
+    public static string DefaultDirectory(string? directory = null) =>
+        string.IsNullOrWhiteSpace(directory) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager") : directory;
     /// <summary>
     /// Lê a base atual ou retorna um orçamento vazio apenas se o arquivo ainda não existe; erros não apagam dados.
     /// </summary>
