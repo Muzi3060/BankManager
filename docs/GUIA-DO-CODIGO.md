@@ -14,7 +14,8 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 8. `BankManager/Ui.cs`: fábricas de controles (`Text`, `Button`, `Icon`, `Card`, `Dialog`…).
 9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos.
 10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
-11. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
+11. `BankManager.Core/RecurrenceEngine.cs` e `BudgetMigrations.cs`: despesas mensais e atualização de arquivos antigos.
+12. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -58,6 +59,7 @@ Cancelar um formulário descarta seu rascunho. A prévia de divisão também usa
 - `MonthlyIncome` usa a chave composta pessoa + primeiro dia do mês. Ausência de registro equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
 - `Expense.Participants` referencia pessoas por identificador. O modo individual exige um único participante.
 - `Expense.Items` detalha uma compra à vista; a soma dos itens determina o valor.
+- `Recurrence` é o modelo de uma despesa mensal. Os lançamentos que ela gera são `Expense` comuns, ligados por `RecurrenceId` e `RecurrenceMonth` (o mês de origem, que não muda mesmo que o vencimento seja editado).
 - `InstallmentGroup` relaciona parcelas criadas juntas, mas cada `Expense` tem seu próprio `Id`, vencimento, valor e situação de pagamento.
 
 Os modelos são `record`, mas suas propriedades e listas são mutáveis. Uma expressão `with` faz uma cópia superficial; não garante isolamento das listas. `LocalStore.Clone` faz a cópia profunda pelo formato JSON para isolar o estado ativo durante a edição. Na criação de parcelas, as coleções são copiadas explicitamente.
@@ -73,6 +75,12 @@ Os modelos são `record`, mas suas propriedades e listas são mutáveis. Uma exp
 Dinheiro usa `decimal`. `ExpenseItem.Total` arredonda quantidade × preço para centavos, afastando empates de zero; a compra soma esses totais já arredondados. Uma dívida parcelada recebe o valor total já com os juros negociados; o motor não calcula taxas bancárias.
 
 `BudgetRules.Installments` converte o total em centavos inteiros. O quociente define a parcela básica e o resto acrescenta um centavo às primeiras parcelas. Exemplo: R$ 100 em três parcelas produz R$ 33,34, R$ 33,33 e R$ 33,33. As datas partem sempre do vencimento original, evitando que o ajuste de fevereiro altere o dia de março.
+
+### Recorrências e versões do esquema
+
+`RecurrenceEngine.Generate` é idempotente: para cada modelo, cria só os meses que faltam entre o mês inicial e o horizonte (12 meses à frente), pulando os que o usuário excluiu (`SkippedMonths`). Por isso a interface sempre exclui lançamentos com `RemoveExpense`, que registra o mês ignorado. `End` e `Remove` mantêm o histórico pago. A data de referência entra por parâmetro, o que torna tudo testável.
+
+`BudgetData.Version` é a versão do esquema (hoje 2). `BudgetMigrations.ToCurrent` leva dados antigos à versão atual em memória, passo a passo, e `LocalStore.Read` o chama antes de validar; assim importações, recuperação e a base normal se beneficiam. Para criar a versão 3, acrescente um passo ali, suba `CurrentVersion` e escreva o teste "arquivo v2 migra para v3". Regra do projeto: a Fase 3 inteira usa o esquema 2, e novos campos desta fase entram nele com valores padrão que equivalem a "não usado".
 
 ### Rateio
 
