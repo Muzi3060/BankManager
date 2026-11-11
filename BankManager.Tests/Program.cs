@@ -150,6 +150,15 @@ Test("Malformed and unsupported JSON cannot import", () =>
     }
     finally { File.Delete(path); }
 });
+// A situação de vencimento: pago prevalece; atraso começa no dia seguinte; "em breve" vale de hoje a 3 dias.
+Test("Due status classification", () =>
+{
+    var d = Family(); var today = new DateOnly(2026, 11, 11);
+    DueStatus At(int offset, bool paid = false) { var e = Bill(d, 10); e.DueDate = today.AddDays(offset); e.Paid = paid; return DueStatus.Of(e, today); }
+    Equal(DueKind.Paid, At(-10, true).Kind); Equal(DueKind.Overdue, At(-1).Kind); Equal(-1, At(-1).Days);
+    Equal(DueKind.DueSoon, At(0).Kind); Equal(DueKind.DueSoon, At(3).Kind); Equal(DueKind.Open, At(4).Kind); Equal(1, At(1).Days);
+});
+
 // A preferência de tema é gravada em settings.json e lida de volta; o padrão é seguir o sistema.
 Test("Theme preference roundtrip and default", () =>
 {
