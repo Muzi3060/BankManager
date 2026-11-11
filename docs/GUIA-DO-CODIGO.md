@@ -18,7 +18,8 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 12. `BankManager.Core/SettlementEngine.cs`: quem deve a quem (acerto de contas).
 13. `BankManager.Core/CategoryEngine.cs`: categorias próprias (criar, renomear, excluir).
 14. `BankManager.Core/GoalEngine.cs`: metas mensais por categoria e seu progresso.
-15. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
+15. `BankManager.Core/ExpenseSearch.cs`: busca e filtros da lista (um mês ou todos).
+16. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 

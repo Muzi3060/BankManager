@@ -189,6 +189,10 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             saved = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(saved.Recurrences[0].EndMonth == Dates.Month(DateOnly.FromDateTime(DateTime.Today)) && saved.Expenses.Count(e => e.RecurrenceId is not null) == 1, "Ending a recurrence keeps only the selected month");
             await Click("Fechar");
+            // Cenário 10b: a busca vai a todos os meses; um termo que não existe no mês aparece ao ampliar o escopo.
+            await Click("Despesas", main); await Click("Todos os meses", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Busca em todos os meses") == true), "All-months search mode opens");
+            await Click("Este mês", main);
             // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
             await Click("Visão geral", main); await Click("Metas", main);
             Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Click("Salvar metas");

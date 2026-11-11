@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     private string filter = "";
     private int statusFilter;
     private int categoryFilter;
+    // Na página de despesas: falso mostra o mês selecionado, verdadeiro busca em todos os meses.
+    private bool allMonths;
     /// <summary>
     /// Monta a estrutura fixa da janela, aplica o tema salvo, tenta carregar os dados e exibe recuperação se a abertura falhar.
     /// </summary>
@@ -93,7 +95,7 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Troca de página e reconstrói a tela.
     /// </summary>
-    private void GoTo(int index) { currentPage = index; Render(); }
+    private void GoTo(int index) { currentPage = index; if (index != 2) allMonths = false; Render(); }
     /// <summary>
     /// Cabeçalho comum das páginas: título e subtítulo à esquerda; à direita, navegação de mês e, se pedido, o botão de nova despesa.
     /// </summary>

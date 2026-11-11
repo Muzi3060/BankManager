@@ -546,6 +546,25 @@ Test("Goals persist; older files open; v1 with goals rejected", () =>
     finally { Directory.Delete(path, true); }
 });
 
+// ---- Busca em todos os meses ----
+// Sem mês, procura em todos (mais recente primeiro); com mês, só naquele (por vencimento).
+Test("Search across all months or one month", () =>
+{
+    var d = Family(); var a = Bill(d, 10); a.Title = "Mercado de outubro"; var b = Bill(d, 20); b.Title = "Mercado de setembro"; b.DueDate = month.AddMonths(-1); var c = Bill(d, 30); c.Title = "Cinema"; c.Category = "Lazer"; c.DueDate = month.AddMonths(2);
+    d.Expenses.AddRange([b, a, c]);
+    Equal(2, ExpenseSearch.Run(d, null, "mercado").Count); Equal("Mercado de outubro", ExpenseSearch.Run(d, null, "mercado")[0].Title); // mais recente primeiro
+    Equal(1, ExpenseSearch.Run(d, month, "mercado").Count); Equal(3, ExpenseSearch.Run(d, null, "").Count); Equal(1, ExpenseSearch.Run(d, month, "").Count);
+    Equal("Cinema", ExpenseSearch.Run(d, null, "")[0].Title);
+});
+
+// A busca ignora maiúsculas e acentos, procura também na categoria e combina com situação e categoria.
+Test("Search ignores case and accents and combines filters", () =>
+{
+    var d = Family(); var a = Bill(d, 10); a.Title = "Consulta médica"; a.Category = "Saúde"; var b = Bill(d, 20); b.Title = "Farmácia"; b.Category = "Saúde"; b.Paid = true; var c = Bill(d, 30); c.Title = "Pão"; d.Expenses.AddRange([a, b, c]);
+    Equal(1, ExpenseSearch.Run(d, null, "MEDICA").Count); Equal(2, ExpenseSearch.Run(d, null, "saude").Count); Equal(1, ExpenseSearch.Run(d, null, "pao").Count);
+    Equal(1, ExpenseSearch.Run(d, null, "saude", paid: true).Count); Equal(1, ExpenseSearch.Run(d, null, "", paid: false, category: "Saúde").Count); Equal(0, ExpenseSearch.Run(d, null, "xyz").Count);
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

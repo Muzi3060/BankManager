@@ -12,7 +12,9 @@ namespace BankManager;
 public sealed partial class MainWindow
 {
     // Larguras das colunas da lista: descrição (flexível), vencimento, divisão, situação, valor e menu "⋯".
-    private const string ExpenseColumns = "*,72,170,140,120,48";
+    private const string ExpenseColumns = "*,84,170,140,120,48";
+    // Máximo de linhas desenhadas ao buscar em todos os meses; o resumo continua contando todas as encontradas.
+    private const int MaxRows = 200;
     /// <summary>
     /// Monta o cabeçalho, a busca e os filtros; ao mudar um filtro, só as linhas são reconstruídas (o campo de busca mantém o foco).
     /// </summary>
@@ -26,9 +28,9 @@ public sealed partial class MainWindow
         // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
         void Refresh()
         {
-            var entries = FinanceEngine.Expenses(data, month).Where(e => e.Title.Contains(filter, StringComparison.CurrentCultureIgnoreCase) && (statusFilter == 0 || e.Paid == (statusFilter == 2)) && (categoryFilter == 0 || e.Category == categories[categoryFilter - 1])).ToList();
-            summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}";
-            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(entries);
+            var entries = ExpenseSearch.Run(data, allMonths ? null : month, filter, statusFilter == 0 ? null : statusFilter == 2, categoryFilter == 0 ? null : categories[categoryFilter - 1]);
+            summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}" + (entries.Count > MaxRows ? $" · mostrando as {MaxRows} mais recentes" : "");
+            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(entries.Take(MaxRows).ToList());
         }
         search.TextChanged += (_, _) => { filter = search.Text ?? ""; Refresh(); };
         category.SelectionChanged += (_, _) => { categoryFilter = category.SelectedIndex; Refresh(); };
@@ -36,20 +38,28 @@ public sealed partial class MainWindow
         var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category);
         Refresh();
         // Resumo à esquerda e acesso às despesas que se repetem todo mês à direita.
-        var recurring = Button("Recorrentes", () => _ = Run(ManageRecurrences), "link", "Repeat"); Grid.SetColumn(recurring, 1); summary.VerticalAlignment = VerticalAlignment.Center;
-        var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(recurring);
-        var page = Stack(PageHeader("Despesas", "Contas, compras e parcelas do mês.", newExpense: true), filters, summaryRow, table); page.Spacing = 16; return page;
+        var recurring = Button("Recorrentes", () => _ = Run(ManageRecurrences), "link", "Repeat"); summary.VerticalAlignment = VerticalAlignment.Center;
+        // Escopo da busca: o mês selecionado ou todos os meses (a navegação de mês some no modo geral).
+        var scope = Segmented(["Este mês", "Todos os meses"], allMonths ? 1 : 0, i => { allMonths = i == 1; Render(); });
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; tools.Children.Add(scope); tools.Children.Add(recurring); Grid.SetColumn(tools, 1);
+        var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(tools);
+        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths, newExpense: true), filters, summaryRow, table); page.Spacing = 16; return page;
     }
     /// <summary>
     /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
     /// </summary>
     private Control EmptyExpenses()
     {
-        var any = FinanceEngine.Expenses(data, month).Count > 0;
+        var any = allMonths ? data.Expenses.Count > 0 : FinanceEngine.Expenses(data, month).Count > 0;
         var panel = Stack(Text(any ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Text(any ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar.", "muted"));
         panel.Spacing = 8; panel.HorizontalAlignment = HorizontalAlignment.Center; panel.Margin = new Thickness(24, 40);
         foreach (var child in panel.Children.OfType<TextBlock>()) child.TextAlignment = TextAlignment.Center;
-        if (any) { var clear = Button("Limpar filtros", () => { filter = ""; statusFilter = 0; categoryFilter = 0; Render(); }, "link"); clear.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(clear); }
+        if (any)
+        {
+            var clear = Button("Limpar filtros", () => { filter = ""; statusFilter = 0; categoryFilter = 0; Render(); }, "link"); clear.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(clear);
+            // Quem não achou no mês talvez procure em outro: oferece ampliar a busca em um clique.
+            if (!allMonths && filter.Length > 0) { var everywhere = Button("Buscar em todos os meses", () => { allMonths = true; Render(); }, "link"); everywhere.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(everywhere); }
+        }
         else { var add = Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"); add.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(add); }
         return panel;
     }
@@ -73,7 +83,7 @@ public sealed partial class MainWindow
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(20, 12) };
         var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.Medium, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted")); title.Spacing = 0; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
-        var due = Text($"{expense.DueDate:dd/MM}", "num"); due.VerticalAlignment = VerticalAlignment.Center;
+        var due = Text(allMonths ? $"{expense.DueDate:dd/MM/yy}" : $"{expense.DueDate:dd/MM}", "num"); due.VerticalAlignment = VerticalAlignment.Center;
         // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
         var shares = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; line.Classes.Add("num"); shares.Children.Add(line); }

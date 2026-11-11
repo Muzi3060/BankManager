@@ -59,6 +59,10 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 - Editar uma renda ou despesa individual recalcula o rateio daquele mês. O histórico não é um livro contábil imutável. Uma edição/exclusão de parcela afeta apenas o lançamento selecionado.
 - **Saldo planejado = renda − todas as despesas do mês**, pagas ou em aberto. Marcar pago quita o lançamento inteiro para todos os responsáveis; não há pagamento parcial ou conciliação bancária.
 
+## Buscar em todos os meses
+
+Na lista de despesas, o seletor **Este mês / Todos os meses** amplia a busca ao histórico inteiro, do vencimento mais recente ao mais antigo, com o ano na data (até 200 linhas desenhadas; o resumo conta todas as encontradas). A busca procura no título e na categoria e ignora maiúsculas e acentos ("saude" encontra "Saúde"). Se a busca do mês não achar nada, a tela oferece "Buscar em todos os meses".
+
 ## Categorias
 
 As 8 categorias padrão (Moradia, Mercado, Transporte, Saúde, Educação, Lazer, Serviços e Outros) são fixas. Em **Ajustes → Categorias** você cria as suas (até 40, nomes de até 30 caracteres, sem repetir um nome existente, ignorando maiúsculas). Renomear uma categoria atualiza todas as despesas e recorrências que a usam. Excluir só é possível quando nada a usa. Categorias próprias entram nos filtros, no editor e nas previsões.
