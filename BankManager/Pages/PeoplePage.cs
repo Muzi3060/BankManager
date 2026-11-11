@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -26,8 +27,10 @@ public sealed partial class MainWindow
         foreach (var person in data.People)
         {
             if (rows.Children.Count > 0) rows.Children.Add(Divider());
-            var informed = data.Incomes.Any(i => i.PersonId == person.Id && i.Month == month);
-            var who = Stack(new TextBlock { Text = person.Name, FontWeight = FontWeight.Medium }, Text(informed ? "Renda informada neste mês" : "Renda ainda não informada neste mês", informed ? "muted" : "warn")); who.Spacing = 0; who.VerticalAlignment = VerticalAlignment.Center;
+            // Resumo das rendas do mês: nenhuma (alerta), uma (só o nome) ou várias ("Salário R$ 3.000,00 · Extra R$ 500,00").
+            var lines = FinanceEngine.IncomeLines(data, person.Id, month);
+            var status = lines.Count == 0 ? "Renda ainda não informada neste mês" : lines.Count == 1 ? lines[0].Label : string.Join(" · ", lines.Select(l => $"{l.Label} {Money.Format(l.Amount)}"));
+            var who = Stack(new TextBlock { Text = person.Name, FontWeight = FontWeight.Medium }, Text(status, lines.Count == 0 ? "warn" : "muted")); who.Spacing = 0; who.VerticalAlignment = VerticalAlignment.Center;
             var avatar = Avatar(person.Name); avatar.Margin = new Thickness(0, 0, 12, 0);
             var income = Text(Money.Format(FinanceEngine.Income(data, person.Id, month)), "num"); income.FontWeight = FontWeight.SemiBold; income.VerticalAlignment = VerticalAlignment.Center; income.Margin = new Thickness(16, 0);
             var edit = Button("Editar", () => _ = Run(() => EditPerson(person)));
@@ -55,29 +58,52 @@ public sealed partial class MainWindow
     {
         var previous = data.Incomes.Where(i => i.Month == month.AddMonths(-1) && !data.Incomes.Any(current => current.Month == month && current.PersonId == i.PersonId)).ToList();
         if (previous.Count == 0) throw new BudgetException("Não há rendas anteriores para copiar. Rendas já informadas neste mês não são substituídas.");
-        if (await Confirm(this, "Copiar rendas?", $"Preencher {previous.Count} renda(s) ainda não informada(s) com os valores do mês anterior?")) Commit(d => d.Incomes.AddRange(previous.Select(i => i with { Month = month })));
+        if (await Confirm(this, "Copiar rendas?", $"Preencher {previous.Count} renda(s) ainda não informada(s) com os valores do mês anterior?")) Commit(d => d.Incomes.AddRange(previous.Select(i => i with { Month = month, Id = Guid.NewGuid() })));
     }
     /// <summary>
-    /// Abre o cadastro ou edição de pessoa. O nome é global, mas a renda salva pertence apenas ao mês selecionado.
+    /// Abre o cadastro ou edição de pessoa. O nome é global; as rendas (uma ou mais linhas, como salário e extra) pertencem ao mês selecionado.
     /// </summary>
     private async Task EditPerson(Person? person = null)
     {
         var name = Input(person?.Name, "Ex.: Ana", 80);
-        var amount = Input(person is null ? "" : FinanceEngine.Income(data, person.Id, month).ToString("0.00", Money.Culture), "Ex.: 3000,00", 12);
+        // Linhas de renda em edição, com o Id das existentes preservado. Uma pessoa nova já começa com a linha "Salário".
+        var lines = new List<(Guid Id, TextBox Label, TextBox Amount)>();
+        if (person is not null) foreach (var income in FinanceEngine.IncomeLines(data, person.Id, month)) lines.Add((income.Id, Input(income.Label, "Ex.: Salário", 40), Input(income.Amount.ToString("0.00", Money.Culture), "Ex.: 3000,00", 12)));
+        else lines.Add((Guid.NewGuid(), Input("Salário", "Ex.: Salário", 40), Input("", "Ex.: 3000,00", 12)));
+        var linePanel = new StackPanel { Spacing = 8 };
+        // Reconstrói a lista de linhas depois de adicionar ou remover uma.
+        void Refresh()
+        {
+            // Solta os campos das linhas antigas: um controle só pode ter um pai.
+            foreach (var old in linePanel.Children.OfType<Grid>()) old.Children.Clear();
+            linePanel.Children.Clear();
+            if (lines.Count == 0) linePanel.Children.Add(Text("Nenhuma renda neste mês: ela ficará como “não informada”.", "muted"));
+            foreach (var line in lines.ToList())
+            {
+                AutomationProperties.SetName(line.Label, "Nome da renda"); AutomationProperties.SetName(line.Amount, "Valor da renda (R$)");
+                var remove = Button("Remover renda", () => { lines.Remove(line); Refresh(); }, "ghost danger", "Trash", iconOnly: true);
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,170,Auto") }; line.Label.Margin = new Thickness(0, 0, 8, 0); line.Amount.Margin = new Thickness(0, 0, 8, 0);
+                Grid.SetColumn(line.Amount, 1); Grid.SetColumn(remove, 2); row.Children.Add(line.Label); row.Children.Add(line.Amount); row.Children.Add(remove); linePanel.Children.Add(row);
+            }
+        }
+        Refresh();
+        var add = Button("Adicionar renda", () => { lines.Add((Guid.NewGuid(), Input("", "Ex.: Salário", 40), Input("", "Ex.: 3000,00", 12))); Refresh(); }, icon: "Plus"); add.HorizontalAlignment = HorizontalAlignment.Left;
         var error = Text("", "error");
-        var panel = Stack(Heading(person is null ? "Adicionar pessoa" : "Editar pessoa", $"Renda de {month.ToString("MMMM 'de' yyyy", Money.Culture)}"), Field("Nome", name), Field("Renda líquida do mês (R$)", amount, "Use vírgula para centavos. Informe 0 se não houver renda neste mês."), error);
-        var dialog = Dialog("Pessoa e renda", panel); dialog.Height = 540;
+        var panel = Stack(Heading(person is null ? "Adicionar pessoa" : "Editar pessoa", $"Rendas de {month.ToString("MMMM 'de' yyyy", Money.Culture)}"), Field("Nome", name),
+            Text("Rendas do mês (líquidas)", "section"), Text("Use uma linha para cada fonte: salário, extra, 13º. Use vírgula para centavos; 0 é válido. A renda do mês é a soma das linhas.", "muted"), linePanel, add, error);
+        var dialog = Dialog("Pessoa e renda", panel); dialog.Height = 680;
         panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar pessoa", () =>
         {
             try
             {
-                var income = Money.Parse(amount.Text, "Renda"); var edited = new Person { Id = person?.Id ?? Guid.NewGuid(), Name = name.Text?.Trim() ?? "" };
+                var edited = new Person { Id = person?.Id ?? Guid.NewGuid(), Name = name.Text?.Trim() ?? "" };
+                var incomes = lines.Select(l => new MonthlyIncome { Id = l.Id, PersonId = edited.Id, Month = month, Label = l.Label.Text?.Trim() ?? "", Amount = Money.Parse(l.Amount.Text, "Renda") }).ToList();
                 Commit(d =>
                 {
                     if (person is null) d.People.Add(edited); else d.People[d.People.FindIndex(p => p.Id == person.Id)] = edited;
-                    // Substitui somente a chave pessoa/mês atual, preservando rendas das outras competências.
+                    // Substitui somente as linhas desta pessoa neste mês, preservando as outras competências.
                     d.Incomes.RemoveAll(i => i.PersonId == edited.Id && i.Month == month);
-                    d.Incomes.Add(new MonthlyIncome { PersonId = edited.Id, Month = month, Amount = income });
+                    d.Incomes.AddRange(incomes);
                 }); dialog.Close();
             }
             catch (Exception ex) { error.Text = FriendlyError(ex); error.BringIntoView(); }

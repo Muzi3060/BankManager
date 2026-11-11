@@ -35,9 +35,13 @@ public sealed record Forecast(string Category, decimal Historical, decimal Sched
 public static class FinanceEngine
 {
     /// <summary>
-    /// Consulta a renda da pessoa na competência; ausência de registro é tratada como zero, sem copiar outro mês.
+    /// Consulta a renda da pessoa na competência (soma de todas as suas linhas); ausência de registro é tratada como zero, sem copiar outro mês.
     /// </summary>
-    public static decimal Income(BudgetData data, Guid person, DateOnly month) => data.Incomes.FirstOrDefault(i => i.PersonId == person && i.Month == Dates.Month(month))?.Amount ?? 0;
+    public static decimal Income(BudgetData data, Guid person, DateOnly month) => IncomeLines(data, person, month).Sum(i => i.Amount);
+    /// <summary>
+    /// Linhas de renda da pessoa na competência, na ordem em que foram cadastradas.
+    /// </summary>
+    public static List<MonthlyIncome> IncomeLines(BudgetData data, Guid person, DateOnly month) => data.Incomes.Where(i => i.PersonId == person && i.Month == Dates.Month(month)).ToList();
     /// <summary>
     /// Obtém lançamentos do mês selecionado, ordenados por vencimento e depois por descrição.
     /// </summary>

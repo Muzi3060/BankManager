@@ -94,11 +94,16 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             }
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
             await Click("Cadastrar primeira pessoa", main);
-            var inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs[0].Text = "Ana"; inputs[1].Text = "3000,00";
+            var inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Ana"; inputs.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "3000,00";
             await Click("Salvar pessoa");
             Check(lifetime.Windows.Count == 1, "Person dialog saves and closes");
             await Click("Pessoas e rendas", main); await Click("Adicionar pessoa", main);
-            inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs[0].Text = "Bruno"; inputs[1].Text = "1000,00"; await Click("Salvar pessoa");
+            inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Bruno"; inputs.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "1000,00"; await Click("Salvar pessoa");
+            // Cenário 1b: uma pessoa pode ter várias rendas no mês; a linha "Extra" de zero mantém os totais dos cenários seguintes.
+            await Click("Editar", main); await Click("Adicionar renda");
+            inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.Where(i => i.PlaceholderText == "Ex.: Salário").Last().Text = "Extra"; inputs.Where(i => i.PlaceholderText == "Ex.: 3000,00").Last().Text = "0,00";
+            await Click("Salvar pessoa");
+            var anaLines = LocalStore.Read(Path.Combine(directory, "financas.json")); Check(anaLines.Incomes.Count(i => i.PersonId == anaLines.People[0].Id) == 2 && FinanceEngine.Income(anaLines, anaLines.People[0].Id, Dates.Month(DateOnly.FromDateTime(DateTime.Today))) == 3000m, "Person can have several income lines");
             // Cenário 2: compra compartilhada com prévia proporcional de 600/200 e conferência do JSON salvo.
             await Click("Despesas", main); await Click("Nova despesa", main);
             inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray();

@@ -426,6 +426,37 @@ Test("Version 1 file with payer data is rejected", () =>
     finally { File.Delete(path); }
 });
 
+// ---- Várias rendas por pessoa ----
+// A renda do mês é a soma das linhas (salário + extra) e o rateio proporcional usa esse total.
+Test("Income lines add up and drive the split", () =>
+{
+    var d = Family(0, 1000); d.Incomes.Add(new MonthlyIncome { PersonId = d.People[0].Id, Month = month, Amount = 1000, Label = "Salário" }); d.Incomes.Add(new MonthlyIncome { PersonId = d.People[0].Id, Month = month, Amount = 2000, Label = "Extra" });
+    Equal(3000m, FinanceEngine.Income(d, d.People[0].Id, month)); Equal(3, FinanceEngine.IncomeLines(d, d.People[0].Id, month).Count); // a linha "Renda" de zero criada por Family + Salário + Extra
+    Equal(600m, FinanceEngine.Allocate(d, Bill(d, 800)).Amounts[d.People[0].Id]); BudgetRules.Validate(d);
+});
+
+// Nomes repetidos, mais de 20 linhas, nome vazio e identificador repetido são recusados.
+Test("Income line validation", () =>
+{
+    var d = Family(); d.Incomes.Add(new MonthlyIncome { PersonId = d.People[0].Id, Month = month, Amount = 10, Label = " salário" }); d.Incomes[0].Label = "Salário"; Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Incomes[0].Label = ""; Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Incomes.Add(d.Incomes[0] with { Label = "Outra" }); Reject(() => BudgetRules.Validate(d)); // mesmo Id
+    d = Family(); for (var i = 0; i < 20; i++) d.Incomes.Add(new MonthlyIncome { PersonId = d.People[0].Id, Month = month, Amount = 1, Label = "Linha " + i }); Reject(() => BudgetRules.Validate(d)); // 21 linhas
+});
+
+// Um arquivo anterior (uma renda por mês, sem Id nem Label) abre: a renda vira "Renda" e ganha identificador.
+Test("Older income records without id and label still open", () =>
+{
+    var d = Family(); var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; var path = Path.GetTempFileName();
+    try
+    {
+        foreach (var i in node["Incomes"]!.AsArray()) { i!.AsObject().Remove("Id"); i.AsObject().Remove("Label"); }
+        File.WriteAllText(path, node.ToJsonString()); var back = LocalStore.Read(path);
+        Equal(true, back.Incomes.All(i => i.Label == "Renda" && i.Id != Guid.Empty)); Equal(2, back.Incomes.Select(i => i.Id).Distinct().Count()); Equal(3000m, FinanceEngine.Income(back, back.People[0].Id, month));
+    }
+    finally { File.Delete(path); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

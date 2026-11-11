@@ -27,13 +27,16 @@ public static class BudgetRules
             Text(p.Name, "Nome", 80);
             if (!names.Add(p.Name.Trim())) throw new BudgetException("Já existe uma pessoa com esse nome.");
         }
-        // A chave composta impede duas rendas para a mesma pessoa no mesmo mês.
-        var months = new HashSet<(Guid, DateOnly)>();
+        // Uma pessoa pode ter várias rendas no mês (salário, extra, 13º), desde que com nomes diferentes e em número razoável.
+        var incomeIds = new HashSet<Guid>(); var incomeNames = new HashSet<(Guid, DateOnly, string)>(); var perMonth = new Dictionary<(Guid, DateOnly), int>();
         foreach (var income in data.Incomes)
         {
-            if (income is null || !ids.Contains(income.PersonId) || income.Month.Day != 1 || !months.Add((income.PersonId, income.Month)))
+            if (income is null || !ids.Contains(income.PersonId) || income.Month.Day != 1 || income.Id == Guid.Empty || !incomeIds.Add(income.Id))
                 throw new BudgetException("Registro de renda inválido ou repetido.");
-            Date(income.Month);
+            Date(income.Month); Text(income.Label, "Nome da renda", 40);
+            if (!incomeNames.Add((income.PersonId, income.Month, income.Label.Trim().ToUpperInvariant()))) throw new BudgetException("Há duas rendas com o mesmo nome no mesmo mês. Use nomes diferentes, como Salário e Extra.");
+            var key = (income.PersonId, income.Month); perMonth[key] = perMonth.GetValueOrDefault(key) + 1;
+            if (perMonth[key] > 20) throw new BudgetException("Cada pessoa pode ter até 20 rendas por mês.");
             Money.Validate(income.Amount, "Renda");
         }
         // Um acerto liga duas pessoas diferentes que existem, com valor positivo.

@@ -40,7 +40,7 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 
 ## Como usar
 
-1. Em **Pessoas e rendas**, cadastre as pessoas e a renda líquida do mês selecionado. Zero é válido. Você pode copiar as rendas do mês anterior sem substituir valores já informados.
+1. Em **Pessoas e rendas**, cadastre as pessoas e a renda líquida do mês selecionado. Cada pessoa pode ter várias rendas no mês (salário, extra, 13º), uma por linha; a renda do mês é a soma. Zero é válido. Você pode copiar as rendas do mês anterior sem substituir valores já informados.
 2. Em **Despesas**, adicione descrição, categoria, vencimento, valor e responsáveis. Para uma compra detalhada, expanda **Lista de itens da compra**, preencha quantidade e preço e clique em **Adicionar item** para cada produto.
 3. Escolha divisão **individual**, **igual** ou **proporcional**. Use **Conferir divisão antes de salvar** para ver o resultado.
 4. Para dívidas parceladas, informe o **valor total**, incluindo juros já negociados, e até 120 parcelas. Cada vencimento é criado no mês correspondente. Listas de itens são lançadas à vista.
@@ -51,7 +51,7 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 ## Regras financeiras
 
 - Dinheiro usa `decimal`, com duas casas decimais. A entrada aceita `1500,50`, sem separadores de milhares. Quantidades aceitam até três casas decimais. Cada item é arredondado para centavos antes da soma.
-- Renda fica vinculada à pessoa e ao mês; não é propagada automaticamente. Renda ausente é considerada zero e sinalizada na visão geral.
+- Renda fica vinculada à pessoa e ao mês, em uma ou mais linhas com nomes diferentes (até 20); não é propagada automaticamente. Arquivos antigos, com uma renda por mês, aparecem como uma linha "Renda". Renda ausente é considerada zero e sinalizada na visão geral.
 - **Disponível para rateio = máximo(0, renda − despesas individuais do mês)**. Despesas individuais pagas também são descontadas. Cada conta proporcional usa essa mesma base entre seus participantes; despesas iguais não são descontadas da base.
 - Exemplo: disponíveis de R$ 3.000 e R$ 1.000 dividem R$ 800 em R$ 600 e R$ 200. Se todas as disponibilidades forem zero, aplica-se divisão igual com aviso. O cálculo não limita a responsabilidade à renda: saldo negativo é mostrado como alerta.
 - Os centavos restantes do rateio seguem os maiores restos fracionários, com desempate estável por identificador. A soma sempre coincide com a despesa.

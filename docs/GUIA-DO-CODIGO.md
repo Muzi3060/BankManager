@@ -57,7 +57,7 @@ Cancelar um formulário descarta seu rascunho. A prévia de divisão também usa
 `BudgetData` é a raiz serializada em JSON e guarda todo o histórico. `Version` identifica o formato, não a versão comercial do aplicativo.
 
 - `Person.Id` é a chave estável de uma pessoa; mudar seu nome preserva as referências.
-- `MonthlyIncome` usa a chave composta pessoa + primeiro dia do mês. Ausência de registro equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
+- `MonthlyIncome` é uma linha de renda (`Label` e `Amount`) de uma pessoa em um mês (primeiro dia), com `Id` próprio. A renda do mês é a soma das linhas (`FinanceEngine.Income`). Ausência de linhas equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
 - `Expense.Participants` referencia pessoas por identificador. O modo individual exige um único participante.
 - `Expense.Items` detalha uma compra à vista; a soma dos itens determina o valor.
 - `Expense.PaidBy` guarda quem pagou (só em despesas pagas; nulo é "não informado"). `Settlement` é um pagamento entre duas pessoas que abate uma dívida; não é uma despesa.

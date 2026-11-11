@@ -25,10 +25,15 @@ public sealed record Person
     public string Name { get; set; } = "";
 }
 /// <summary>
-/// Renda líquida de uma pessoa em um mês específico; não é repetida automaticamente nos meses seguintes.
+/// Uma linha de renda líquida de uma pessoa em um mês específico (salário, extra, 13º); a renda do mês é a soma das linhas.
+/// Não é repetida automaticamente nos meses seguintes.
 /// </summary>
 public sealed record MonthlyIncome
 {
+    /// <summary>Identificador estável desta linha de renda. Arquivos antigos não o tinham: ele é gerado ao ler e gravado no próximo salvamento.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>Nome da linha ("Salário", "Extra", "13º"). Arquivos antigos, com uma renda por mês, aparecem como "Renda".</summary>
+    public string Label { get; set; } = "Renda";
     /// <summary>Pessoa à qual a renda pertence; deve existir em BudgetData.People.</summary>
     public Guid PersonId { get; set; }
     /// <summary>Competência da renda, representada obrigatoriamente pelo primeiro dia do mês.</summary>
@@ -147,7 +152,7 @@ public sealed record BudgetData
     public int Version { get; set; } = CurrentVersion;
     /// <summary>Cadastro de pessoas compartilhado entre todos os meses.</summary>
     public List<Person> People { get; set; } = [];
-    /// <summary>Histórico de renda, com no máximo um registro por pessoa e competência.</summary>
+    /// <summary>Histórico de renda: até 20 linhas, com nomes diferentes, por pessoa e competência.</summary>
     public List<MonthlyIncome> Incomes { get; set; } = [];
     /// <summary>Histórico e compromissos futuros, incluindo parcelas criadas antecipadamente.</summary>
     public List<Expense> Expenses { get; set; } = [];
