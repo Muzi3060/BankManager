@@ -15,7 +15,8 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos.
 10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
 11. `BankManager.Core/RecurrenceEngine.cs` e `BudgetMigrations.cs`: despesas mensais e atualização de arquivos antigos.
-12. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
+12. `BankManager.Core/SettlementEngine.cs`: quem deve a quem (acerto de contas).
+13. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -59,6 +60,7 @@ Cancelar um formulário descarta seu rascunho. A prévia de divisão também usa
 - `MonthlyIncome` usa a chave composta pessoa + primeiro dia do mês. Ausência de registro equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
 - `Expense.Participants` referencia pessoas por identificador. O modo individual exige um único participante.
 - `Expense.Items` detalha uma compra à vista; a soma dos itens determina o valor.
+- `Expense.PaidBy` guarda quem pagou (só em despesas pagas; nulo é "não informado"). `Settlement` é um pagamento entre duas pessoas que abate uma dívida; não é uma despesa.
 - `Recurrence` é o modelo de uma despesa mensal. Os lançamentos que ela gera são `Expense` comuns, ligados por `RecurrenceId` e `RecurrenceMonth` (o mês de origem, que não muda mesmo que o vencimento seja editado).
 - `InstallmentGroup` relaciona parcelas criadas juntas, mas cada `Expense` tem seu próprio `Id`, vencimento, valor e situação de pagamento.
 
@@ -81,6 +83,10 @@ Dinheiro usa `decimal`. `ExpenseItem.Total` arredonda quantidade × preço para 
 `RecurrenceEngine.Generate` é idempotente: para cada modelo, cria só os meses que faltam entre o mês inicial e o horizonte (12 meses à frente), pulando os que o usuário excluiu (`SkippedMonths`). Por isso a interface sempre exclui lançamentos com `RemoveExpense`, que registra o mês ignorado. `End` e `Remove` mantêm o histórico pago. A data de referência entra por parâmetro, o que torna tudo testável.
 
 `BudgetData.Version` é a versão do esquema (hoje 2). `BudgetMigrations.ToCurrent` leva dados antigos à versão atual em memória, passo a passo, e `LocalStore.Read` o chama antes de validar; assim importações, recuperação e a base normal se beneficiam. Para criar a versão 3, acrescente um passo ali, suba `CurrentVersion` e escreva o teste "arquivo v2 migra para v3". Regra do projeto: a Fase 3 inteira usa o esquema 2, e novos campos desta fase entram nele com valores padrão que equivalem a "não usado".
+
+### Acerto de contas
+
+`SettlementEngine.Debts` percorre as despesas pagas com `PaidBy` e acumula, para cada par (devedor, credor), a parte de cada participante obtida de `FinanceEngine.Allocate`. Depois subtrai os `Settlement` e compensa o sentido contrário de cada par. O resultado é uma lista de `Debt` e não é gravado: sempre recalculado a partir das despesas e dos acertos. Não há simplificação entre três ou mais pessoas, de propósito: "Bruno deve a Ana" só aparece se Ana pagou algo por Bruno.
 
 ### Rateio
 
