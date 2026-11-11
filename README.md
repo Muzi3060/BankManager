@@ -1,6 +1,6 @@
 # BankManager
 
-Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10 e Avalonia 12.1.4**. Interface em português, tema escuro, menu lateral e armazenamento local. Começa vazio, sem dados fictícios na base do usuário.
+Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10 e Avalonia 12.1.4**. Interface em português, com tema claro, escuro ou automático (segue o sistema), menu lateral e armazenamento local. Começa vazio, sem dados fictícios na base do usuário.
 
 **Sobre o desenvolvimento:** este projeto foi desenvolvido com **vibe coding**, usando o Codex para gerar e ajustar o código a partir de instruções em linguagem natural. A proposta, os requisitos e as decisões de produto foram definidos pelo autor do projeto.
 
@@ -29,13 +29,13 @@ Requer SDK .NET 10 e ambiente gráfico. No Rider, abra `BankManager.sln`, seleci
 dotnet run --project BankManager
 ```
 
-Neste computador, o `dotnet` do PATH é o SDK 8, mas o SDK 10 está em `~/.dotnet`. O iniciador seleciona essa instalação automaticamente:
+Se o `dotnet` do seu PATH for de uma versão antiga e o SDK 10 estiver instalado em `~/.dotnet`, o iniciador `run.sh` seleciona essa instalação automaticamente:
 
 ```bash
 ./run.sh
 ```
 
-Também é possível executar `/home/fabio/.dotnet/dotnet run --project BankManager`. A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do aplicativo é offline. No Linux, é necessário X11/XWayland e as bibliotecas nativas do Avalonia. Windows e macOS usam os respectivos backends do Avalonia; a execução foi validada somente no Linux deste ambiente.
+A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do aplicativo é offline. No Linux, é necessário X11/XWayland e as bibliotecas nativas do Avalonia. Windows e macOS usam os respectivos backends do Avalonia; a execução foi validada somente no Linux.
 
 ## Como usar
 
@@ -45,7 +45,7 @@ Também é possível executar `/home/fabio/.dotnet/dotnet run --project BankMana
 4. Para dívidas parceladas, informe o **valor total**, incluindo juros já negociados, e até 120 parcelas. Cada vencimento é criado no mês correspondente. Listas de itens são lançadas à vista.
 5. Marque pagamentos na lista, edite lançamentos, filtre por categoria/situação e navegue entre meses para consultar o histórico.
 6. Em **Previsões**, consulte a estimativa do mês seguinte ao selecionado.
-7. Em **Dados e ajuda**, exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
+7. Em **Dados e ajuda**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
 
 ## Regras financeiras
 
@@ -76,6 +76,7 @@ Parcelas ficam fora da média para não continuarem sendo previstas após o tér
 Os arquivos ficam em `Environment.SpecialFolder.LocalApplicationData/BankManager` (o caminho efetivo aparece na interface). Para desenvolvimento/testes, `BANKMANAGER_DATA_DIR` permite escolher uma pasta isolada.
 
 - `financas.json`: base atual, JSON versionado.
+- `settings.json`: preferências do aplicativo (tema). Fica separado das finanças: trocar a aparência nunca altera o `financas.json`, e um arquivo de preferências inválido apenas volta ao padrão.
 - `financas.backup.json`: versão anterior ao último salvamento, não um histórico ilimitado de backups.
 - `.lock`: bloqueio de acesso concorrente por outra instância cooperante do aplicativo.
 - Gravação em arquivo temporário no mesmo diretório, flush e substituição atômica. A interface só adota as alterações após a gravação.
@@ -93,7 +94,7 @@ Consulte o [guia de leitura do código](docs/GUIA-DO-CODIGO.md) para acompanhar 
 
 ## Estrutura e testes
 
-- `BankManager`: interface Avalonia; estilos em XAML e composição das telas em C#.
+- `BankManager`: interface Avalonia. Cores (claro e escuro), ícones e estilos em `Styles/*.axaml`; uma página por arquivo em `Pages/`; `MainWindow.cs` guarda o estado e a navegação.
 - `BankManager.Core`: modelos, validações, cálculos e armazenamento, sem dependência da interface.
 - `BankManager.Tests`: executável de testes do domínio e persistência, sem frameworks adicionais.
 - `BankManager.UiTests`: teste de integração com janela real, dados temporários e encerramento automático. Requer display gráfico; não usa a base pessoal.

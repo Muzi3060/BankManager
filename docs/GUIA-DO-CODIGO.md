@@ -10,8 +10,10 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 4. `BankManager.Core/BudgetRules.cs`: o que um orçamento válido pode conter.
 5. `BankManager.Core/FinanceEngine.cs`: consulta mensal, divisão, saldos e estimativa.
 6. `BankManager.Core/LocalStore.cs`: leitura, validação de arquivos, gravação, backup e bloqueio de outra instância.
-7. `BankManager/MainWindow.cs`: navegação, formulários e ligação entre tela, cálculo e disco.
-8. `BankManager/Ui.cs` e `BankManager/App.axaml`: componentes compartilhados e apresentação.
+7. `BankManager/MainWindow.cs`: estado ativo, navegação, gravação (`Commit`) e tratamento de erros. Cada página é uma parte da mesma classe (`partial class`), em `BankManager/Pages/`: `DashboardPage.cs`, `PeoplePage.cs`, `ExpensesPage.cs`, `ForecastPage.cs` e `SettingsPage.cs`.
+8. `BankManager/Ui.cs`: fábricas de controles (`Text`, `Button`, `Icon`, `Card`, `Dialog`…).
+9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos.
+10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -26,7 +28,7 @@ Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspe
 | `scripts/package.py` | Publicação, compactação, licenças e checksums | Python e SDK .NET |
 | `.github/workflows/release.yml` | Builds e testes nos dois sistemas, publicação de tags | GitHub Actions |
 
-As telas são compostas em C# com as fábricas de `Ui`; o XAML concentra os estilos globais. Nesta versão, `MainWindow` coordena estado, eventos e navegação, sem uma camada separada de ViewModels. Já as regras de cálculo podem ser usadas e testadas sem abrir uma janela.
+As telas são compostas em C# com as fábricas de `Ui`; o XAML concentra cores, ícones e estilos. Nesta versão, `MainWindow` coordena estado, eventos e navegação, sem uma camada separada de ViewModels (veja “Por que não MVVM” abaixo). Já as regras de cálculo podem ser usadas e testadas sem abrir uma janela.
 
 ## Caminho de uma edição
 
@@ -100,6 +102,18 @@ A média exclui parcelamentos; estes contribuem apenas com parcelas que vencem n
 `Run` captura erros das ações assíncronas e chama `ShowError`. Editores mantêm suas próprias mensagens com `FriendlyError`, para que o usuário possa corrigir o campo sem fechar o formulário. `BudgetException` é um erro esperado de negócio com mensagem apresentável; erros técnicos recebem mensagens genéricas.
 
 Em `Ui.Field`, o rótulo e a ajuda também são registrados nas propriedades de acessibilidade. As classes aplicadas aos controles, como `primary`, `card` e `muted`, são definidas em `App.axaml`.
+
+### Temas, cores e ícones
+
+Nenhuma cor aparece no código C#. `Styles/Tokens.axaml` define cada cor com nome (por exemplo `SurfaceBrush`, `AccentBrush`) duas vezes, uma para `Light` e outra para `Dark`, em `ThemeDictionaries`. Os estilos de `Controls.axaml` e o C# só citam esses nomes (`DynamicResource` ou classes como `muted`, `positive`, `negative`), então trocar de tema atualiza tudo ao vivo. Para mudar uma cor, edite apenas o `Tokens.axaml`.
+
+A preferência (Automático, Claro ou Escuro) fica em `settings.json`, lida por `SettingsStore` antes de a janela aparecer. `App.ApplyTheme` ajusta `RequestedThemeVariant`; no modo Automático ele volta ao padrão, que acompanha o sistema.
+
+Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os desenha com a cor do botão que os contém, igual em Windows e Linux. O ícone do aplicativo vem de `Assets/icon.svg`; `scripts/make-icons.sh` gera o `icon.png` (janela) e o `icon.ico` (executável do Windows).
+
+### Por que não MVVM (por enquanto)
+
+Migrar para ViewModels exigiria reescrever todas as telas, sem ganho visível. As regras já estão isoladas no Core e testáveis sem janela, que é o benefício principal. MVVM passa a compensar se as telas crescerem muito ou se for preciso testar a lógica de apresentação sem abrir janelas; a divisão em `Pages/` já prepara esse passo.
 
 ## Persistência e seus limites
 
