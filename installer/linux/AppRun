@@ -1,0 +1,4 @@
+#!/bin/sh
+# Ponto de entrada do AppImage: executa o aplicativo que está dentro do próprio pacote.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/lib/bankmanager/BankManager" "$@"

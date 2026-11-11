@@ -154,8 +154,10 @@ O JSON é legível, sem criptografia. No Unix, a pasta e os arquivos novos receb
 
 `BankManager.UiTests/Program.cs` configura a pasta temporária antes de criar o aplicativo, espera a inicialização gráfica e executa o roteiro na thread da interface. Os cliques disparam eventos dos botões, sem coordenadas do mouse. Há verificações na tela e no JSON salvo. Seletores de arquivos nativos e leitores de tela não são cobertos por esse roteiro.
 
+`scripts/installers.py` parte da pasta publicada por `package.py` e gera o instalador do Windows (Inno Setup, `installer/windows/BankManager.iss`) e o AppImage do Linux (`installer/linux/`: `AppRun`, `.desktop`, metadados). O `appimagetool` é fixado por versão e checksum. `Instalar-atalho.sh`, que acompanha o pacote portátil do Linux, cria o atalho do menu para o usuário. Não há atualizador dentro do aplicativo, por escolha: ele nunca acessa a internet.
+
 `run.sh` compila e inicia a versão de desenvolvimento. Já `scripts/package.py` publica o aplicativo com o .NET incluído, coleta avisos de terceiros, prepara o iniciador Linux, compacta e calcula SHA-256. A validação de versão ocorre antes de construir nomes de diretório.
 
-O workflow executa os testes de domínio nos dois sistemas e os testes gráficos no Linux via Xvfb. Somente tags com versão correspondente ao projeto podem criar releases, e o job de publicação depende do sucesso de ambos os destinos. `global.json` seleciona a família do SDK; por ser JSON, sua explicação fica neste guia em vez de comentários dentro do arquivo.
+O workflow executa os testes de domínio nos dois sistemas e os testes gráficos no Linux via Xvfb (no Windows eles rodam como aviso, com `continue-on-error`, até serem validados lá), gera o instalador e o AppImage e faz um teste de fumaça de cada um. Somente tags com versão correspondente ao projeto podem criar releases, e o job de publicação depende do sucesso de ambos os destinos. `global.json` seleciona a família do SDK; por ser JSON, sua explicação fica neste guia em vez de comentários dentro do arquivo.
 
 Para os comandos de execução, testes e distribuição, consulte o [README](../README.md).

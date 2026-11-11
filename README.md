@@ -11,16 +11,18 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 **[Baixar a versão mais recente](https://github.com/Muzi3060/BankManager/releases/latest)**
 
-| Computador do seu amigo | Arquivo | Como abrir |
+| Computador | Arquivo | Como usar |
 | --- | --- | --- |
-| Windows 64 bits (Intel/AMD) | `BankManager-1.0.0-win-x64.zip` | Extrair **tudo** e abrir `BankManager.exe` |
-| Linux 64 bits (Intel/AMD) | `BankManager-1.0.0-linux-x64.tar.gz` | Extrair **tudo** e executar `./Iniciar.sh` na pasta |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.0.0-win-x64-setup.exe` | **Instalador (recomendado).** Dê dois cliques; instala só para você, sem administrador, com atalho no menu Iniciar |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.0.0-win-x64.zip` | Portátil: extrair **tudo** e abrir `BankManager.exe` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.0.0-x86_64.AppImage` | **Um arquivo só (recomendado).** `chmod +x` e dois cliques, ou `./BankManager-2.0.0-x86_64.AppImage` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.0.0-linux-x64.tar.gz` | Portátil: extrair **tudo**, `./Iniciar.sh`; `./Instalar-atalho.sh` cria o atalho e o ícone no menu |
 
-Os pacotes já incluem o .NET. Seu amigo não precisa instalar SDK, Rider ou Visual Studio. Envie o **link da release** ou o **arquivo compactado completo** por um serviço de arquivos/pendrive. Não envie só o executável, nem seus backups financeiros. Veja [as instruções incluídas no pacote](docs/LEIA-ME.txt).
+Todos incluem o .NET: não é preciso instalar SDK, Rider ou Visual Studio. Para compartilhar, envie o **link da release** ou o arquivo **completo**. Não envie só o executável, nem seus backups financeiros. Veja [as instruções incluídas no pacote](docs/LEIA-ME.txt).
 
-São versões portáteis, sem instalador e sem assinatura digital. O Windows pode avisar que o editor não foi identificado. No Linux, é necessário desktop com X11/XWayland e bibliotecas do sistema; não há suporte nesses pacotes a ARM ou Alpine/musl. A interface é testada no Linux; o uso visual no Windows ainda exige validação manual.
+**Sem assinatura digital.** O Windows pode avisar "editor não identificado"; confira que o download veio deste repositório e, se quiser, o checksum (`.sha256`, mais abaixo). No Linux, é necessário desktop com X11/XWayland e bibliotecas do sistema; ARM e Alpine/musl não têm pacote. O AppImage usa FUSE; sem ele, rode com `--appimage-extract-and-run`.
 
-Para atualizar, exporte um backup e feche o aplicativo antes de extrair a nova versão em outra pasta. Seus dados ficam na pasta local da conta do sistema, separados dos executáveis.
+**Atualizar.** O aplicativo **nunca acessa a internet**, então não tem atualizador próprio. No Windows, rode o instalador novo: ele atualiza por cima da versão instalada. No Linux, baixe o AppImage novo (ou use a ferramenta [AppImageUpdate](https://github.com/AppImage/AppImageUpdate) sobre o arquivo antigo, que lê a informação de atualização embutida e baixa só a diferença). No pacote portátil, extraia a versão nova em outra pasta. Em todos os casos seus dados ficam na pasta local da sua conta, separados do programa: atualizar ou desinstalar **não os apaga**. Mesmo assim, exporte um backup antes de atualizar. A versão 2 grava os dados no esquema 2, que o BankManager 1.x não abre; as versões antigas dos dados são lidas e atualizadas sem perda.
 
 ## Executar a partir do código
 
@@ -125,7 +127,7 @@ Os arquivos ficam em `Environment.SpecialFolder.LocalApplicationData/BankManager
 - No Unix, pasta privada (`0700`) e dados novos privados (`0600`). No Windows, aplicam-se as permissões da pasta do usuário.
 - Não há sincronização, envio de dados, execução de scripts nem carregamento de conteúdo remoto a partir dos arquivos importados.
 
-**Os dados não são criptografados**. Backups contêm informações legíveis e precisam ser guardados com cuidado. Proteção contra alguém com acesso à conta do sistema requer segurança do próprio dispositivo. Testes e validações reduzem riscos, mas não constituem garantia de ausência de todas as falhas ou auditoria independente. Não há instaladores assinados. O pipeline compila e executa testes do domínio em Windows e Linux; os testes da interface são executados no Linux. macOS não tem pacote de distribuição nesta entrega.
+**Os dados não são criptografados**. Backups contêm informações legíveis e precisam ser guardados com cuidado. Proteção contra alguém com acesso à conta do sistema requer segurança do próprio dispositivo. Testes e validações reduzem riscos, mas não constituem garantia de ausência de todas as falhas ou auditoria independente. Instaladores e pacotes não são assinados digitalmente. O pipeline compila e executa os testes do domínio em Windows e Linux e os testes da interface no Linux; no Windows eles também rodam, mas ainda como aviso, até serem validados lá. macOS não tem pacote de distribuição.
 
 ## Entender o código
 
@@ -144,7 +146,7 @@ dotnet run --project BankManager.Tests
 dotnet run --project BankManager.UiTests
 ```
 
-Os executáveis de teste retornam código diferente de zero se falharem. `dotnet test` não executa essas verificações. O domínio cobre rateio, 1.000 combinações de valores, falta de renda, histórico mensal, parcelas, previsões, validação e arquivos. A interface cobre cadastro, prévia, gravação, pagamento, edição inválida e lista de itens. Seletores nativos de arquivos e leitores de tela ainda precisam de testes manuais.
+Os executáveis de teste retornam código diferente de zero se falharem. `dotnet test` não executa essas verificações. O domínio cobre rateio, 1.000 combinações de valores, falta de renda, histórico mensal, parcelas, previsões, validação e arquivos. A interface cobre cadastro (com várias rendas), prévia, gravação, pagamento com quem pagou e acerto de contas, edição inválida, lista de itens, recorrências, categorias, metas, busca, importação de extrato, tema e atalho Ctrl+N. Seletores nativos de arquivos e leitores de tela ainda precisam de testes manuais.
 
 Para gerar capturas de todas as telas, nos temas claro e escuro, com dados de demonstração (fictícios):
 
@@ -176,16 +178,29 @@ No Windows, use `python` no lugar de `python3`. O script escolhe o SDK em `~/.do
 Para conferir o download no Linux, no diretório dos arquivos:
 
 ```bash
-sha256sum -c BankManager-1.0.0-linux-x64.tar.gz.sha256
+sha256sum -c BankManager-2.0.0-linux-x64.tar.gz.sha256
 ```
 
-No PowerShell, execute `Get-FileHash .\BankManager-1.0.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
+No PowerShell, execute `Get-FileHash .\BankManager-2.0.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
 
-O workflow [Build and release](.github/workflows/release.yml) compila, testa e empacota nos runners nativos de Windows e Linux. Em pushes na `main`, os arquivos ficam nos artifacts da execução. Para uma nova release:
+### Instalador do Windows e AppImage
+
+Depois de `package.py`, o script `scripts/installers.py` gera os pacotes de instalação (cada um sobre a pasta publicada do seu sistema):
+
+```bash
+python3 scripts/installers.py windows    # instalador .exe; requer o Inno Setup (winget install JRSoftware.InnoSetup)
+python3 scripts/installers.py appimage   # AppImage + .zsync; requer Linux x86_64
+```
+
+- **Windows (Inno Setup, `installer/windows/BankManager.iss`):** instalação por usuário (sem administrador, em `%LOCALAPPDATA%\Programs\BankManager`; o assistente permite escolher "para todos"), atalho no menu Iniciar, atalho opcional na área de trabalho, desinstalador e atualização no lugar (o `AppId` é fixo). Os dados em `%LOCALAPPDATA%\BankManager` nunca são removidos.
+- **Linux (AppImage, `installer/linux/`):** um arquivo executável com o app, o ícone e o `.desktop`. O `appimagetool` é baixado em versão fixa e o checksum é conferido antes de usá-lo. O arquivo `.zsync` permite atualizar com AppImageUpdate.
+- **Por que não Velopack:** ele faria o próprio aplicativo consultar a internet para atualizar, o que contradiz a regra de funcionar 100% offline, e acrescentaria uma dependência. O instalador e o AppImage já cobrem instalação, atalho, ícone e atualização feita pelo usuário. **Flatpak** não foi adotado: exige manifesto, runtime de ~GB e revisão de loja, sem ganho para o público-alvo; fica como opção futura.
+
+O workflow [Build and release](.github/workflows/release.yml) compila, testa e empacota nos runners nativos de Windows e Linux, gera o instalador e o AppImage e faz um teste de fumaça de cada um (instalar/desinstalar no Windows; abrir o AppImage sob Xvfb no Linux). Em pushes na `main`, os arquivos ficam nos artifacts da execução. Para uma nova release:
 
 1. Atualize `Version` em `BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
 2. Faça commit e push dessas mudanças.
-3. Crie e envie uma tag correspondente, por exemplo `git tag v1.0.1` e `git push origin v1.0.1`.
-4. O workflow publica os pacotes na página Releases somente após todos os jobs passarem.
+3. Crie e envie uma tag correspondente, por exemplo `git tag v2.0.1` e `git push origin v2.0.1`.
+4. O workflow publica instaladores e pacotes na página Releases somente após todos os jobs passarem.
 
 Referências: [publicação desktop do Avalonia no Linux](https://docs.avaloniaui.net/docs/deployment/linux) e [modelos de distribuição do .NET](https://learn.microsoft.com/en-us/dotnet/core/deploying/).

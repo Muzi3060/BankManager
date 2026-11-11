@@ -665,6 +665,28 @@ Test("Statement import limits and encoding", () =>
     finally { File.Delete(path); }
 });
 
+// ---- Windows e Linux ----
+// A pasta de dados padrão fica na pasta local do usuário em qualquer sistema (%LOCALAPPDATA% no Windows, ~/.local/share no Linux).
+Test("Default data folder is per-user and portable", () =>
+{
+    var expected = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager");
+    Equal(expected, LocalStore.DefaultDirectory(null)); Equal(expected, LocalStore.DefaultDirectory("  ")); Equal("/custom", LocalStore.DefaultDirectory("/custom"));
+    Equal(true, Path.IsPathRooted(expected) && !expected.StartsWith(AppContext.BaseDirectory)); // nunca dentro da pasta do programa: atualizar ou desinstalar não toca nos dados
+});
+
+// Pastas com espaços e acentos (comuns em nomes de usuário do Windows) funcionam para dados, configurações e exportação.
+Test("Data folders with spaces and accents work", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager test " + Guid.NewGuid() + " João çã");
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); d.Expenses.Add(Bill(d, 800)); store.Save(d); SettingsStore.Save(path, new AppSettings { Theme = ThemePreference.Dark });
+        Equal(800m, store.Load().Expenses[0].Amount); Equal(ThemePreference.Dark, SettingsStore.Load(path).Theme);
+        var csv = Path.Combine(path, "exportação.csv"); CsvExport.Save(csv, CsvExport.Expenses(d)); Equal(true, StatementImport.ReadFile(csv).Contains("Descrição"));
+    }
+    finally { Directory.Delete(path, true); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

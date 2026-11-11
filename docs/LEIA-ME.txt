@@ -1,26 +1,47 @@
-BankManager 1.0 — Finanças em equilíbrio
+BankManager 2.0 — Finanças em equilíbrio
 
-Este pacote inclui o .NET. Não é necessário instalar SDK, Rider ou Visual Studio.
-Use o pacote correspondente ao seu computador: Windows x64 ou Linux x64.
+Todos os pacotes incluem o .NET. Não é necessário instalar SDK, Rider ou Visual Studio.
+O aplicativo funciona sem internet e não envia nenhum dado para fora do seu computador.
 
-WINDOWS (PC Intel/AMD de 64 bits)
-1. Extraia TODO o arquivo ZIP para uma pasta, por exemplo Documentos\BankManager.
-2. Abra a pasta extraída e dê dois cliques em BankManager.exe.
-3. Se quiser, crie um atalho desse arquivo na área de trabalho.
-Não execute de dentro do ZIP e não mova apenas o EXE: mantenha os outros arquivos.
+COMO INSTALAR
+
+WINDOWS (PC Intel/AMD de 64 bits) — recomendado: o instalador
+1. Baixe BankManager-2.0.0-win-x64-setup.exe e dê dois cliques.
+2. Siga o assistente. Ele instala só para o seu usuário, sem pedir administrador,
+   e cria o atalho no menu Iniciar (o da área de trabalho é opcional).
+3. Para atualizar, rode o instalador da versão nova: ele atualiza por cima.
+4. Para remover, use Configurações > Aplicativos. Seus dados NÃO são apagados.
 O aplicativo não é assinado digitalmente; o Windows pode exibir um aviso de editor
-não identificado. Confira se o download veio de github.com/Muzi3060/BankManager.
-Não é necessário executar como administrador.
+não identificado ("Mais informações" > "Executar assim mesmo"). Confira se o download
+veio de github.com/Muzi3060/BankManager.
 
-LINUX (desktop Intel/AMD de 64 bits)
-1. Extraia TODO o arquivo .tar.gz para uma pasta da sua conta.
-2. Dentro da pasta extraída, abra BankManager ou execute no terminal:
-   ./Iniciar.sh
-3. Se a permissão de execução foi perdida durante a cópia, execute:
-   chmod +x BankManager Iniciar.sh
-   ./Iniciar.sh
-Use uma distribuição desktop atual baseada em glibc, como Ubuntu 24.04 ou mais nova,
-com X11 ou XWayland. Alpine/musl, ARM e servidores sem interface gráfica não são
+WINDOWS — versão portátil (sem instalar)
+1. Extraia TODO o arquivo BankManager-2.0.0-win-x64.zip para uma pasta, por exemplo
+   Documentos\BankManager, e abra BankManager.exe.
+2. Não execute de dentro do ZIP e não mova apenas o EXE: mantenha os outros arquivos.
+
+LINUX (desktop Intel/AMD de 64 bits) — recomendado: o AppImage
+1. Baixe BankManager-2.0.0-x86_64.AppImage.
+2. Torne-o executável e abra:
+   chmod +x BankManager-2.0.0-x86_64.AppImage
+   ./BankManager-2.0.0-x86_64.AppImage
+   (ou dê dois cliques no gerenciador de arquivos, se ele permitir executar arquivos).
+3. Se aparecer erro de FUSE, use:
+   ./BankManager-2.0.0-x86_64.AppImage --appimage-extract-and-run
+4. Para atualizar, baixe o AppImage novo; a ferramenta AppImageUpdate também atualiza
+   o arquivo antigo, baixando só a diferença.
+Para ter o ícone no menu de aplicativos, use um integrador como o AppImageLauncher.
+
+LINUX — versão portátil (pasta)
+1. Extraia TODO o arquivo .tar.gz para uma pasta definitiva da sua conta.
+2. Abra BankManager ou execute no terminal:   ./Iniciar.sh
+3. Para criar o atalho e o ícone no menu de aplicativos (só para o seu usuário, sem sudo):
+   ./Instalar-atalho.sh        (para desfazer:  ./Instalar-atalho.sh --remover)
+4. Se a permissão de execução foi perdida durante a cópia:
+   chmod +x BankManager Iniciar.sh Instalar-atalho.sh
+
+Linux: use uma distribuição desktop atual baseada em glibc, como Ubuntu 24.04 ou mais
+nova, com X11 ou XWayland. Alpine/musl, ARM e servidores sem interface gráfica não são
 alvos destes pacotes. O .NET está incluído, mas bibliotecas de sistema continuam
 necessárias. Em Ubuntu/Debian, se houver erro de biblioteca ausente:
    sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libicu-dev libssl-dev
@@ -28,22 +49,24 @@ Em uma sessão Wayland, mantenha também o XWayland instalado.
 O uso normal não precisa de sudo ou privilégios de administrador.
 
 PRIMEIROS PASSOS
-1. Cadastre as pessoas e a renda do mês em Pessoas e rendas.
-2. Adicione suas despesas e escolha quem paga e como dividir.
-3. Use as setas do mês para consultar o histórico.
-4. Em Ajustes, exporte um backup regularmente para outra pasta/dispositivo.
+1. Em Pessoas e rendas, cadastre as pessoas e a renda do mês (pode haver várias rendas,
+   como salário e extra).
+2. Adicione suas despesas e escolha como dividir. Contas fixas (aluguel, internet)
+   podem se repetir todo mês: marque "Repetir todo mês".
+3. Ao marcar uma despesa como paga, informe quem pagou: a Visão geral mostra quem deve a quem.
+4. Use as setas do mês para consultar o histórico, ou busque em todos os meses.
+5. Em Ajustes, escolha o tema, crie categorias, exporte despesas em planilha (CSV),
+   importe o extrato do banco e exporte um backup regularmente.
 
 DADOS E ATUALIZAÇÕES
-Seus dados ficam na pasta de dados do usuário, separada do programa. O caminho
-exato aparece em Ajustes. No Windows, normalmente é
-%LOCALAPPDATA%\BankManager; no Linux, normalmente ~/.local/share/BankManager.
-Os dados e backups são legíveis, sem criptografia. Não envie backups pessoais
-junto com o aplicativo. Cada amigo começa com a sua própria base vazia.
+Seus dados ficam na pasta de dados do usuário, separada do programa. O caminho exato
+aparece em Ajustes. No Windows, normalmente é %LOCALAPPDATA%\BankManager; no Linux,
+normalmente ~/.local/share/BankManager. Atualizar ou desinstalar o programa não apaga
+essa pasta. Os dados e backups são legíveis, sem criptografia. Não envie backups pessoais
+junto com o aplicativo. Cada pessoa começa com a sua própria base vazia.
 
-Para atualizar: exporte um backup, feche o aplicativo, extraia a nova versão em
-outra pasta e abra o novo executável. Não é necessário copiar dados para a pasta
-do programa. Para remover o aplicativo, exclua sua pasta; os dados ficam guardados
-na pasta local do usuário até que você decida removê-los separadamente.
+Antes de atualizar, exporte um backup. A versão 2 lê os dados das versões anteriores e os
+atualiza sem perda, mas o BankManager 1.x não abre dados salvos pela versão 2.
 
 SUPORTE E CÓDIGO
 Repositório: https://github.com/Muzi3060/BankManager

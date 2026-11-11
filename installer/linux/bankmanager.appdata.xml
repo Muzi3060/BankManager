@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.Muzi3060.BankManager</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>BankManager</name>
+  <summary>Finanças pessoais e familiares, com os dados só no seu computador</summary>
+  <description>
+    <p>Controle de rendas, despesas, parcelas, metas e acerto de contas entre pessoas, em português. Funciona sem internet e não envia nenhum dado para fora.</p>
+  </description>
+  <launchable type="desktop-id">bankmanager.desktop</launchable>
+  <url type="homepage">https://github.com/Muzi3060/BankManager</url>
+  <content_rating type="oars-1.1"/>
+</component>
