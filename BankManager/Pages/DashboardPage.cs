@@ -32,7 +32,10 @@ public sealed partial class MainWindow
         if (missing.Count > 0) result.Children.Add(InlineNotice("Renda ainda não informada neste mês: " + string.Join(", ", missing.Select(p => p.Name)) + ". Informe em Pessoas e rendas; até lá, ela será considerada zero."));
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*") };
         var left = Card(CategoriesPanel(expenses, total)); var right = Card(PeoplePanel()); Grid.SetColumn(right, 2); columns.Children.Add(left); columns.Children.Add(right);
-        result.Children.Add(columns); result.Children.Add(UpcomingCard(expenses));
+        result.Children.Add(columns);
+        // Acerto de contas só faz sentido quando há mais de uma pessoa.
+        if (data.People.Count >= 2) result.Children.Add(SettlementCard());
+        result.Children.Add(UpcomingCard(expenses));
         return result;
     }
     /// <summary>
@@ -123,7 +126,7 @@ public sealed partial class MainWindow
             panel.Children.Add(Divider());
             var title = Stack(new TextBlock { Text = e.Title, FontWeight = FontWeight.Medium }, Text(ExpenseSubtitle(e, true), "muted")); title.Spacing = 0; title.VerticalAlignment = VerticalAlignment.Center;
             var chip = UpcomingChip(e); var amount = Text(Money.Format(e.Amount), "num"); amount.FontWeight = FontWeight.SemiBold; amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center; amount.MinWidth = 110; amount.Margin = new Thickness(16, 0);
-            var pay = Button("Marcar como pago", () => _ = Run(() => { TogglePaid(e); return Task.CompletedTask; }));
+            var pay = Button("Marcar como pago", () => _ = Run(() => TogglePaid(e)));
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto"), Margin = new Thickness(0, 10) };
             Grid.SetColumn(chip, 1); Grid.SetColumn(amount, 2); Grid.SetColumn(pay, 3); row.Children.Add(title); row.Children.Add(chip); row.Children.Add(amount); row.Children.Add(pay);
             panel.Children.Add(row);

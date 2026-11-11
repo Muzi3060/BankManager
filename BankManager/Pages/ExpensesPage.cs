@@ -90,7 +90,7 @@ public sealed partial class MainWindow
     private MenuFlyout ExpenseMenu(Expense expense)
     {
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        menu.Items.Add(MenuAction(expense.Paid ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Run(() => { TogglePaid(expense); return Task.CompletedTask; })));
+        menu.Items.Add(MenuAction(expense.Paid ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Run(() => TogglePaid(expense))));
         menu.Items.Add(MenuAction("Editar", "Edit", () => _ = Run(() => EditExpense(expense))));
         menu.Items.Add(MenuAction("Excluir", "Trash", () => _ = Run(async () =>
         {
@@ -110,9 +110,14 @@ public sealed partial class MainWindow
         AutomationProperties.SetName(item, text); item.Click += (_, _) => action(); return item;
     }
     /// <summary>
-    /// Alterna a situação de pagamento de uma despesa e salva.
+    /// Alterna a situação de pagamento. Ao marcar como paga, pergunta quem pagou (alimenta o acerto de contas); ao reabrir, esquece o pagador.
     /// </summary>
-    private void TogglePaid(Expense expense) => Commit(d => d.Expenses.First(e => e.Id == expense.Id).Paid = !expense.Paid);
+    private async Task TogglePaid(Expense expense)
+    {
+        if (expense.Paid) { Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = false; e.PaidBy = null; }); return; }
+        var (ok, payer) = await AskPayer(expense); if (!ok) return;
+        Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = true; e.PaidBy = payer; });
+    }
     /// <summary>
     /// Linha de apoio sob o título: categoria, parcela ("parcela 3 de 10") e, se pedido, o vencimento.
     /// </summary>
@@ -158,6 +163,9 @@ public sealed partial class MainWindow
         var installments = Input((existing?.InstallmentCount ?? 1).ToString(), "1", 3); installments.IsEnabled = existing is null;
         var split = Combo(["Individual · uma pessoa", "Igual · partes iguais", "Proporcional · renda disponível"], (int)(existing?.Split ?? (data.People.Count == 1 ? SplitMode.Individual : SplitMode.AvailableIncome)));
         var paid = new CheckBox { Content = "Esta despesa já foi paga", IsChecked = existing?.Paid ?? false };
+        // "Quem pagou" só aparece com a despesa marcada como paga. Com uma única pessoa cadastrada, ela é o padrão.
+        var payer = Combo(new[] { "Não informar" }.Concat(data.People.Select(p => p.Name)), existing?.PaidBy is { } known ? data.People.FindIndex(p => p.Id == known) + 1 : data.People.Count == 1 ? 1 : 0);
+        var payerField = Field("Quem pagou", payer, "Sem informar, a despesa não entra no acerto de contas."); payerField.IsVisible = paid.IsChecked == true;
         var participants = data.People.Select((p, i) => (Person: p, Check: new CheckBox { Content = p.Name, IsChecked = existing?.Participants.Contains(p.Id) ?? true })).ToList();
         // No modo individual, as caixas funcionam como uma escolha exclusiva; nos demais, permitem várias pessoas.
         foreach (var participant in participants)
@@ -173,6 +181,13 @@ public sealed partial class MainWindow
                 var first = participants.FirstOrDefault(p => p.Check.IsChecked == true).Check ?? participants[0].Check;
                 foreach (var p in participants) p.Check.IsChecked = p.Check == first;
             }
+        };
+        // Ao marcar como paga uma despesa de uma só pessoa responsável, sugere essa pessoa como quem pagou.
+        paid.IsCheckedChanged += (_, _) =>
+        {
+            payerField.IsVisible = paid.IsChecked == true;
+            var chosen = participants.Where(p => p.Check.IsChecked == true).ToList();
+            if (paid.IsChecked == true && payer.SelectedIndex == 0 && chosen.Count == 1) payer.SelectedIndex = data.People.FindIndex(p => p.Id == chosen[0].Person.Id) + 1;
         };
         var peoplePanel = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var p in participants) { p.Check.Margin = new Thickness(0, 0, 20, 6); peoplePanel.Children.Add(p.Check); }
@@ -240,7 +255,7 @@ public sealed partial class MainWindow
             var entry = new Expense
             {
                 Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = BudgetRules.Categories[category.SelectedIndex], DueDate = due,
-                Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true,
+                Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true, PaidBy = paid.IsChecked == true && payer.SelectedIndex > 0 ? data.People[payer.SelectedIndex - 1].Id : null,
                 Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
                 InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1,
                 // Editar um mês de uma recorrência preserva o vínculo (e o mês de origem) para ela não recriá-lo.
@@ -261,7 +276,7 @@ public sealed partial class MainWindow
             Field("Descrição", title), Columns(Field("Categoria", category), Field("Vencimento (dd/mm/aaaa)", date)),
             Columns(Field(existing?.InstallmentCount > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", amount), Field("Número de parcelas", installments)), repeatPanel,
             Text("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "muted"), expander,
-            Field("Como esta despesa será paga?", split), Text("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), peoplePanel, paid,
+            Field("Como esta despesa será paga?", split), Text("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), peoplePanel, paid, payerField,
             Text("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "muted"),
             Button("Conferir divisão antes de salvar", () =>
             {

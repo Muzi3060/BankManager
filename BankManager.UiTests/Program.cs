@@ -38,6 +38,8 @@ static BudgetData DemoData()
     // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
     data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
     RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true;
+    // Quem pagou as contas já quitadas: o cartão de acerto mostra o saldo entre Ana e Bruno.
+    data.Expenses.First(e => e.RecurrenceMonth == first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Aluguel").PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Plano de saúde").PaidBy = bruno.Id;
     return data;
 }
 // Assume falha até completar todo o roteiro; o CI reconhece o sucesso pelo código de saída.
@@ -108,8 +110,17 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Amount == 800m, "Expense persists from UI");
             // Cenário 3: mudança de situação precisa chegar ao armazenamento, não apenas à tela.
             // Pela visão geral, o botão "Marcar como pago" dos próximos pagamentos.
-            await Click("Visão geral", main); await Click("Marcar como pago", main);
-            Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Paid, "Payment action persists");
+            // Marcar como pago pergunta quem pagou: aqui, Ana.
+            await Click("Visão geral", main); await Click("Marcar como pago", main); await Click("Ana");
+            var paidData = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(paidData.Expenses.Single().Paid && paidData.Expenses.Single().PaidBy == paidData.People[0].Id, "Payment action persists with who paid");
+            // Ana pagou 800 (600/200): o cartão de acerto mostra que Bruno deve 200 a Ana.
+            var debtText = $"Bruno deve {Money.Format(200m)} a Ana";
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => AutomationProperties.GetName(x) == debtText), "Settlement card shows who owes whom");
+            await Click("Registrar acerto", main); await Click("Salvar acerto");
+            var settled = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(settled.Settlements.Count == 1 && settled.Settlements[0].Amount == 200m && SettlementEngine.Debts(settled).Count == 0, "Registering a settlement clears the debt");
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Tudo certo") == true), "Settlement card shows all settled");
             // Cenário 4: valor inválido mantém o formulário aberto e preserva o valor anteriormente salvo.
             // A edição fica no menu "⋯" da linha: aciona o item "Editar" sem depender de abrir o popup.
             await Click("Despesas", main); await Menu("Editar");
