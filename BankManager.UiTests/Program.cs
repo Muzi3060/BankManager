@@ -14,6 +14,29 @@ using BankManager.Core;
 // Integração com janela real: usa o mesmo App da produção, mas força uma base temporária isolada.
 var directory = Path.Combine(Path.GetTempPath(), "bankmanager-ui-" + Guid.NewGuid());
 Environment.SetEnvironmentVariable("BANKMANAGER_DATA_DIR", directory);
+// Modo de capturas para a documentação: BANKMANAGER_SCREENSHOTS=<pasta> semeia dados de demonstração (sintéticos),
+// fotografa cada página nos temas claro e escuro e encerra, sem executar o roteiro de verificação.
+var shotsDirectory = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOTS");
+if (!string.IsNullOrEmpty(shotsDirectory))
+{
+    using var seed = new LocalStore(directory); seed.Save(DemoData());
+}
+// Dados fictícios que reproduzem o desenho do aplicativo: duas pessoas, oito despesas no mês atual (total R$ 4.520,10).
+static BudgetData DemoData()
+{
+    var first = Dates.Month(DateOnly.FromDateTime(DateTime.Today));
+    var ana = new Person { Name = "Ana" }; var bruno = new Person { Name = "Bruno" };
+    var data = new BudgetData { People = [ana, bruno], Incomes = [new() { PersonId = ana.Id, Month = first, Amount = 4200 }, new() { PersonId = bruno.Id, Month = first, Amount = 2800 }] };
+    var group = Guid.NewGuid();
+    void Add(string title, string category, int day, decimal amount, bool paid = false, int installment = 1) => data.Expenses.Add(new Expense
+    {
+        Title = title, Category = category, DueDate = new DateOnly(first.Year, first.Month, day), Amount = amount, Paid = paid, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
+        InstallmentGroup = installment > 1 ? group : null, InstallmentNumber = installment, InstallmentCount = installment > 1 ? 10 : 1
+    });
+    Add("Aluguel", "Moradia", 5, 1800, true); Add("Internet", "Serviços", 8, 119.90m, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
+    Add("Notebook", "Educação", 15, 389, installment: 3); Add("Transporte", "Transporte", 18, 380); Add("Streaming", "Lazer", 22, 55.90m); Add("Mercado do mês", "Mercado", 30, 920.40m);
+    return data;
+}
 // Assume falha até completar todo o roteiro; o CI reconhece o sucesso pelo código de saída.
 int exitCode = 1;
 AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(builder =>
@@ -36,9 +59,29 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             {
                 FindButton(window ?? Active(), label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(180);
             }
+            // Aciona um item do menu "⋯" da primeira linha visível (o popup em si não é simulado).
+            async Task Menu(string label)
+            {
+                var more = main.GetVisualDescendants().OfType<Button>().First(b => AutomationProperties.GetName(b) == "Mais ações");
+                ((MenuFlyout)more.Flyout!).Items.OfType<MenuItem>().First(m => AutomationProperties.GetName(m) == label).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); await Task.Delay(180);
+            }
             // Uma condição falsa interrompe o roteiro e mantém o resultado como falha.
             void Check(bool ok, string description) { if (!ok) throw new Exception(description); Console.WriteLine("PASS " + description); }
             Check(main.IsVisible, "Main window opens");
+            if (!string.IsNullOrEmpty(shotsDirectory))
+            {
+                foreach (var (theme, themeName) in new[] { (ThemePreference.Light, "claro"), (ThemePreference.Dark, "escuro") })
+                {
+                    App.ApplyTheme(theme);
+                    foreach (var (label, file) in new[] { ("Visão geral", "visao-geral"), ("Despesas", "despesas"), ("Pessoas e rendas", "pessoas"), ("Previsões", "previsoes"), ("Ajustes", "ajustes") })
+                    {
+                        await Click(label, main); await Task.Delay(250);
+                        using var shot = new RenderTargetBitmap(new PixelSize((int)main.Bounds.Width, (int)main.Bounds.Height), new Vector(96, 96));
+                        shot.Render(main); shot.Save(Path.Combine(shotsDirectory, $"{file}-{themeName}.png"), PngBitmapEncoderOptions.Default); Console.WriteLine($"Screenshot: {file}-{themeName}");
+                    }
+                }
+                exitCode = 0; return;
+            }
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
             await Click("Cadastrar primeira pessoa", main);
             var inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs[0].Text = "Ana"; inputs[1].Text = "3000,00";
@@ -56,10 +99,12 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             await Click("Salvar despesa");
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Amount == 800m, "Expense persists from UI");
             // Cenário 3: mudança de situação precisa chegar ao armazenamento, não apenas à tela.
-            await Click("Marcar como pago", main);
+            // Pela visão geral, o botão "Marcar como pago" dos próximos pagamentos.
+            await Click("Visão geral", main); await Click("Marcar como pago", main);
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Paid, "Payment action persists");
             // Cenário 4: valor inválido mantém o formulário aberto e preserva o valor anteriormente salvo.
-            await Click("Detalhes / editar", main);
+            // A edição fica no menu "⋯" da linha: aciona o item "Editar" sem depender de abrir o popup.
+            await Click("Despesas", main); await Menu("Editar");
             inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.First(i => i.PlaceholderText == "Ex.: 1000,00").Text = "-1";
             await Click("Salvar despesa");
             Check(lifetime.Windows.Count == 2, "Invalid expense keeps editor open");
@@ -81,21 +126,28 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(itemExpense.Amount == 51m && itemExpense.Items.Single().Quantity == 2m, "Item list calculates and persists 2 × 25.50");
             // Cenário 6: navegação renderiza as páginas de previsão e backup sem erros.
             await Click("Previsões", main);
-            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Olhe para o próximo mês"), "Forecast screen renders");
-            await Click("Dados e ajuda", main);
-            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Backup e recuperação"), "Backup screen renders");
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast screen renders");
+            await Click("Ajustes", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "Settings screen renders");
             // Cenário 7: o tema muda na hora, vai para settings.json e não toca nas finanças.
-            var themeBox = main.GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Tema");
             var financeBefore = File.ReadAllBytes(Path.Combine(directory, "financas.json"));
-            themeBox.SelectedIndex = 2; await Task.Delay(180);
+            await Click("Tema escuro", main);
             Check(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark, "Dark theme applies immediately");
             // O fundo da janela é um DynamicResource: confirma que ele realmente mudou de cor com o tema.
             var darkBg = ((ISolidColorBrush)main.Background!).Color;
-            themeBox.SelectedIndex = 1; await Task.Delay(180);
+            await Click("Tema claro", main);
             var lightBg = ((ISolidColorBrush)main.Background!).Color;
             Check(Application.Current.RequestedThemeVariant == ThemeVariant.Light && darkBg != lightBg && lightBg.R > darkBg.R, "Window background follows the theme");
             Check(SettingsStore.Load(directory).Theme == ThemePreference.Light, "Theme preference persists in settings.json");
             Check(financeBefore.SequenceEqual(File.ReadAllBytes(Path.Combine(directory, "financas.json"))), "Theme change leaves financas.json untouched");
+            // Cenário 8: Ctrl+N abre o editor de nova despesa de qualquer tela.
+            main.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.N, KeyModifiers = Avalonia.Input.KeyModifiers.Control }); await Task.Delay(300);
+            Check(lifetime.Windows.Count == 2, "Ctrl+N opens the new expense editor");
+            await Click("Cancelar");
+            // Cenário 9: excluir pelo menu "⋯" pede confirmação; confirmar remove só aquele lançamento.
+            await Click("Despesas", main); var countBefore = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Count;
+            await Menu("Excluir"); await Click("Confirmar");
+            Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Count == countBefore - 1, "Delete from row menu removes one expense");
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.
             var output = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT");

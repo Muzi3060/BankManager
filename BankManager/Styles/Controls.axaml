@@ -71,6 +71,51 @@
   <Style Selector="Grid.sidebar"><Setter Property="Background" Value="{DynamicResource SidebarBrush}"/></Style>
   <Style Selector="Border.card"><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="22"/></Style>
   <Style Selector="Border.notice"><Setter Property="Background" Value="{DynamicResource WarnSoftBrush}"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="14,10"/></Style>
+  <Style Selector="Border.notice.positive"><Setter Property="Background" Value="{DynamicResource PositiveSoftBrush}"/></Style>
   <Style Selector="Border.logo"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Width" Value="28"/><Setter Property="Height" Value="28"/></Style>
   <Style Selector="Border.logo Path.icon"><Setter Property="Stroke" Value="{DynamicResource OnAccentBrush}"/></Style>
+
+  <!-- ===== Componentes da Fase 2 ===== -->
+  <!-- Linha divisória fina entre linhas de listas. -->
+  <Style Selector="Border.divider"><Setter Property="Height" Value="1"/><Setter Property="Background" Value="{DynamicResource LineBrush}"/></Style>
+  <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="12"/></Style>
+  <Style Selector="TextBlock.kpi"><Setter Property="FontSize" Value="28"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontFeatures" Value="+tnum"/></Style>
+  <Style Selector="TextBlock.num"><Setter Property="FontFeatures" Value="+tnum"/></Style>
+  <!-- Link: botão sem borda, com texto na cor de destaque. -->
+  <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></Style>
+
+  <!-- Chip de situação. Neutro por padrão; variantes warn, positive e negative. O texto usa a cor principal no neutro para manter o contraste. -->
+  <Style Selector="Border.chip"><Setter Property="Background" Value="{DynamicResource TrackBrush}"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="9,3"/><Setter Property="HorizontalAlignment" Value="Left"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.chip > TextBlock"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="Medium"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+  <Style Selector="Border.chip.warn"><Setter Property="Background" Value="{DynamicResource WarnSoftBrush}"/></Style>
+  <Style Selector="Border.chip.warn > TextBlock"><Setter Property="Foreground" Value="{DynamicResource WarnBrush}"/></Style>
+  <Style Selector="Border.chip.positive"><Setter Property="Background" Value="{DynamicResource PositiveSoftBrush}"/></Style>
+  <Style Selector="Border.chip.positive > TextBlock"><Setter Property="Foreground" Value="{DynamicResource PositiveBrush}"/></Style>
+  <Style Selector="Border.chip.negative"><Setter Property="Background" Value="{DynamicResource NegativeSoftBrush}"/></Style>
+  <Style Selector="Border.chip.negative > TextBlock"><Setter Property="Foreground" Value="{DynamicResource NegativeBrush}"/></Style>
+
+  <!-- Avatar com a inicial da pessoa. -->
+  <Style Selector="Border.avatar"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/></Style>
+  <Style Selector="Border.avatar > TextBlock"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+
+  <!-- Controle segmentado (Todas / Em aberto / Pagas). -->
+  <Style Selector="Border.segmented"><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="3"/></Style>
+  <Style Selector="Button.seg"><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="MinHeight" Value="34"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="14,4"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/></Style>
+  <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource HoverBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+  <Style Selector="Button.seg.active /template/ ContentPresenter#PART_ContentPresenter, Button.seg.active:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></Style>
+
+  <!-- Cartão de escolha de tema; o selecionado ganha borda de destaque. -->
+  <Style Selector="Button.themecard"><Setter Property="Padding" Value="12"/><Setter Property="CornerRadius" Value="12"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalAlignment" Value="Stretch"/></Style>
+  <Style Selector="Button.themecard.selected /template/ ContentPresenter#PART_ContentPresenter, Button.themecard.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="2"/></Style>
+  <!-- Miniaturas desenhadas dentro de um ThemeVariantScope: mostram o tema alvo, não o tema atual. -->
+  <Style Selector="Border.mini-frame"><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/><Setter Property="ClipToBounds" Value="True"/></Style>
+  <Style Selector="Border.mini-bg"><Setter Property="Background" Value="{DynamicResource BgBrush}"/></Style>
+  <Style Selector="Border.mini-side"><Setter Property="Background" Value="{DynamicResource SidebarBrush}"/></Style>
+  <Style Selector="Border.mini-card"><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/></Style>
+  <Style Selector="Border.mini-text"><Setter Property="Background" Value="{DynamicResource TextBrush}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="Border.mini-muted"><Setter Property="Background" Value="{DynamicResource TrackBrush}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="Border.mini-accent"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="MenuItem Path.icon"><Setter Property="Stroke" Value="{DynamicResource TextBrush}"/></Style>
+  <Style Selector="MenuItem.danger Path.icon"><Setter Property="Stroke" Value="{DynamicResource NegativeBrush}"/></Style>
 </Styles>

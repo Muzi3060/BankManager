@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
+using BankManager.Core;
 
 namespace BankManager;
 /// <summary>
@@ -62,13 +63,17 @@ internal static class Ui
     /// <summary>
     /// Cria um botão e liga seu clique à ação recebida. Ações assíncronas da janela usam o tratamento de erros de Run.
     /// </summary>
-    public static Button Button(string text, Action action, string? style = null, string? icon = null)
+    /// <param name="iconOnly">Mostra só o ícone (por exemplo as setas do mês); o rótulo continua como dica e nome de automação.</param>
+    public static Button Button(string text, Action action, string? style = null, string? icon = null, bool iconOnly = false)
     {
         var button = new Button { Content = text };
+        // Botão só com ícone: quadrado de 40 px; o texto vira dica (tooltip) e nome para leitores de tela.
+        if (icon is not null && iconOnly) { button.Content = Icon(icon); button.MinWidth = 40; button.Padding = new Thickness(0); ToolTip.SetTip(button, text); }
         // Com ícone, o conteúdo vira ícone + rótulo; o nome de automação mantém o rótulo para leitores de tela e testes.
-        if (icon is not null) { var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 }; row.Children.Add(Icon(icon)); row.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center }); button.Content = row; }
+        else if (icon is not null) { var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 }; row.Children.Add(Icon(icon)); row.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center }); button.Content = row; }
         AutomationProperties.SetName(button, text);
-        if (style is not null) button.Classes.Add(style);
+        // Aceita várias classes separadas por espaço (por exemplo "ghost danger").
+        if (style is not null) foreach (var name in style.Split(' ', StringSplitOptions.RemoveEmptyEntries)) button.Classes.Add(name);
         button.Click += (_, _) => action(); return button;
     }
     /// <summary>
@@ -120,4 +125,55 @@ internal static class Ui
         panel.Children.Add(Row(Button("Cancelar", () => dialog.Close(false)), Button("Confirmar", () => dialog.Close(true), "primary")));
         return await dialog.ShowDialog<bool>(owner);
     }
+    /// <summary>
+    /// Linha divisória fina entre itens de uma lista.
+    /// </summary>
+    public static Border Divider() { var line = new Border(); line.Classes.Add("divider"); return line; }
+    /// <summary>
+    /// Etiqueta curta de situação. Tons: "warn", "positive", "negative"; sem tom, o chip é neutro.
+    /// </summary>
+    public static Border Chip(string text, string? tone = null)
+    {
+        var chip = new Border { Child = new TextBlock { Text = text } }; chip.Classes.Add("chip"); if (tone is not null) chip.Classes.Add(tone); return chip;
+    }
+    /// <summary>
+    /// Círculo com a inicial do nome, usado para identificar pessoas.
+    /// </summary>
+    public static Border Avatar(string name)
+    {
+        var initial = name.Trim().Length > 0 ? name.Trim()[..1].ToUpper(Money.Culture) : "?";
+        var avatar = new Border { Child = new TextBlock { Text = initial }, VerticalAlignment = VerticalAlignment.Center }; avatar.Classes.Add("avatar"); return avatar;
+    }
+    /// <summary>
+    /// Controle de opções lado a lado (apenas uma ativa). Atualiza o destaque sozinho e avisa a opção escolhida.
+    /// </summary>
+    public static Border Segmented(string[] options, int selected, Action<int> changed)
+    {
+        var buttons = new List<Button>(); var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        for (var i = 0; i < options.Length; i++)
+        {
+            var index = i; var button = Button(options[i], () => { for (var j = 0; j < buttons.Count; j++) buttons[j].Classes.Set("active", j == index); changed(index); }, "seg");
+            button.Classes.Set("active", i == selected); buttons.Add(button); row.Children.Add(button);
+        }
+        var box = new Border { Child = row, VerticalAlignment = VerticalAlignment.Center }; box.Classes.Add("segmented"); return box;
+    }
+    /// <summary>
+    /// Seção de ajuda que abre e fecha ao clicar no título, no lugar de um texto longo sempre visível.
+    /// </summary>
+    public static Control Collapsible(string title, string body)
+    {
+        var content = Text(body, "muted"); content.IsVisible = false; content.Margin = new Thickness(12, 0, 12, 12);
+        var chevron = Icon("ChevronDown", 16); chevron.RenderTransform = new RotateTransform(-90);
+        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var label = new TextBlock { Text = title, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center }; chevron.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(chevron, 1);
+        heading.Children.Add(label); heading.Children.Add(chevron);
+        var header = new Button { Content = heading, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch }; header.Classes.Add("ghost");
+        AutomationProperties.SetName(header, title);
+        header.Click += (_, _) => { content.IsVisible = !content.IsVisible; chevron.RenderTransform = new RotateTransform(content.IsVisible ? 0 : -90); };
+        var panel = new StackPanel { Spacing = 0 }; panel.Children.Add(header); panel.Children.Add(content); return panel;
+    }
+    /// <summary>
+    /// Acrescenta uma classe de estilo e devolve o próprio controle, para compor miniaturas em uma só expressão.
+    /// </summary>
+    public static T WithClass<T>(this T control, string style) where T : StyledElement { control.Classes.Add(style); return control; }
 }

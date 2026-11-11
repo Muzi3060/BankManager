@@ -1,56 +1,144 @@
-using Avalonia;
 using System.Globalization;
+using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using BankManager.Core;
 using static BankManager.Ui;
 
 namespace BankManager;
-// Página "Despesas": lista mensal com filtros e o editor de despesas (compra, itens e parcelas).
+// Página "Despesas": lista em linhas com filtros e menu de ações, mais o editor de despesas (compra, itens e parcelas).
 public sealed partial class MainWindow
 {
+    // Larguras das colunas da lista: descrição (flexível), vencimento, divisão, situação, valor e menu "⋯".
+    private const string ExpenseColumns = "*,72,170,140,120,48";
     /// <summary>
-    /// Monta a busca e os filtros da lista mensal; atualiza apenas a lista quando um filtro muda.
+    /// Monta o cabeçalho, a busca e os filtros; ao mudar um filtro, só as linhas são reconstruídas (o campo de busca mantém o foco).
     /// </summary>
     private Control ExpensesPage()
     {
-        var search = Input(filter, "Buscar uma despesa…");
-        var status = Combo(["Todos os pagamentos", "Em aberto", "Pagos"], statusFilter);
-        var category = Combo(new[] { "Todas as categorias" }.Concat(BudgetRules.Categories), categoryFilter);
-        var list = new StackPanel { Spacing = 12 };
-        // Função local captura os filtros e reconstrói apenas os cartões que correspondem à busca.
+        var search = Input(filter, "Buscar uma despesa…"); search.InnerLeftContent = Icon("Search", 16); search.Padding = new Thickness(12, 10, 12, 10);
+        AutomationProperties.SetName(search, "Buscar despesas");
+        var category = Combo(new[] { "Todas as categorias" }.Concat(BudgetRules.Categories), categoryFilter); category.MinWidth = 210; category.VerticalAlignment = VerticalAlignment.Center;
+        AutomationProperties.SetName(category, "Categoria");
+        var summary = Text("", "muted"); var table = new Border(); table.Classes.Add("card"); table.Padding = new Thickness(0);
+        // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
         void Refresh()
         {
-            list.Children.Clear();
             var entries = FinanceEngine.Expenses(data, month).Where(e => e.Title.Contains(filter, StringComparison.CurrentCultureIgnoreCase) && (statusFilter == 0 || e.Paid == (statusFilter == 2)) && (categoryFilter == 0 || e.Category == BudgetRules.Categories[categoryFilter - 1])).ToList();
-            list.Children.Add(Text($"{entries.Count} despesa(s)  ·  Total: {Money.Format(entries.Sum(e => e.Amount))}", "muted"));
-            foreach (var e in entries) list.Children.Add(ExpenseCard(e));
-            if (entries.Count == 0) list.Children.Add(Card(Text("Nenhuma despesa encontrada. Adicione uma despesa ou ajuste os filtros.", "muted")));
+            summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}";
+            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(entries);
         }
         search.TextChanged += (_, _) => { filter = search.Text ?? ""; Refresh(); };
-        status.SelectionChanged += (_, _) => { statusFilter = status.SelectedIndex; Refresh(); };
         category.SelectionChanged += (_, _) => { categoryFilter = category.SelectedIndex; Refresh(); };
+        var status = Segmented(["Todas", "Em aberto", "Pagas"], statusFilter, i => { statusFilter = i; Refresh(); });
+        var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category);
         Refresh();
-        return Stack(Heading("Despesas, sem complicação", "Registre uma conta, uma compra detalhada ou uma dívida parcelada."),
-            Row(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus")), Columns(search, status, category), list);
+        var page = Stack(PageHeader("Despesas", "Contas, compras e parcelas do mês.", newExpense: true), filters, summary, table); page.Spacing = 16; return page;
     }
     /// <summary>
-    /// Apresenta um lançamento e seu rateio; permite alternar quitação, editar ou excluir apenas esse lançamento.
+    /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
     /// </summary>
-    private Control ExpenseCard(Expense expense)
+    private Control EmptyExpenses()
     {
-        var state = expense.Paid ? "Pago" : expense.DueDate < DateOnly.FromDateTime(DateTime.Today) ? "Em atraso" : "Em aberto";
-        var suffix = expense.InstallmentCount > 1 ? $" · Parcela {expense.InstallmentNumber}/{expense.InstallmentCount}" : "";
-        var allocation = FinanceEngine.Allocate(data, expense);
-        var shares = string.Join("  •  ", allocation.Amounts.Select(p => $"{data.People.First(x => x.Id == p.Key).Name}: {Money.Format(p.Value)}"));
-        var panel = Stack(Columns(Stack(Text(expense.Title + suffix, "section"), Text($"{expense.Category}  ·  {expense.DueDate:dd/MM/yyyy}  ·  {state}", "muted")), Text(Money.Format(expense.Amount), "money")),
-            Text(shares, "muted"), Row(Button(expense.Paid ? "Marcar em aberto" : "Marcar como pago", () => _ = Run(() => { Commit(d => d.Expenses.First(e => e.Id == expense.Id).Paid = !expense.Paid); return Task.CompletedTask; })),
-                Button("Detalhes / editar", () => _ = Run(() => EditExpense(expense))), Button("Excluir", () => _ = Run(async () =>
-                {
-                    if (await Confirm(this, "Excluir despesa?", $"Excluir “{expense.Title}” de {Money.Format(expense.Amount)}? Apenas este lançamento será removido; outras parcelas continuam no histórico.")) Commit(d => d.Expenses.RemoveAll(e => e.Id == expense.Id));
-                }), "danger")));
-        if (allocation.Warning is not null) panel.Children.Add(Text(allocation.Warning, "muted"));
-        return Card(panel);
+        var any = FinanceEngine.Expenses(data, month).Count > 0;
+        var panel = Stack(Text(any ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Text(any ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar.", "muted"));
+        panel.Spacing = 8; panel.HorizontalAlignment = HorizontalAlignment.Center; panel.Margin = new Thickness(24, 40);
+        foreach (var child in panel.Children.OfType<TextBlock>()) child.TextAlignment = TextAlignment.Center;
+        if (any) { var clear = Button("Limpar filtros", () => { filter = ""; statusFilter = 0; categoryFilter = 0; Render(); }, "link"); clear.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(clear); }
+        else { var add = Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"); add.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(add); }
+        return panel;
+    }
+    /// <summary>
+    /// Tabela de despesas em linhas: descrição, vencimento, divisão por pessoa, situação, valor e menu de ações.
+    /// </summary>
+    private Control ExpenseTable(IReadOnlyList<Expense> entries)
+    {
+        var rows = new StackPanel();
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(20, 12) };
+        string[] titles = ["Descrição", "Vence", "Divisão", "Situação", "Valor", ""];
+        for (var i = 0; i < titles.Length; i++) { var label = Text(titles[i], "muted"); label.FontSize = 12; label.FontWeight = FontWeight.Medium; if (i == 4) label.TextAlignment = TextAlignment.Right; Grid.SetColumn(label, i); header.Children.Add(label); }
+        rows.Children.Add(header);
+        foreach (var e in entries) { rows.Children.Add(Divider()); rows.Children.Add(ExpenseRow(e)); }
+        return rows;
+    }
+    /// <summary>
+    /// Uma linha da lista. As ações ficam no menu "⋯" para manter a linha limpa.
+    /// </summary>
+    private Control ExpenseRow(Expense expense)
+    {
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(20, 12) };
+        var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.Medium, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted")); title.Spacing = 0; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
+        var due = Text($"{expense.DueDate:dd/MM}", "num"); due.VerticalAlignment = VerticalAlignment.Center;
+        // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
+        var shares = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; line.Classes.Add("num"); shares.Children.Add(line); }
+        var chip = StatusChip(expense);
+        var amount = Text(Money.Format(expense.Amount), "num"); amount.FontWeight = FontWeight.SemiBold; amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center;
+        var more = Button("Mais ações", () => { }, "ghost", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
+        Control[] cells = [title, due, shares, chip, amount, more];
+        for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); grid.Children.Add(cells[i]); }
+        return grid;
+    }
+    /// <summary>
+    /// Menu "⋯" de uma despesa: marcar como paga (ou em aberto), editar e excluir.
+    /// </summary>
+    private MenuFlyout ExpenseMenu(Expense expense)
+    {
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        menu.Items.Add(MenuAction(expense.Paid ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Run(() => { TogglePaid(expense); return Task.CompletedTask; })));
+        menu.Items.Add(MenuAction("Editar", "Edit", () => _ = Run(() => EditExpense(expense))));
+        menu.Items.Add(MenuAction("Excluir", "Trash", () => _ = Run(async () =>
+        {
+            if (await Confirm(this, "Excluir despesa?", $"Excluir “{expense.Title}” de {Money.Format(expense.Amount)}? Apenas este lançamento será removido; outras parcelas continuam no histórico.")) Commit(d => d.Expenses.RemoveAll(e => e.Id == expense.Id));
+        }), danger: true));
+        return menu;
+    }
+    /// <summary>
+    /// Item de menu com ícone. O nome de automação guarda o rótulo (usado por leitores de tela e testes); o item perigoso usa o tom negativo.
+    /// </summary>
+    private static MenuItem MenuAction(string text, string icon, Action action, bool danger = false)
+    {
+        var item = new MenuItem { Header = danger ? new TextBlock { Text = text, Classes = { "negative" } } : text, Icon = Icon(icon, 16) };
+        if (danger) item.Classes.Add("danger");
+        AutomationProperties.SetName(item, text); item.Click += (_, _) => action(); return item;
+    }
+    /// <summary>
+    /// Alterna a situação de pagamento de uma despesa e salva.
+    /// </summary>
+    private void TogglePaid(Expense expense) => Commit(d => d.Expenses.First(e => e.Id == expense.Id).Paid = !expense.Paid);
+    /// <summary>
+    /// Linha de apoio sob o título: categoria, parcela ("parcela 3 de 10") e, se pedido, o vencimento.
+    /// </summary>
+    private static string ExpenseSubtitle(Expense expense, bool withDue) =>
+        expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : "") + (withDue ? $" · vence {expense.DueDate:dd/MM}" : "");
+    /// <summary>
+    /// Chip de situação da lista: Pago, Em aberto, Vence em N dias ou Em atraso.
+    /// </summary>
+    private static Border StatusChip(Expense expense)
+    {
+        var s = DueStatus.Of(expense, DateOnly.FromDateTime(DateTime.Today));
+        return s.Kind switch
+        {
+            DueKind.Paid => Chip("Pago", "positive"),
+            DueKind.Overdue => Chip("Em atraso", "negative"),
+            DueKind.DueSoon => Chip(s.Days == 0 ? "Vence hoje" : $"Vence em {s.Days} {(s.Days == 1 ? "dia" : "dias")}", "warn"),
+            _ => Chip("Em aberto")
+        };
+    }
+    /// <summary>
+    /// Chip de prazo dos próximos pagamentos: "Em 1 dia", "Em 7 dias", "Hoje" ou "Atrasada há N dias".
+    /// </summary>
+    private static Border UpcomingChip(Expense expense)
+    {
+        var s = DueStatus.Of(expense, DateOnly.FromDateTime(DateTime.Today)); var days = Math.Abs(s.Days); var unit = days == 1 ? "dia" : "dias";
+        return s.Kind switch
+        {
+            DueKind.Overdue => Chip($"Atrasada há {days} {unit}", "negative"),
+            DueKind.DueSoon => Chip(s.Days == 0 ? "Hoje" : $"Em {days} {unit}", "warn"),
+            _ => Chip($"Em {days} {unit}")
+        };
     }
     /// <summary>
     /// Abre o editor com um rascunho local, itens e responsáveis; prévia e salvamento compartilham a mesma validação.

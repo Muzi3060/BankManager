@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using BankManager.Core;
@@ -22,10 +23,11 @@ public sealed partial class MainWindow : Window
     // Distingue orçamento vazio válido de falha de leitura; evita salvar por cima de uma base não carregada.
     private bool ready;
     private DateOnly month = Dates.Month(DateOnly.FromDateTime(DateTime.Today));
-    // A estrutura fixa permanece; Render substitui apenas o conteúdo da página e atualiza os indicadores.
+    // A estrutura fixa permanece; Render substitui apenas o conteúdo da página.
     private readonly ContentControl page = new();
-    private readonly TextBlock monthLabel = Text("");
+    // Aviso global no topo do conteúdo: erros (tom de alerta) e confirmações (tom positivo).
     private readonly TextBlock notice = Text("", "warn");
+    private readonly Border noticeBox = new();
     private readonly List<Button> navigation = [];
     // Índices de página: 0 resumo, 1 pessoas, 2 despesas, 3 previsões, 4 ajustes.
     private int currentPage;
@@ -44,35 +46,69 @@ public sealed partial class MainWindow : Window
         settingsDirectory = LocalStore.DefaultDirectory(dataDirectory);
         // O tema é aplicado antes de a janela aparecer, para não piscar no tema errado.
         settings = SettingsStore.Load(settingsDirectory); App.ApplyTheme(settings.Theme);
-        // Estrutura fixa: menu lateral, cabeçalho com mês, aviso global e área rolável de conteúdo.
+        // Menu lateral de 232 px: logo, cinco destinos e o aviso de privacidade no rodapé.
         var sidebar = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") }; sidebar.Classes.Add("sidebar");
         var logo = new Border { Child = Icon("Logo", 16), VerticalAlignment = VerticalAlignment.Center }; logo.Classes.Add("logo");
-        sidebar.Children.Add(new Border { Padding = new Thickness(24, 30), Child = Row(logo, Text("BankManager", "section")) });
-        var menu = new StackPanel { Margin = new Thickness(14, 16), Spacing = 4 };
-        (string Label, string Icon)[] items = [("Visão geral", "Home"), ("Pessoas e rendas", "Users"), ("Despesas", "List"), ("Previsões", "Trend"), ("Dados e ajuda", "Sliders")];
+        sidebar.Children.Add(new Border { Padding = new Thickness(24, 28, 24, 16), Child = Row(logo, new TextBlock { Text = "BankManager", FontWeight = FontWeight.SemiBold, FontSize = 16, VerticalAlignment = VerticalAlignment.Center }) });
+        var menu = new StackPanel { Margin = new Thickness(14, 8), Spacing = 4 };
+        (string Label, string Icon)[] items = [("Visão geral", "Home"), ("Pessoas e rendas", "Users"), ("Despesas", "List"), ("Previsões", "Trend"), ("Ajustes", "Sliders")];
         for (var i = 0; i < items.Length; i++)
         {
             // Copia o índice para que cada callback navegue à página correspondente, em vez do valor final do laço.
-            var index = i; var button = Button(items[i].Label, () => { currentPage = index; Render(); }, "nav", items[i].Icon); navigation.Add(button); menu.Children.Add(button);
+            var index = i; var button = Button(items[i].Label, () => GoTo(index), "nav", items[i].Icon); navigation.Add(button); menu.Children.Add(button);
         }
         Grid.SetRow(menu, 1); sidebar.Children.Add(menu);
-        var footer = new Border { Padding = new Thickness(24), Child = Row(Icon("Lock", 14), Text("Seus dados ficam só neste computador.", "muted")) };
+        var privacy = Text("Seus dados ficam só neste computador.", "muted"); privacy.FontSize = 12;
+        var footerIcon = Icon("Lock", 14); footerIcon.VerticalAlignment = VerticalAlignment.Top; footerIcon.Margin = new Thickness(0, 2, 8, 0);
+        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(24, 16, 24, 24) }; Grid.SetColumn(privacy, 1); footer.Children.Add(footerIcon); footer.Children.Add(privacy);
         Grid.SetRow(footer, 2); sidebar.Children.Add(footer);
-        var body = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), Margin = new Thickness(32, 24) };
-        monthLabel.VerticalAlignment = VerticalAlignment.Center; monthLabel.MinWidth = 160; monthLabel.TextAlignment = TextAlignment.Center;
-        var header = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, 20) };
-        var months = Row(Button("Mês anterior", () => ChangeMonth(-1), icon: "ChevronLeft"), monthLabel, Button("Próximo mês", () => ChangeMonth(1), icon: "ChevronRight"), Button("Hoje", () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }));
-        DockPanel.SetDock(months, Dock.Right); header.Children.Add(months); header.Children.Add(Text("MEU PLANEJAMENTO", "muted")); body.Children.Add(header);
-        notice.Margin = new Thickness(0, 0, 0, 16); notice.IsVisible = false; Grid.SetRow(notice, 1); body.Children.Add(notice);
-        var scroll = new ScrollViewer { Content = page, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
-        Grid.SetRow(scroll, 2); body.Children.Add(scroll);
-        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("224,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
+        // Conteúdo: aviso global (quando há) e a página rolável, com margem de 32/40 px.
+        noticeBox.Classes.Add("notice"); noticeBox.Child = notice; noticeBox.IsVisible = false; noticeBox.Margin = new Thickness(40, 24, 40, 0);
+        var body = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; body.Children.Add(noticeBox);
+        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(40, 32), Child = page }, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+        Grid.SetRow(scroll, 1); body.Children.Add(scroll);
+        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("232,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
+        // Atalho Ctrl+N: nova despesa de qualquer tela (diálogos modais bloqueiam a janela, então não abre dois).
+        KeyDown += (_, e) => { if (e.Key == Key.N && e.KeyModifiers == KeyModifiers.Control && ready) { e.Handled = true; _ = Run(() => EditExpense()); } };
         try { store = new LocalStore(dataDirectory); data = store.Load(); ready = true; }
         catch (Exception ex) { ShowError(ex); }
         // Libera o bloqueio de armazenamento mesmo quando a base falhou ao carregar.
         Closed += (_, _) => store?.Dispose();
         Render();
     }
+    /// <summary>
+    /// Troca de página e reconstrói a tela.
+    /// </summary>
+    private void GoTo(int index) { currentPage = index; Render(); }
+    /// <summary>
+    /// Cabeçalho comum das páginas: título e subtítulo à esquerda; à direita, navegação de mês e, se pedido, o botão de nova despesa.
+    /// </summary>
+    private Control PageHeader(string title, string subtitle, bool monthNavigation = true, bool newExpense = false)
+    {
+        var titles = Stack(Text(title, "title"), Text(subtitle, "muted")); titles.Spacing = 4; titles.VerticalAlignment = VerticalAlignment.Center;
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        if (monthNavigation)
+        {
+            var label = new TextBlock { Text = month.ToString("MMMM 'de' yyyy", Money.Culture), FontWeight = FontWeight.SemiBold, MinWidth = 130, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            actions.Children.Add(Button("Mês anterior", () => ChangeMonth(-1), icon: "ChevronLeft", iconOnly: true)); actions.Children.Add(label);
+            actions.Children.Add(Button("Próximo mês", () => ChangeMonth(1), icon: "ChevronRight", iconOnly: true));
+            actions.Children.Add(Button("Hoje", () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }));
+        }
+        if (newExpense) { var add = Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"); add.Margin = new Thickness(8, 0, 0, 0); actions.Children.Add(add); }
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 0, 24) }; Grid.SetColumn(actions, 1); header.Children.Add(titles); header.Children.Add(actions);
+        return header;
+    }
+    /// <summary>
+    /// Mostra um aviso no topo do conteúdo: alerta por padrão, ou confirmação em tom positivo.
+    /// </summary>
+    private void Notify(string text, bool success = false)
+    {
+        notice.Text = text; notice.Classes.Set("warn", !success); notice.Classes.Set("positive", success); noticeBox.Classes.Set("positive", success); noticeBox.IsVisible = true;
+    }
+    /// <summary>
+    /// Esconde o aviso global.
+    /// </summary>
+    private void ClearNotice() => noticeBox.IsVisible = false;
     /// <summary>
     /// Navega entre competências e limita o ano a 2099 para que a previsão do mês seguinte permaneça no domínio suportado.
     /// </summary>
@@ -86,21 +122,20 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void ShowError(Exception ex)
     {
-        notice.Text = ex switch
+        Notify(ex switch
         {
             BudgetException => ex.Message,
             UnauthorizedAccessException => "Sem permissão para acessar o arquivo. Escolha uma pasta gravável. Seus dados não foram substituídos.",
             IOException => "Não foi possível ler ou salvar os dados. Verifique espaço, permissões e se o arquivo está em uso. A operação não foi concluída.",
             _ => "Não foi possível concluir a operação. Seus dados atuais foram preservados."
-        };
-        notice.IsVisible = true;
+        });
     }
     /// <summary>
     /// Executa ações assíncronas disparadas pela interface e encaminha falhas para o aviso global.
     /// </summary>
     private async Task Run(Func<Task> action)
     {
-        try { notice.IsVisible = false; await action(); }
+        try { ClearNotice(); await action(); }
         catch (Exception ex) { ShowError(ex); }
     }
     /// <summary>
@@ -117,7 +152,6 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void Render()
     {
-        monthLabel.Text = month.ToString("MMMM 'de' yyyy", Money.Culture);
         for (var i = 0; i < navigation.Count; i++) navigation[i].Classes.Set("active", i == currentPage);
         // Falha ao abrir não significa uma base nova: a edição comum fica bloqueada até recuperação válida.
         if (!ready)

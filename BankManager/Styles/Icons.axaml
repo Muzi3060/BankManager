@@ -13,7 +13,7 @@
   <StreamGeometry x:Key="Icon.ChevronRight">M9 6l6 6-6 6</StreamGeometry>
   <StreamGeometry x:Key="Icon.ChevronDown">M6 9l6 6 6-6</StreamGeometry>
   <StreamGeometry x:Key="Icon.Lock">M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z</StreamGeometry>
-  <StreamGeometry x:Key="Icon.More">M5 12h.01M12 12h.01M19 12h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.More">M5 12h1M11.5 12h1M18 12h1</StreamGeometry>
   <StreamGeometry x:Key="Icon.Check">M5 12.5l4.5 4.5L19 7</StreamGeometry>
   <StreamGeometry x:Key="Icon.Edit">M4 20h4L19 9l-4-4L4 16zM13 7l4 4</StreamGeometry>
   <StreamGeometry x:Key="Icon.Trash">M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6</StreamGeometry>
