@@ -16,7 +16,7 @@ public static class BudgetRules
     public static void Validate(BudgetData data)
     {
         if (data.Version != BudgetData.CurrentVersion) throw new BudgetException("Versão de arquivo não suportada.");
-        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
+        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.Settlements is null || data.Settlements.Count > 100_000 || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
             throw new BudgetException("Arquivo inválido ou com registros demais.");
         // Conjuntos detectam repetições e permitem conferir referências de rendas e despesas às pessoas.
         var ids = new HashSet<Guid>();
@@ -35,6 +35,14 @@ public static class BudgetRules
                 throw new BudgetException("Registro de renda inválido ou repetido.");
             Date(income.Month);
             Money.Validate(income.Amount, "Renda");
+        }
+        // Um acerto liga duas pessoas diferentes que existem, com valor positivo.
+        var settlementIds = new HashSet<Guid>();
+        foreach (var s in data.Settlements)
+        {
+            if (s is null || s.Id == Guid.Empty || !settlementIds.Add(s.Id) || !ids.Contains(s.PayerId) || !ids.Contains(s.ReceiverId) || s.PayerId == s.ReceiverId)
+                throw new BudgetException("Acerto de contas inválido: escolha duas pessoas diferentes.");
+            Money.Validate(s.Amount, "Valor do acerto", true); Date(s.Date);
         }
         // Modelos de recorrência vêm antes das despesas, que podem referenciá-los.
         var recurrenceIds = new HashSet<Guid>();
@@ -77,6 +85,8 @@ public static class BudgetRules
             }
             if (e.Items.Count > 0 && (e.InstallmentCount > 1 || e.Items.Sum(i => i.Total) != e.Amount))
                 throw new BudgetException("O total da despesa precisa ser igual à soma dos itens. Listas devem ser salvas à vista.");
+            // Quem pagou só existe em despesas pagas e precisa ser uma pessoa cadastrada.
+            if (e.PaidBy is { } payer && (!e.Paid || !ids.Contains(payer))) throw new BudgetException("Quem pagou: escolha uma pessoa cadastrada em uma despesa já paga.");
             // Vínculo com recorrência: id e mês andam juntos, o modelo existe, o mês é exclusivo e o lançamento é simples.
             if ((e.RecurrenceId is null) != (e.RecurrenceMonth is null)) throw new BudgetException("Vínculo com a recorrência incompleto.");
             if (e.RecurrenceId is { } recurrence && (!recurrenceIds.Contains(recurrence) || e.RecurrenceMonth!.Value.Day != 1 || !occurrences.Add((recurrence, e.RecurrenceMonth.Value)) || e.InstallmentCount > 1 || e.Items.Count > 0))

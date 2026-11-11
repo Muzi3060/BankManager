@@ -79,6 +79,11 @@ public sealed record Expense
     public int InstallmentNumber { get; set; } = 1;
     /// <summary>Quantidade de parcelas da compra original; vale 1 para lançamentos à vista.</summary>
     public int InstallmentCount { get; set; } = 1;
+    /// <summary>
+    /// Pessoa que efetivamente pagou a despesa. Só faz sentido com <see cref="Paid"/> verdadeiro; nulo significa "não informado"
+    /// (inclusive nos lançamentos antigos) e deixa a despesa fora do acerto de contas.
+    /// </summary>
+    public Guid? PaidBy { get; set; }
     /// <summary>Recorrência que gerou este lançamento (aluguel, assinatura...); nulo para lançamentos comuns. Veja <see cref="Recurrence"/>.</summary>
     public Guid? RecurrenceId { get; set; }
     /// <summary>
@@ -86,6 +91,23 @@ public sealed record Expense
     /// para outro mês, para que a geração automática não recrie a ocorrência. Nulo se, e somente se, <see cref="RecurrenceId"/> for nulo.
     /// </summary>
     public DateOnly? RecurrenceMonth { get; set; }
+}
+/// <summary>
+/// Pagamento feito entre duas pessoas para quitar (total ou parcialmente) o que uma deve à outra.
+/// Abate o saldo calculado por <see cref="SettlementEngine"/>; não é uma despesa.
+/// </summary>
+public sealed record Settlement
+{
+    /// <summary>Identificador estável, usado para excluir um acerto registrado por engano.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>Pessoa que pagou (quem devia).</summary>
+    public Guid PayerId { get; set; }
+    /// <summary>Pessoa que recebeu (quem estava sendo paga). Deve ser diferente de <see cref="PayerId"/>.</summary>
+    public Guid ReceiverId { get; set; }
+    /// <summary>Valor em reais, positivo e com até duas casas decimais.</summary>
+    public decimal Amount { get; set; }
+    /// <summary>Dia em que o acerto aconteceu.</summary>
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 }
 /// <summary>
 /// Modelo de uma despesa que se repete todo mês (aluguel, internet, assinaturas). O aplicativo cria lançamentos comuns,
@@ -131,6 +153,8 @@ public sealed record BudgetData
     public List<Expense> Expenses { get; set; } = [];
     /// <summary>Modelos de despesas mensais. Ausente nos arquivos da versão 1, onde equivale a uma lista vazia.</summary>
     public List<Recurrence> Recurrences { get; set; } = [];
+    /// <summary>Acertos de contas já feitos entre pessoas. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<Settlement> Settlements { get; set; } = [];
 }
 /// <summary>
 /// Centraliza apresentação, leitura e limites de valores monetários, usando decimal para evitar imprecisão binária.

@@ -326,6 +326,106 @@ Test("Recurrence persistence roundtrip", () =>
     finally { Directory.Delete(path, true); }
 });
 
+// ---- Quem pagou e acerto de contas ----
+// Marca como paga por alguém; PaidBy nulo é "não informado".
+Expense PaidByPerson(BudgetData d, decimal amount, Guid? payer, SplitMode split = SplitMode.AvailableIncome) { var e = Bill(d, amount, split); e.Paid = true; e.PaidBy = payer; d.Expenses.Add(e); return e; }
+decimal Owes(List<Debt> debts, Guid debtor, Guid creditor) => debts.Where(x => x.DebtorId == debtor && x.CreditorId == creditor).Sum(x => x.Amount);
+
+// Ana paga 800 e a divisão proporcional dá 600/200: Bruno deve 200 a Ana, e Ana não deve nada a si mesma.
+Test("Payer is owed the others' shares", () =>
+{
+    var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id); PaidByPerson(d, 800, ana);
+    var debts = SettlementEngine.Debts(d); Equal(1, debts.Count); Equal(200m, Owes(debts, bruno, ana));
+});
+
+// Despesas em aberto e pagas sem pagador informado não geram dívida (comportamento antigo preservado).
+Test("Unpaid and unattributed payments create no debt", () =>
+{
+    var d = Family(); d.Expenses.Add(Bill(d, 800)); PaidByPerson(d, 500, null);
+    Equal(0, SettlementEngine.Debts(d).Count);
+});
+
+// Quem paga uma despesa individual de outra pessoa passa a ter o valor inteiro a receber; a própria despesa individual não gera dívida.
+Test("Paying someone else's individual expense creates a full debt", () =>
+{
+    var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id);
+    var e = PaidByPerson(d, 100, ana); e.Split = SplitMode.Individual; e.Participants = [bruno]; // Bruno é o responsável, Ana pagou
+    Equal(100m, Owes(SettlementEngine.Debts(d), bruno, ana));
+    var own = PaidByPerson(d, 50, ana, SplitMode.Individual); // Ana paga a sua própria
+    Equal(100m, Owes(SettlementEngine.Debts(d), bruno, ana)); Equal(1, SettlementEngine.Debts(d).Count);
+});
+
+// As dívidas de um par se compensam: 200 a favor de Ana menos 100 a favor de Bruno deixa Bruno devendo 100.
+Test("Mutual debts net out within a pair", () =>
+{
+    var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id);
+    PaidByPerson(d, 800, ana);                           // Bruno deve 200 a Ana
+    PaidByPerson(d, 600, bruno, SplitMode.Equal);        // Ana deve 300 a Bruno
+    var debts = SettlementEngine.Debts(d); Equal(1, debts.Count); Equal(100m, Owes(debts, ana, bruno));
+});
+
+// Um acerto abate a dívida; pagar a mais inverte o sentido; pagar exatamente quita.
+Test("Settlements reduce, clear and flip the balance", () =>
+{
+    var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id); PaidByPerson(d, 800, ana);
+    d.Settlements.Add(new Settlement { PayerId = bruno, ReceiverId = ana, Amount = 150 }); Equal(50m, Owes(SettlementEngine.Debts(d), bruno, ana));
+    d.Settlements.Add(new Settlement { PayerId = bruno, ReceiverId = ana, Amount = 50 }); Equal(0, SettlementEngine.Debts(d).Count);
+    d.Settlements.Add(new Settlement { PayerId = bruno, ReceiverId = ana, Amount = 30 }); Equal(30m, Owes(SettlementEngine.Debts(d), ana, bruno)); BudgetRules.Validate(d);
+});
+
+// Com três pessoas, cada par é calculado separadamente: ninguém ganha dívida com quem não pagou nada por ele.
+Test("Three people settle pairwise", () =>
+{
+    var d = Family(); d.People.Add(new Person { Name = "Carla" }); var (ana, bruno, carla) = (d.People[0].Id, d.People[1].Id, d.People[2].Id);
+    var e = Bill(d, 900, SplitMode.Equal); e.Participants = [ana, bruno, carla]; e.Paid = true; e.PaidBy = ana; d.Expenses.Add(e);
+    var debts = SettlementEngine.Debts(d); Equal(2, debts.Count); Equal(300m, Owes(debts, bruno, ana)); Equal(300m, Owes(debts, carla, ana));
+});
+
+// Centavos não se perdem: 100,00 em três partes (33,34/33,33/33,33) soma exatamente o que o pagador adiantou pelos outros.
+Test("Debts add up to the exact amount advanced for others", () =>
+{
+    var d = Family(); d.People.Add(new Person { Name = "Carla" }); var ids = d.People.Select(p => p.Id).ToList();
+    var e = Bill(d, 100, SplitMode.Equal); e.Participants = ids; e.Paid = true; e.PaidBy = ids[0]; d.Expenses.Add(e);
+    var share = FinanceEngine.Allocate(d, e).Amounts[ids[0]];
+    Equal(100m - share, SettlementEngine.Debts(d).Sum(x => x.Amount));
+});
+
+// Quem pagou só vale em despesa paga e com pessoa existente; acertos precisam de duas pessoas diferentes e valor positivo.
+Test("Invalid payer and settlement data is rejected", () =>
+{
+    var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id);
+    var open = Bill(d, 100); open.PaidBy = ana; d.Expenses.Add(open); Reject(() => BudgetRules.Validate(d));
+    d = Family(); PaidByPerson(d, 100, Guid.NewGuid()); Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Settlements.Add(new Settlement { PayerId = ana, ReceiverId = ana, Amount = 10 }); Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Settlements.Add(new Settlement { PayerId = ana, ReceiverId = bruno, Amount = 0 }); Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Settlements.Add(new Settlement { PayerId = ana, ReceiverId = Guid.NewGuid(), Amount = 10 }); Reject(() => BudgetRules.Validate(d));
+    d = Family(); d.Settlements.Add(new Settlement { PayerId = ana, ReceiverId = bruno, Amount = 10.005m }); Reject(() => BudgetRules.Validate(d));
+});
+
+// Quem pagou e os acertos sobrevivem a gravar e ler; um arquivo v2 antigo (sem esses campos) continua abrindo.
+Test("Payer and settlements persist; older v2 files still open", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); var (ana, bruno) = (d.People[0].Id, d.People[1].Id); PaidByPerson(d, 800, ana);
+        d.Settlements.Add(new Settlement { PayerId = bruno, ReceiverId = ana, Amount = 150 }); store.Save(d);
+        var back = store.Load(); Equal(ana, back.Expenses[0].PaidBy!.Value); Equal(1, back.Settlements.Count); Equal(50m, Owes(SettlementEngine.Debts(back), bruno, ana));
+        // Fabrica um arquivo "v2 anterior": sem Settlements e sem PaidBy.
+        var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node.AsObject().Remove("Settlements"); foreach (var e in node["Expenses"]!.AsArray()) e!.AsObject().Remove("PaidBy");
+        File.WriteAllText(store.FilePath, node.ToJsonString()); var old = store.Load(); Equal(0, old.Settlements.Count); Equal(true, old.Expenses[0].PaidBy is null); Equal(0, SettlementEngine.Debts(old).Count);
+    }
+    finally { Directory.Delete(path, true); }
+});
+
+// Um arquivo v1 que traga quem pagou ou acertos é adulterado: recusado.
+Test("Version 1 file with payer data is rejected", () =>
+{
+    var d = Family(); PaidByPerson(d, 100, d.People[0].Id); var path = Path.GetTempFileName();
+    try { var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node["Version"] = 1; node.AsObject().Remove("Recurrences"); File.WriteAllText(path, node.ToJsonString()); Reject(() => LocalStore.Read(path)); }
+    finally { File.Delete(path); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)
