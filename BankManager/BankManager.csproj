@@ -7,9 +7,15 @@
     <Product>BankManager</Product>
     <Description>Gestão financeira pessoal e familiar</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Ícone do executável no Windows; a janela usa Assets/icon.png (veja Ui.AppIcon). -->
+    <ApplicationIcon>Assets/icon.ico</ApplicationIcon>
     <!-- Garante verificação de bindings compilados caso novas telas passem a utilizá-los. -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
+  <!-- Arquivos de Assets são embutidos no executável e lidos por avares://BankManager/Assets/... -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/icon.png" />
+  </ItemGroup>
   <!-- Core fornece as regras; Desktop, Fluent e Inter fornecem backend, tema e tipografia. -->
   <ItemGroup>
     <ProjectReference Include="../BankManager.Core/BankManager.Core.csproj" />

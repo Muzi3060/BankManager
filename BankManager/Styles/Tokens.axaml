@@ -1,0 +1,104 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Tokens de cor com nome. É o ÚNICO lugar com valores hexadecimais do aplicativo: estilos e telas só
+    referenciam estes nomes com DynamicResource (ou por classes), então trocar de tema atualiza tudo ao vivo.
+    Todos os pares texto/fundo usados têm contraste de pelo menos 4,5:1 (verificado por script).
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="BgBrush" Color="#FAFAF9"/>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#F4F4F2"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="LineBrush" Color="#E7E5E4"/>
+      <SolidColorBrush x:Key="TextBrush" Color="#18181B"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B6B73"/>
+      <SolidColorBrush x:Key="AccentBrush" Color="#5B3FE0"/>
+      <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="AccentSoftBrush" Color="#EFEBFF"/>
+      <SolidColorBrush x:Key="PositiveBrush" Color="#047857"/>
+      <SolidColorBrush x:Key="NegativeBrush" Color="#B42318"/>
+      <SolidColorBrush x:Key="WarnBrush" Color="#8A5A00"/>
+      <SolidColorBrush x:Key="WarnSoftBrush" Color="#FBF0D5"/>
+      <SolidColorBrush x:Key="TrackBrush" Color="#ECEBE8"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="#F1F0EE"/>
+      <!-- Faz os controles do Fluent (foco, caixas de seleção) usarem o destaque do aplicativo. -->
+      <Color x:Key="SystemAccentColor">#5B3FE0</Color>
+      <Color x:Key="SystemAccentColorLight1">#5B3FE0</Color>
+      <Color x:Key="SystemAccentColorLight2">#5B3FE0</Color>
+      <Color x:Key="SystemAccentColorDark1">#4A31C2</Color>
+      <Color x:Key="SystemAccentColorDark2">#4A31C2</Color>
+      <!-- Faz campos, listas e menus do Fluent usarem os mesmos tokens. -->
+      <StaticResource x:Key="TextControlBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="TextSecondaryBrush"/>
+      <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AccentBrush"/>
+      <StaticResource x:Key="TextControlForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="TextSecondaryBrush"/>
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelected" ResourceKey="AccentSoftBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelectedPointerOver" ResourceKey="AccentSoftBrush"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="TextBrush"/>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="BgBrush" Color="#0F1115"/>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#13161C"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#171A21"/>
+      <SolidColorBrush x:Key="LineBrush" Color="#262A33"/>
+      <SolidColorBrush x:Key="TextBrush" Color="#F4F4F5"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A1A1AA"/>
+      <SolidColorBrush x:Key="AccentBrush" Color="#A58BFF"/>
+      <SolidColorBrush x:Key="OnAccentBrush" Color="#140D33"/>
+      <SolidColorBrush x:Key="AccentSoftBrush" Color="#242040"/>
+      <SolidColorBrush x:Key="PositiveBrush" Color="#5EEAD4"/>
+      <SolidColorBrush x:Key="NegativeBrush" Color="#FDA4AF"/>
+      <SolidColorBrush x:Key="WarnBrush" Color="#F5D58A"/>
+      <SolidColorBrush x:Key="WarnSoftBrush" Color="#3A2F12"/>
+      <SolidColorBrush x:Key="TrackBrush" Color="#262A33"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="#1D2129"/>
+      <Color x:Key="SystemAccentColor">#A58BFF</Color>
+      <Color x:Key="SystemAccentColorLight1">#A58BFF</Color>
+      <Color x:Key="SystemAccentColorLight2">#A58BFF</Color>
+      <Color x:Key="SystemAccentColorDark1">#8B6CF0</Color>
+      <Color x:Key="SystemAccentColorDark2">#8B6CF0</Color>
+      <!-- Faz campos, listas e menus do Fluent usarem os mesmos tokens. -->
+      <StaticResource x:Key="TextControlBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="TextControlBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="TextSecondaryBrush"/>
+      <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AccentBrush"/>
+      <StaticResource x:Key="TextControlForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="TextSecondaryBrush"/>
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelected" ResourceKey="AccentSoftBrush"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelectedPointerOver" ResourceKey="AccentSoftBrush"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="SurfaceBrush"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="LineBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="TextBrush"/>
+      <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="TextBrush"/>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Ícones vetoriais (traço de 24x24, no estilo "linha"). Substituem caracteres de texto, que mudam de
+    aparência entre Windows e Linux. Usados por Ui.Icon("nome"); a cor vem do estilo Path.icon.
+  -->
+  <StreamGeometry x:Key="Icon.Home">M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Users">M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 20v-1.5a3.5 3.5 0 0 0-2.5-3.36M15.5 4.2a3.5 3.5 0 0 1 0 6.6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.List">M4 6h16M4 12h16M4 18h10</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trend">M3 17l6-6 4 4 8-8M15 7h6v6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Sliders">M4 7h9M17 7h3M15 5v4M4 12h3M11 12h9M9 10v4M4 17h11M19 17h1M17 15v4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Plus">M12 5v14M5 12h14</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronLeft">M15 6l-6 6 6 6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronRight">M9 6l6 6-6 6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronDown">M6 9l6 6 6-6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Lock">M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.More">M5 12h.01M12 12h.01M19 12h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Check">M5 12.5l4.5 4.5L19 7</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Edit">M4 20h4L19 9l-4-4L4 16zM13 7l4 4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trash">M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Search">M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Logo">M12 3l9 9-9 9-9-9z</StreamGeometry>
+</ResourceDictionary>

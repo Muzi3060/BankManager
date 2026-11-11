@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 
 namespace BankManager;
 /// <summary>
@@ -10,6 +11,22 @@ namespace BankManager;
 /// </summary>
 internal static class Ui
 {
+    private static WindowIcon? appIcon;
+    /// <summary>
+    /// Ícone do aplicativo (janela e diálogos), carregado uma vez a partir dos recursos embutidos.
+    /// </summary>
+    public static WindowIcon AppIcon => appIcon ??= new WindowIcon(AssetLoader.Open(new Uri("avares://BankManager/Assets/icon.png")));
+    /// <summary>
+    /// Cria um ícone vetorial pelo nome definido em Styles/Icons.axaml (por exemplo "Home" usa Icon.Home).
+    /// Os traços são desenhados em uma área 24x24 e ampliados ou reduzidos para o tamanho pedido; a cor vem do estilo Path.icon.
+    /// </summary>
+    public static Control Icon(string name, double size = 18)
+    {
+        // A geometria não muda com o tema, então basta buscá-la uma vez; só a cor do traço é dinâmica (no estilo).
+        if (Application.Current is null || !Application.Current.TryFindResource("Icon." + name, out var geometry) || geometry is not Geometry data) throw new ArgumentException("Ícone desconhecido: " + name);
+        var path = new Avalonia.Controls.Shapes.Path { Data = data }; path.Classes.Add("icon");
+        return new Viewbox { Width = size, Height = size, IsHitTestVisible = false, Child = new Canvas { Width = 24, Height = 24, Children = { path } } };
+    }
     /// <summary>
     /// Cria texto com quebra automática e, opcionalmente, uma classe de estilo.
     /// </summary>
@@ -45,9 +62,12 @@ internal static class Ui
     /// <summary>
     /// Cria um botão e liga seu clique à ação recebida. Ações assíncronas da janela usam o tratamento de erros de Run.
     /// </summary>
-    public static Button Button(string text, Action action, string? style = null)
+    public static Button Button(string text, Action action, string? style = null, string? icon = null)
     {
         var button = new Button { Content = text };
+        // Com ícone, o conteúdo vira ícone + rótulo; o nome de automação mantém o rótulo para leitores de tela e testes.
+        if (icon is not null) { var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 }; row.Children.Add(Icon(icon)); row.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center }); button.Content = row; }
+        AutomationProperties.SetName(button, text);
         if (style is not null) button.Classes.Add(style);
         button.Click += (_, _) => action(); return button;
     }
@@ -86,7 +106,7 @@ internal static class Ui
     /// </summary>
     public static Window Dialog(string title, Control content, double width = 620) => new()
     {
-        Title = title, Width = width, Height = 720, MinWidth = 480, MinHeight = 400,
+        Title = title, Width = width, Height = 720, MinWidth = 480, MinHeight = 400, Icon = AppIcon,
         WindowStartupLocation = WindowStartupLocation.CenterOwner,
         Content = new ScrollViewer { Content = new Border { Padding = new Thickness(28), Child = content } }
     };
