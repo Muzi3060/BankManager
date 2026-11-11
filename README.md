@@ -68,6 +68,16 @@ Marcar **Repetir todo mês** guarda um modelo (descrição, categoria, valor, di
 - **Encerrar** define o mês selecionado como última cobrança e remove os meses em aberto depois dele; meses já pagos permanecem. **Remover** (só para recorrências encerradas) tira o modelo da lista e mantém os lançamentos como despesas comuns.
 - Recorrentes não usam parcelas nem lista de itens. Editar o valor de um mês não altera os outros: para mudar o valor dali em diante, encerre e crie uma nova.
 
+## Quem pagou e acerto de contas
+
+Ao marcar uma despesa como paga, o aplicativo pergunta **quem pagou** (ou "Não informar"). Com uma só pessoa cadastrada, não pergunta. O cartão **Acerto de contas**, na Visão geral, mostra quem deve a quem:
+
+- Cada participante diferente de quem pagou deve a sua parte (a mesma da coluna Divisão) a quem pagou. Se a pessoa que pagou não é responsável pela despesa, o responsável deve o valor inteiro.
+- O saldo é **acumulado**, somando todos os meses, e as dívidas de cada par se compensam: Ana pagou R$ 200 por Bruno e Bruno pagou R$ 120 por Ana, então Bruno deve R$ 80 a Ana.
+- **Registrar acerto** anota um pagamento entre as pessoas (total ou parcial) e abate a dívida. Pagar mais que o devido inverte o sentido. Os acertos ficam em **Histórico** e podem ser excluídos.
+- Despesas pagas sem pagador informado, inclusive as de versões antigas, ficam fora do acerto. Reabrir uma despesa esquece quem a pagou.
+- Como o rateio proporcional usa a renda de cada mês, editar uma renda antiga muda o que foi devido naquele mês. Excluir uma despesa já paga também muda o saldo; se havia um acerto, ele continua registrado.
+
 ## Previsões
 
 A média usa até três meses anteriores ao mês previsto, desde o primeiro mês registrado com despesa não parcelada. Meses sem lançamentos dentro dessa janela contam como zero; por isso, histórico incompleto pode subestimar gastos. Um único mês com R$ 1.000 em mercado prevê R$ 1.000 no seguinte. Meses posteriores ao alvo nunca entram no cálculo.
