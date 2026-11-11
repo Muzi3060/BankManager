@@ -35,7 +35,10 @@ public sealed partial class MainWindow
         var status = Segmented(["Todas", "Em aberto", "Pagas"], statusFilter, i => { statusFilter = i; Refresh(); });
         var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category);
         Refresh();
-        var page = Stack(PageHeader("Despesas", "Contas, compras e parcelas do mês.", newExpense: true), filters, summary, table); page.Spacing = 16; return page;
+        // Resumo à esquerda e acesso às despesas que se repetem todo mês à direita.
+        var recurring = Button("Recorrentes", () => _ = Run(ManageRecurrences), "link", "Repeat"); Grid.SetColumn(recurring, 1); summary.VerticalAlignment = VerticalAlignment.Center;
+        var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(recurring);
+        var page = Stack(PageHeader("Despesas", "Contas, compras e parcelas do mês.", newExpense: true), filters, summaryRow, table); page.Spacing = 16; return page;
     }
     /// <summary>
     /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
@@ -91,7 +94,9 @@ public sealed partial class MainWindow
         menu.Items.Add(MenuAction("Editar", "Edit", () => _ = Run(() => EditExpense(expense))));
         menu.Items.Add(MenuAction("Excluir", "Trash", () => _ = Run(async () =>
         {
-            if (await Confirm(this, "Excluir despesa?", $"Excluir “{expense.Title}” de {Money.Format(expense.Amount)}? Apenas este lançamento será removido; outras parcelas continuam no histórico.")) Commit(d => d.Expenses.RemoveAll(e => e.Id == expense.Id));
+            var detail = expense.RecurrenceId is not null ? "Apenas este mês será removido e não será criado de novo; a despesa continua nos outros meses. Para parar de vez, use Recorrentes." : "Apenas este lançamento será removido; outras parcelas continuam no histórico.";
+            // RemoveExpense registra o mês como ignorado quando o lançamento vem de uma recorrência.
+            if (await Confirm(this, "Excluir despesa?", $"Excluir “{expense.Title}” de {Money.Format(expense.Amount)}? {detail}")) Commit(d => RecurrenceEngine.RemoveExpense(d, expense.Id));
         }), danger: true));
         return menu;
     }
@@ -112,7 +117,7 @@ public sealed partial class MainWindow
     /// Linha de apoio sob o título: categoria, parcela ("parcela 3 de 10") e, se pedido, o vencimento.
     /// </summary>
     private static string ExpenseSubtitle(Expense expense, bool withDue) =>
-        expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : "") + (withDue ? $" · vence {expense.DueDate:dd/MM}" : "");
+        expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · mensal" : "") + (withDue ? $" · vence {expense.DueDate:dd/MM}" : "");
     /// <summary>
     /// Chip de situação da lista: Pago, Em aberto, Vence em N dias ou Em atraso.
     /// </summary>
@@ -210,9 +215,18 @@ public sealed partial class MainWindow
             Field("Produto ou serviço", itemName), Columns(Field("Quantidade", quantity), Field("Preço unitário (R$)", price)), addItem, itemTotal);
         var expander = new Expander { Header = "Lista de itens da compra", Content = itemPanel, IsExpanded = items.Count > 0, HorizontalAlignment = HorizontalAlignment.Stretch };
         if (existing?.InstallmentCount > 1) expander.IsEnabled = false;
+        // "Repetir todo mês" só existe no cadastro: cria um modelo e os lançamentos dos próximos meses. Não combina com parcelas nem itens.
+        var repeat = new CheckBox { Content = "Repetir todo mês", IsChecked = false }; AutomationProperties.SetName(repeat, "Repetir todo mês");
+        repeat.IsCheckedChanged += (_, _) =>
+        {
+            var on = repeat.IsChecked == true; if (on) installments.Text = "1";
+            installments.IsEnabled = !on; expander.IsEnabled = !on;
+        };
+        var repeatPanel = existing is null ? Stack(repeat, Text($"Para aluguel, internet, assinaturas e contas fixas. Cria a despesa em cada mês, a partir do vencimento, até {RecurrenceEngine.HorizonMonths} meses à frente. Para parar depois, use Recorrentes na lista de despesas.", "muted")) : Stack();
+        repeatPanel.Spacing = 6;
         RefreshItems();
         // Converte os campos em lançamentos candidatos, valida o conjunto completo e não grava nada em disco.
-        List<Expense> BuildEntries()
+        (List<Expense> Entries, Recurrence? Recurrence, BudgetData Candidate) BuildEntries()
         {
             // Evita perder um item digitado que ainda não foi confirmado pelo botão Adicionar item.
             if (!string.IsNullOrWhiteSpace(itemName.Text) || !string.IsNullOrWhiteSpace(price.Text)) throw new BudgetException("Há um item não adicionado. Clique em “Adicionar item” ou limpe seus campos antes de salvar.");
@@ -220,21 +234,32 @@ public sealed partial class MainWindow
             BudgetRules.Date(due);
             if (!int.TryParse(installments.Text, out var count) || count is < 1 or > 120) throw new BudgetException("Use de 1 a 120 parcelas.");
             if (count > 1 && paid.IsChecked == true && existing is null) throw new BudgetException("Crie as parcelas em aberto e marque cada parcela paga na lista de despesas.");
+            var isRepeat = repeat.IsChecked == true && existing is null;
+            if (isRepeat && (count > 1 || items.Count > 0)) throw new BudgetException("Despesas que se repetem todo mês não usam parcelas nem lista de itens.");
+            if (isRepeat && paid.IsChecked == true) throw new BudgetException("Crie a despesa recorrente em aberto e marque cada mês como pago na lista de despesas.");
             var entry = new Expense
             {
                 Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = BudgetRules.Categories[category.SelectedIndex], DueDate = due,
                 Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true,
                 Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
-                InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1
+                InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1,
+                // Editar um mês de uma recorrência preserva o vínculo (e o mês de origem) para ela não recriá-lo.
+                RecurrenceId = existing?.RecurrenceId, RecurrenceMonth = existing?.RecurrenceMonth
             };
+            if (isRepeat)
+            {
+                var recurrence = new Recurrence { Title = entry.Title, Category = entry.Category, Amount = entry.Amount, DayOfMonth = due.Day, Split = entry.Split, Participants = [.. entry.Participants], StartMonth = Dates.Month(due) };
+                var plan = LocalStore.Clone(data); plan.Recurrences.Add(recurrence); RecurrenceEngine.Generate(plan, DateOnly.FromDateTime(DateTime.Today)); BudgetRules.Validate(plan);
+                return (plan.Expenses.Where(e => e.RecurrenceId == recurrence.Id).OrderBy(e => e.DueDate).ToList(), recurrence, plan);
+            }
             // Cadastro pode expandir uma compra em parcelas; edição preserva a identidade de um lançamento existente.
             var entries = existing is null ? BudgetRules.Installments(entry, count) : [entry];
             var candidate = LocalStore.Clone(data); if (existing is not null) candidate.Expenses.RemoveAll(e => e.Id == existing.Id); candidate.Expenses.AddRange(entries); BudgetRules.Validate(candidate);
-            return entries;
+            return (entries, null, candidate);
         }
-        var panel = Stack(Heading(existing is null ? "Nova despesa" : "Editar despesa", existing?.InstallmentCount > 1 ? $"Alteração apenas da parcela {existing.InstallmentNumber}/{existing.InstallmentCount}." : "Preencha os dados e escolha como dividir."),
+        var panel = Stack(Heading(existing is null ? "Nova despesa" : "Editar despesa", existing?.InstallmentCount > 1 ? $"Alteração apenas da parcela {existing.InstallmentNumber}/{existing.InstallmentCount}." : existing?.RecurrenceId is not null ? "Esta despesa se repete todo mês. A alteração vale só para este mês." : "Preencha os dados e escolha como dividir."),
             Field("Descrição", title), Columns(Field("Categoria", category), Field("Vencimento (dd/mm/aaaa)", date)),
-            Columns(Field(existing?.InstallmentCount > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", amount), Field("Número de parcelas", installments)),
+            Columns(Field(existing?.InstallmentCount > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", amount), Field("Número de parcelas", installments)), repeatPanel,
             Text("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "muted"), expander,
             Field("Como esta despesa será paga?", split), Text("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), peoplePanel, paid,
             Text("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "muted"),
@@ -243,9 +268,10 @@ public sealed partial class MainWindow
                 try
                 {
                     // A prévia usa uma cópia já contendo a edição, pois despesas individuais alteram a base do rateio.
-                    var entries = BuildEntries(); var candidate = LocalStore.Clone(data); if (existing is not null) candidate.Expenses.RemoveAll(e => e.Id == existing.Id); candidate.Expenses.AddRange(entries);
+                    var (entries, recurrence, candidate) = BuildEntries();
                     var allocation = FinanceEngine.Allocate(candidate, entries[0]);
-                    preview.Text = (entries.Count > 1 ? $"Primeira de {entries.Count} parcelas: {Money.Format(entries[0].Amount)}\n" : "") + string.Join("\n", allocation.Amounts.Select(a => $"{data.People.First(p => p.Id == a.Key).Name}: {Money.Format(a.Value)}")) + (allocation.Warning is null ? "" : "\n" + allocation.Warning); error.Text = "";
+                    var heading = recurrence is not null ? $"Repete todo mês no dia {recurrence.DayOfMonth}: {entries.Count} lançamentos, até {entries[^1].RecurrenceMonth:MM/yyyy}. Valor mensal: {Money.Format(entries[0].Amount)}\n" : entries.Count > 1 ? $"Primeira de {entries.Count} parcelas: {Money.Format(entries[0].Amount)}\n" : "";
+                    preview.Text = heading + string.Join("\n", allocation.Amounts.Select(a => $"{data.People.First(p => p.Id == a.Key).Name}: {Money.Format(a.Value)}")) + (allocation.Warning is null ? "" : "\n" + allocation.Warning); error.Text = "";
                 }
                 catch (Exception ex) { error.Text = FriendlyError(ex); preview.Text = ""; error.BringIntoView(); }
             }), preview, error);
@@ -255,8 +281,13 @@ public sealed partial class MainWindow
             try
             {
                 // Repete a validação no salvamento: a prévia não substitui a conferência dos campos atuais.
-                var entries = BuildEntries();
-                Commit(d => { if (existing is not null) d.Expenses.RemoveAll(e => e.Id == existing.Id); d.Expenses.AddRange(entries); }); dialog.Close();
+                var (entries, recurrence, _) = BuildEntries();
+                Commit(d =>
+                {
+                    // Recorrência: guarda o modelo e deixa o motor criar os meses; caso contrário, grava os lançamentos montados.
+                    if (recurrence is not null) { d.Recurrences.Add(recurrence); RecurrenceEngine.Generate(d, DateOnly.FromDateTime(DateTime.Today)); return; }
+                    if (existing is not null) d.Expenses.RemoveAll(e => e.Id == existing.Id); d.Expenses.AddRange(entries);
+                }); dialog.Close();
             }
             catch (Exception ex) { error.Text = FriendlyError(ex); error.BringIntoView(); }
         }, "primary")));

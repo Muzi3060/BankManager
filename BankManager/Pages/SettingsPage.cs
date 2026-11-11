@@ -116,7 +116,7 @@ public sealed partial class MainWindow
         // Lê e valida todo o arquivo antes de pedir autorização para substituir o histórico.
         RejectInternalPath(path); var imported = LocalStore.Read(path);
         if (!await Confirm(this, "Substituir os dados atuais?", $"Backup validado: {imported.People.Count} pessoa(s), {imported.Expenses.Count} despesa(s). A importação substitui todo o histórico atual. A versão anterior fica na cópia automática.")) return;
-        store.Save(imported); data = imported; ready = true; Render();
+        store.Save(imported); data = imported; ready = true; TopUpRecurrences(); Render();
     }
     /// <summary>
     /// Lê a cópia automática, confirma a substituição e salva seu conteúdo como base atual antes de atualizar a tela.
@@ -127,6 +127,6 @@ public sealed partial class MainWindow
         var backup = LocalStore.Read(store.BackupPath);
         if (!await Confirm(this, "Recuperar versão anterior?", $"Restaurar {backup.People.Count} pessoa(s) e {backup.Expenses.Count} despesa(s)? Os dados atuais serão substituídos.")) return;
         // Save mantém a base substituída como cópia anterior; a recuperação também segue a gravação normal.
-        store.Save(backup); data = backup; ready = true; Render();
+        store.Save(backup); data = backup; ready = true; TopUpRecurrences(); Render();
     }
 }

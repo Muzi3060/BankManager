@@ -70,11 +70,25 @@ public sealed partial class MainWindow : Window
         var root = new Grid { ColumnDefinitions = new ColumnDefinitions("232,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
         // Atalho Ctrl+N: nova despesa de qualquer tela (diálogos modais bloqueiam a janela, então não abre dois).
         KeyDown += (_, e) => { if (e.Key == Key.N && e.KeyModifiers == KeyModifiers.Control && ready) { e.Handled = true; _ = Run(() => EditExpense()); } };
-        try { store = new LocalStore(dataDirectory); data = store.Load(); ready = true; }
+        try { store = new LocalStore(dataDirectory); data = store.Load(); ready = true; TopUpRecurrences(); }
         catch (Exception ex) { ShowError(ex); }
         // Libera o bloqueio de armazenamento mesmo quando a base falhou ao carregar.
         Closed += (_, _) => store?.Dispose();
         Render();
+    }
+    /// <summary>
+    /// Cria os lançamentos de despesas recorrentes que faltam (a janela avança com o tempo). Se salvar falhar, os dados já carregados
+    /// continuam válidos e o usuário é avisado.
+    /// </summary>
+    private void TopUpRecurrences()
+    {
+        try
+        {
+            var next = LocalStore.Clone(data);
+            if (store is null || RecurrenceEngine.Generate(next, DateOnly.FromDateTime(DateTime.Today)) == 0) return;
+            store.Save(next); data = next;
+        }
+        catch (Exception ex) { ShowError(ex); }
     }
     /// <summary>
     /// Troca de página e reconstrói a tela.
@@ -157,7 +171,7 @@ public sealed partial class MainWindow : Window
         if (!ready)
         {
             page.Content = Stack(Text("Seus dados precisam de atenção", "title"), Text("Não vamos substituir um arquivo que não pôde ser aberto. Feche outras janelas do aplicativo ou restaure uma cópia válida.", "muted"),
-                Button("Tentar abrir novamente", () => _ = Run(() => { store ??= new LocalStore(Environment.GetEnvironmentVariable("BANKMANAGER_DATA_DIR")); data = store.Load(); ready = true; Render(); return Task.CompletedTask; }), "primary"),
+                Button("Tentar abrir novamente", () => _ = Run(() => { store ??= new LocalStore(Environment.GetEnvironmentVariable("BANKMANAGER_DATA_DIR")); data = store.Load(); ready = true; TopUpRecurrences(); Render(); return Task.CompletedTask; }), "primary"),
                 Button("Recuperar cópia automática", () => _ = Run(Recover)), Button("Importar backup", () => _ = Run(Import)));
             return;
         }

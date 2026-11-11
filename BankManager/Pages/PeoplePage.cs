@@ -35,6 +35,7 @@ public sealed partial class MainWindow
             {
                 // Não permite apagar referências utilizadas em nenhum mês, evitando despesas sem responsável.
                 if (data.Expenses.Any(e => e.Participants.Contains(person.Id))) throw new BudgetException("Esta pessoa possui despesas no histórico. Remova ou reatribua essas despesas antes de excluí-la.");
+                if (data.Recurrences.Any(r => r.Participants.Contains(person.Id))) throw new BudgetException("Esta pessoa participa de uma despesa recorrente. Em Despesas → Recorrentes, encerre e remova a recorrência antes de excluí-la.");
                 if (await Confirm(this, "Excluir pessoa?", $"Excluir {person.Name} e todos os seus registros de renda?")) Commit(d => { d.People.RemoveAll(p => p.Id == person.Id); d.Incomes.RemoveAll(i => i.PersonId == person.Id); });
             }), "ghost danger", "Trash", iconOnly: true);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center }; buttons.Children.Add(edit); buttons.Children.Add(delete);

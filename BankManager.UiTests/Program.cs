@@ -33,8 +33,11 @@ static BudgetData DemoData()
         Title = title, Category = category, DueDate = new DateOnly(first.Year, first.Month, day), Amount = amount, Paid = paid, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
         InstallmentGroup = installment > 1 ? group : null, InstallmentNumber = installment, InstallmentCount = installment > 1 ? 10 : 1
     });
-    Add("Aluguel", "Moradia", 5, 1800, true); Add("Internet", "Serviços", 8, 119.90m, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
+    Add("Aluguel", "Moradia", 5, 1800, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
     Add("Notebook", "Educação", 15, 389, installment: 3); Add("Transporte", "Transporte", 18, 380); Add("Streaming", "Lazer", 22, 55.90m); Add("Mercado do mês", "Mercado", 30, 920.40m);
+    // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
+    data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
+    RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true;
     return data;
 }
 // Assume falha até completar todo o roteiro; o CI reconhece o sucesso pelo código de saída.
@@ -80,6 +83,11 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                         shot.Render(main); shot.Save(Path.Combine(shotsDirectory, $"{file}-{themeName}.png"), PngBitmapEncoderOptions.Default); Console.WriteLine($"Screenshot: {file}-{themeName}");
                     }
                 }
+                // Diálogo de recorrentes, que mostra o estado com a internet mensal.
+                await Click("Despesas", main); await Click("Recorrentes", main); await Task.Delay(250);
+                var dlg = Active(); using var dshot = new RenderTargetBitmap(new PixelSize((int)dlg.Bounds.Width, (int)dlg.Bounds.Height), new Vector(96, 96));
+                dshot.Render(dlg); dshot.Save(Path.Combine(shotsDirectory, "recorrentes.png"), PngBitmapEncoderOptions.Default);
+                await Click("Fechar");
                 exitCode = 0; return;
             }
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
@@ -148,6 +156,18 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             await Click("Despesas", main); var countBefore = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Count;
             await Menu("Excluir"); await Click("Confirmar");
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Count == countBefore - 1, "Delete from row menu removes one expense");
+            // Cenário 10: despesa que se repete todo mês cria o modelo e os lançamentos até 12 meses à frente; depois é encerrada.
+            await Click("Nova despesa", main);
+            Active().GetVisualDescendants().OfType<TextBox>().First(i => i.PlaceholderText == "Ex.: Compra do mercado").Text = "Aluguel";
+            Active().GetVisualDescendants().OfType<TextBox>().First(i => i.PlaceholderText == "Ex.: 1000,00").Text = "1500,00";
+            Active().GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == "Repetir todo mês").IsChecked = true; await Task.Delay(120);
+            await Click("Salvar despesa");
+            var saved = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(saved.Recurrences.Count == 1 && saved.Expenses.Count(e => e.RecurrenceId is not null) == RecurrenceEngine.HorizonMonths + 1, "Repeat monthly creates the model and 13 months");
+            await Click("Recorrentes", main); await Click("Encerrar"); await Click("Confirmar");
+            saved = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(saved.Recurrences[0].EndMonth == Dates.Month(DateOnly.FromDateTime(DateTime.Today)) && saved.Expenses.Count(e => e.RecurrenceId is not null) == 1, "Ending a recurrence keeps only the selected month");
+            await Click("Fechar");
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.
             var output = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT");
