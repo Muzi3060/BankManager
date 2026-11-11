@@ -24,7 +24,11 @@ public sealed partial class MainWindow
         var wrap = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var button in new[] { Button("Exportar backup", () => _ = Run(Export), "primary"), Button("Importar backup", () => _ = Run(Import)), Button("Recuperar versão anterior", () => _ = Run(Recover)) }) { button.Margin = new Thickness(0, 0, 8, 8); wrap.Children.Add(button); }
         var folder = Text(store?.DirectoryPath ?? "—", "muted"); folder.FontSize = 12;
-        var yourData = Card(Stack(Text("Seus dados", "section"), Text("Tudo fica salvo só neste computador. Exporte um backup de vez em quando e guarde em outro lugar, como um pendrive.", "muted"), Text("Pasta dos dados", "muted"), folder, wrap));
+        // Planilhas: exportar as despesas e importar um extrato bancário, ambos em CSV.
+        var sheets = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var button in new[] { Button("Exportar despesas (CSV)", () => _ = Run(ExportCsv)), Button("Importar extrato (CSV)", () => _ = Run(ImportStatement)) }) { button.Margin = new Thickness(0, 0, 8, 8); sheets.Children.Add(button); }
+        var yourData = Card(Stack(Text("Seus dados", "section"), Text("Tudo fica salvo só neste computador. Exporte um backup de vez em quando e guarde em outro lugar, como um pendrive.", "muted"), Text("Pasta dos dados", "muted"), folder, wrap,
+            Text("Planilhas", "muted"), sheets));
         var help = Card(Stack(Text("Ajuda", "section"),
             Collapsible("Como funciona a divisão", "Individual: uma pessoa paga tudo.\nIgual: o valor é dividido igualmente entre os selecionados.\nProporcional: quem tem mais renda disponível assume uma parcela maior. Despesas individuais, pagas ou em aberto, são descontadas da renda antes da divisão. Todas as despesas proporcionais do mês usam essa mesma base.\n\nExemplo: rendas disponíveis de R$ 3.000 e R$ 1.000 dividem uma conta de R$ 800 em R$ 600 e R$ 200. Quem não tem renda disponível recebe peso zero. Se todos tiverem peso zero, a conta é dividida igualmente, com aviso. Centavos restantes são distribuídos sem alterar o total."),
             Divider(),

@@ -59,6 +59,13 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 - Editar uma renda ou despesa individual recalcula o rateio daquele mês. O histórico não é um livro contábil imutável. Uma edição/exclusão de parcela afeta apenas o lançamento selecionado.
 - **Saldo planejado = renda − todas as despesas do mês**, pagas ou em aberto. Marcar pago quita o lançamento inteiro para todos os responsáveis; não há pagamento parcial ou conciliação bancária.
 
+## Planilhas (CSV)
+
+Em **Ajustes → Seus dados → Planilhas**:
+
+- **Exportar despesas (CSV):** todas as despesas, com data, descrição, categoria, valor, situação, quem pagou, responsáveis, divisão, parcela e se é recorrente. O arquivo usa ponto e vírgula, vírgula decimal e UTF-8 com BOM, então abre direto no Excel em português. Textos que começam com `=`, `+`, `-` ou `@` recebem um apóstrofo, para a planilha não executá-los como fórmula.
+- **Importar extrato (CSV):** um assistente lê o arquivo (UTF-8 ou Latin-1; separador `;`, `,` ou tabulação), sugere as colunas de data, descrição e valor, e mostra ao vivo o que será importado, ignorado, repetido ou com erro (com o número da linha). Valores negativos são despesas (extrato de conta); para fatura de cartão, escolha "Positivos". Entradas, estornos e valor zero são ignorados. As despesas entram **já pagas**, na categoria **Outros** e **sem "quem pagou"**, então não entram no acerto de contas; edite cada uma para mudar a categoria. Importar o mesmo extrato duas vezes não repete nada (mesma data, valor e descrição). Limites: 5 MB e 10.000 linhas.
+
 ## Buscar em todos os meses
 
 Na lista de despesas, o seletor **Este mês / Todos os meses** amplia a busca ao histórico inteiro, do vencimento mais recente ao mais antigo, com o ano na data (até 200 linhas desenhadas; o resumo conta todas as encontradas). A busca procura no título e na categoria e ignora maiúsculas e acentos ("saude" encontra "Saúde"). Se a busca do mês não achar nada, a tela oferece "Buscar em todos os meses".

@@ -565,6 +565,106 @@ Test("Search ignores case and accents and combines filters", () =>
     Equal(1, ExpenseSearch.Run(d, null, "saude", paid: true).Count); Equal(1, ExpenseSearch.Run(d, null, "", paid: false, category: "Saúde").Count); Equal(0, ExpenseSearch.Run(d, null, "xyz").Count);
 });
 
+// ---- CSV: leitura, exportação e importação de extrato ----
+// Campos entre aspas com separador, aspas duplicadas e quebra de linha; BOM, "sep=" do Excel e linhas vazias.
+Test("CSV parser handles quotes, newlines, BOM and sep line", () =>
+{
+    var t = Csv.Parse("\uFEFFa;b;c\r\n1;\"x;y\";\"say \"\"hi\"\"\"\r\n\r\n2;\"two\nlines\";z\r\n");
+    Equal(';', t.Delimiter); Equal(3, t.Rows.Count); Equal("x;y", t.Rows[1][1]); Equal("say \"hi\"", t.Rows[1][2]); Equal("two\nlines", t.Rows[2][1]);
+    Equal(',', Csv.Parse("a,b,c\n1,2,3").Delimiter); Equal('\t', Csv.Parse("a\tb\n1\t2").Delimiter); Equal(';', Csv.Parse("sep=;\r\na;b\r\n1;2").Delimiter); Equal(2, Csv.Parse("sep=;\r\na;b\r\n1;2").Rows.Count);
+    Equal(";", Csv.Parse("\"a,b\";\"c,d\"\n1;2").Delimiter.ToString()); // vírgulas dentro de aspas não decidem o separador
+    Reject(() => Csv.Parse("a;\"nunca fecha\n1;2")); Reject(() => Csv.Parse("   \r\n  \r\n"));
+});
+
+// Valores em vários formatos de extrato; texto, mais de 2 casas e ambiguidades ruins são recusados.
+Test("Statement amounts parse in common formats", () =>
+{
+    (string Text, decimal Value)[] good = [("1.234,56", 1234.56m), ("1234,56", 1234.56m), ("-1234.56", -1234.56m), ("1,234.56", 1234.56m), ("R$ 12,00", 12m), ("-R$ 12,00", -12m), ("(12,00)", -12m), ("12,00-", -12m), ("1.234", 1234m), ("12,5", 12.5m), ("1.234.567,89", 1234567.89m), ("0,99", 0.99m), ("+7,10", 7.10m), ("3", 3m)];
+    foreach (var (text, value) in good) { Equal(true, StatementImport.TryParseAmount(text, out var parsed)); Equal(value, parsed); }
+    foreach (var bad in new[] { "", "abc", "12,345,6x", "1,234567", "1.2.3,4,5", "--5", "R$", "12,3456", "-", "1e5" }) Equal(false, StatementImport.TryParseAmount(bad, out _));
+});
+
+// Datas comuns; a hora depois da data é ignorada; datas impossíveis são recusadas.
+Test("Statement dates parse in common formats", () =>
+{
+    foreach (var text in new[] { "05/11/2026", "5/11/2026", "05/11/26", "2026-11-05", "05-11-2026", "05.11.2026", "2026/11/05", "2026-11-05 10:30:00", "2026-11-05T10:30:00", "05/11/2026 08:00" })
+    { Equal(true, StatementImport.TryParseDate(text, out var d)); Equal(new DateOnly(2026, 11, 5), d); }
+    foreach (var bad in new[] { "", "31/02/2026", "ontem", "13/13/2026", "2026" }) Equal(false, StatementImport.TryParseDate(bad, out _));
+});
+
+// A exportação usa ; e vírgula decimal, BOM na gravação, e neutraliza fórmulas (=, +, -, @) com apóstrofo.
+Test("CSV export format and formula protection", () =>
+{
+    var d = Family(); var a = Bill(d, 1234.5m, SplitMode.Equal); a.Title = "=HYPERLINK(\"http://x\")"; a.Category = "Mercado"; a.Paid = true; a.PaidBy = d.People[0].Id; var b = Bill(d, 10); b.Title = "-cmd|calc; \"x\""; b.DueDate = month.AddDays(1); d.Expenses.AddRange([a, b]);
+    var text = CsvExport.Expenses(d); var rows = Csv.Parse(text).Rows;
+    Equal(3, rows.Count); Equal("Data", rows[0][0]); Equal("01/10/2026", rows[1][0]); Equal("1234,50", rows[1][3]); Equal("Pago", rows[1][4]); Equal("Ana", rows[1][5]); Equal("Em aberto", rows[2][4]);
+    Equal(true, rows[1][1].StartsWith("'=")); Equal(true, rows[2][1].StartsWith("'-")); Equal("-cmd|calc; \"x\"", rows[2][1].TrimStart('\''));
+    Equal("Ana / Bruno", rows[1][6]); Equal(true, rows[1][7].Contains("617,25"));
+    Equal(2, CsvExport.Expenses(d, month.AddMonths(1)).Split("\r\n").Length); // só o cabeçalho (mais a quebra final)
+    var path = Path.GetTempFileName(); try { CsvExport.Save(path, text); var raw = File.ReadAllBytes(path); Equal(true, raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF); } finally { File.Delete(path); }
+});
+
+// Células comuns não ganham aspas nem apóstrofo; as perigosas e as com separador sim.
+Test("CSV cell escaping", () =>
+{
+    Equal("Mercado", Csv.Cell("Mercado")); Equal("\"a;b\"", Csv.Cell("a;b")); Equal("\"a\"\"b\"", Csv.Cell("a\"b")); Equal("'=1+1", Csv.Cell("=1+1")); Equal("'@x", Csv.Cell("@x")); Equal("'+1", Csv.Cell("+1")); Equal("\" x\"", Csv.Cell(" x"));
+});
+
+// O mapeamento é sugerido pelos nomes do cabeçalho ou, sem cabeçalho, pelo conteúdo das colunas.
+Test("Statement mapping is guessed from headers and from content", () =>
+{
+    var withHeader = StatementImport.Guess(Csv.Parse("Data;Histórico;Valor;Saldo\n05/11/2026;PIX MERCADO;-45,90;1000,00"));
+    Equal(0, withHeader.DateColumn); Equal(1, withHeader.DescriptionColumn); Equal(2, withHeader.AmountColumn); Equal(true, withHeader.HasHeader);
+    var noHeader = StatementImport.Guess(Csv.Parse("05/11/2026;PADARIA;-12,00\n06/11/2026;FARMACIA;-30,50\n07/11/2026;SALARIO;3000,00"));
+    Equal(0, noHeader.DateColumn); Equal(1, noHeader.DescriptionColumn); Equal(2, noHeader.AmountColumn); Equal(false, noHeader.HasHeader);
+    var english = StatementImport.Guess(Csv.Parse("Date,Description,Amount\n2026-11-05,Coffee,-3.50"));
+    Equal(0, english.DateColumn); Equal(1, english.DescriptionColumn); Equal(2, english.AmountColumn);
+});
+
+// Negativos são despesas pagas em "Outros", sem pagador; entradas, zero e linhas ilegíveis ficam de fora (com o número da linha).
+Test("Statement plan creates paid expenses and reports the rest", () =>
+{
+    var d = Family(); var table = Csv.Parse("Data;Descrição;Valor\n05/11/2026;PIX  MERCADO ;-45,90\n06/11/2026;SALÁRIO;3000,00\n07/11/2026;ZERO;0,00\nlixo;X;-1,00\n08/11/2026;Y;abc\n09/11/2026;;-5,00");
+    var plan = StatementImport.Plan(d, table, StatementImport.Guess(table), SplitMode.Individual, [d.People[0].Id]);
+    Equal(2, plan.Expenses.Count); Equal(2, plan.IgnoredEntries); Equal(2, plan.ErrorCount); Equal("Linha 5: data ilegível", plan.Errors[0]); Equal("Linha 6: valor ilegível", plan.Errors[1]);
+    Equal("PIX MERCADO", plan.Expenses[0].Title); Equal(45.90m, plan.Expenses[0].Amount); Equal("Outros", plan.Expenses[0].Category); Equal(true, plan.Expenses[0].Paid); Equal(true, plan.Expenses[0].PaidBy is null); Equal("Sem descrição", plan.Expenses[1].Title);
+    d.Expenses.AddRange(plan.Expenses); BudgetRules.Validate(d);
+});
+
+// Fatura de cartão: positivos são compras e negativos (estornos) são ignorados.
+Test("Statement plan supports card statements (positive is expense)", () =>
+{
+    var d = Family(); var table = Csv.Parse("Data;Descrição;Valor\n05/11/2026;LOJA;100,00\n06/11/2026;ESTORNO;-20,00");
+    var plan = StatementImport.Plan(d, table, StatementImport.Guess(table) with { Sign = AmountSign.PositiveIsExpense }, SplitMode.Equal, d.People.Select(p => p.Id).ToList());
+    Equal(1, plan.Expenses.Count); Equal(100m, plan.Expenses[0].Amount); Equal(1, plan.IgnoredEntries); Equal(2, plan.Expenses[0].Participants.Count);
+});
+
+// Importar o mesmo extrato de novo não duplica nada; duas linhas iguais no arquivo valem como duas compras reais.
+Test("Statement re-import skips what already exists", () =>
+{
+    var d = Family(); var table = Csv.Parse("Data;Descrição;Valor\n05/11/2026;CAFE;-5,00\n05/11/2026;CAFE;-5,00\n06/11/2026;PAO;-7,00");
+    var map = StatementImport.Guess(table); var me = new List<Guid> { d.People[0].Id };
+    var first = StatementImport.Plan(d, table, map, SplitMode.Individual, me); Equal(3, first.Expenses.Count); Equal(0, first.Duplicates);
+    d.Expenses.AddRange(first.Expenses); var second = StatementImport.Plan(d, table, map, SplitMode.Individual, me); Equal(0, second.Expenses.Count); Equal(3, second.Duplicates);
+    d.Expenses.RemoveAt(0); Equal(1, StatementImport.Plan(d, table, map, SplitMode.Individual, me).Expenses.Count); // faltava uma: só ela volta
+});
+
+// Responsável inválido e arquivos acima dos limites são recusados; a decodificação cai para Latin-1 quando não é UTF-8.
+Test("Statement import limits and encoding", () =>
+{
+    var d = Family(); var table = Csv.Parse("Data;Descrição;Valor\n05/11/2026;X;-1,00");
+    Reject(() => StatementImport.Plan(d, table, StatementImport.Guess(table), SplitMode.Individual, [])); Reject(() => StatementImport.Plan(d, table, StatementImport.Guess(table), SplitMode.Individual, d.People.Select(p => p.Id).ToList())); Reject(() => StatementImport.Plan(d, table, StatementImport.Guess(table), SplitMode.Equal, [Guid.NewGuid()]));
+    Reject(() => Csv.Parse("a\n" + string.Concat(Enumerable.Repeat("1\n", Csv.MaxRows + 1))));
+    var path = Path.GetTempFileName();
+    try
+    {
+        File.WriteAllBytes(path, System.Text.Encoding.Latin1.GetBytes("Data;Descrição;Valor\n05/11/2026;Farmácia;-1,00")); Equal(true, StatementImport.ReadFile(path).Contains("Farmácia"));
+        File.WriteAllBytes(path, new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes("Descrição")).ToArray()); Equal(true, StatementImport.ReadFile(path).Contains("Descrição"));
+        using (var stream = File.OpenWrite(path)) stream.SetLength(StatementImport.MaxBytes + 1); Reject(() => StatementImport.ReadFile(path));
+    }
+    finally { File.Delete(path); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

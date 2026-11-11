@@ -92,6 +92,13 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                 var dlg = Active(); using var dshot = new RenderTargetBitmap(new PixelSize((int)dlg.Bounds.Width, (int)dlg.Bounds.Height), new Vector(96, 96));
                 dshot.Render(dlg); dshot.Save(Path.Combine(shotsDirectory, "recorrentes.png"), PngBitmapEncoderOptions.Default);
                 await Click("Fechar");
+                // Assistente de importação de extrato, com um arquivo de demonstração (entradas, saídas e uma linha com erro).
+                var demo = Path.Combine(directory, "extrato-demo.csv");
+                File.WriteAllText(demo, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA SAO JORGE;-12,50\r\n03/11/2026;SALARIO EMPRESA LTDA;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-87,30\r\n05/11/2026;POSTO IPIRANGA;-210,00\r\n06/11/2026;AMAZON MARKETPLACE;-1.234,56\r\nontem;LINHA RUIM;-1,00\r\n", new System.Text.UTF8Encoding(true));
+                _ = ((MainWindow)main).ImportStatementFromFile(demo); await Task.Delay(400);
+                var wiz = Active(); using var wshot = new RenderTargetBitmap(new PixelSize((int)wiz.Bounds.Width, (int)wiz.Bounds.Height), new Vector(96, 96));
+                wshot.Render(wiz); wshot.Save(Path.Combine(shotsDirectory, "importar-extrato.png"), PngBitmapEncoderOptions.Default);
+                await Click("Cancelar");
                 exitCode = 0; return;
             }
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
@@ -193,6 +200,19 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             await Click("Despesas", main); await Click("Todos os meses", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Busca em todos os meses") == true), "All-months search mode opens");
             await Click("Este mês", main);
+            // Cenário 10c: importar um extrato em CSV (o assistente é aberto direto no arquivo, sem o seletor nativo).
+            var statement = Path.Combine(directory, "extrato.csv");
+            File.WriteAllText(statement, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA;-12,50\r\n03/11/2026;SALARIO;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-1.234,56\r\n", new System.Text.UTF8Encoding(true));
+            var before = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Count;
+            _ = ((MainWindow)main).ImportStatementFromFile(statement); await Task.Delay(500);
+            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("2 despesas serão importadas") == true), "Import wizard previews the statement");
+            await Click("Importar");
+            var imported = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(imported.Expenses.Count == before + 2 && imported.Expenses.Any(e => e.Title == "FARMACIA CENTRAL" && e.Amount == 1234.56m && e.Paid && e.PaidBy is null), "Statement import creates paid expenses");
+            // Importar o mesmo arquivo outra vez não repete nada: o botão Importar fica desligado e o aviso mostra as repetidas.
+            _ = ((MainWindow)main).ImportStatementFromFile(statement); await Task.Delay(500);
+            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !FindButton(Active(), "Importar").IsEnabled, "Re-importing the same statement finds only duplicates");
+            await Click("Cancelar");
             // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
             await Click("Visão geral", main); await Click("Metas", main);
             Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Click("Salvar metas");
