@@ -17,9 +17,9 @@ public static class BudgetMigrations
         // A versão 1 não conhecia recorrências: um arquivo que as traga com esse número de versão está adulterado ou corrompido.
         if (data.Version == 1)
         {
-            if (data.Recurrences is { Count: > 0 } || data.Settlements is { Count: > 0 } || data.CustomCategories is { Count: > 0 } || data.Expenses?.Any(e => e is not null && (e.RecurrenceId is not null || e.RecurrenceMonth is not null || e.PaidBy is not null)) == true)
+            if (data.Recurrences is { Count: > 0 } || data.Settlements is { Count: > 0 } || data.CustomCategories is { Count: > 0 } || data.Goals is { Count: > 0 } || data.Expenses?.Any(e => e is not null && (e.RecurrenceId is not null || e.RecurrenceMonth is not null || e.PaidBy is not null)) == true)
                 throw new BudgetException("O arquivo declara a versão 1, mas contém dados que só existem a partir da versão 2 (recorrências, quem pagou ou acertos). Ele pode estar corrompido.");
-            data.Recurrences = []; data.Settlements = []; data.CustomCategories = [];
+            data.Recurrences = []; data.Settlements = []; data.CustomCategories = []; data.Goals = [];
             data.Version = 2;
         }
     }

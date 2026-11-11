@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -69,25 +70,71 @@ public sealed partial class MainWindow
         var box = new Border { Child = Text(text, "warn") }; box.Classes.Add("notice"); return box;
     }
     /// <summary>
-    /// "Para onde vai o dinheiro": categorias com maior gasto, barra fina e percentual. Muitas categorias pequenas viram "Outras (n)".
+    /// "Para onde vai o dinheiro": categorias com barra fina. Categorias com meta mostram "R$ gasto de R$ meta" e a barra acompanha a meta
+    /// (alerta a partir de 80%, vermelha acima de 100%); as demais mostram o percentual do total. Muitas categorias pequenas viram "Outras (n)".
     /// </summary>
-    private static Control CategoriesPanel(IReadOnlyList<Expense> expenses, decimal total)
+    private Control CategoriesPanel(IReadOnlyList<Expense> expenses, decimal total)
     {
-        var panel = Stack(Text("Para onde vai o dinheiro", "section")); panel.Spacing = 12;
-        if (expenses.Count == 0) { panel.Children.Add(Text("Nenhuma despesa neste mês. Use “Nova despesa” para começar.", "muted")); return panel; }
-        var groups = expenses.GroupBy(e => e.Category).Select(g => (Name: g.Key, Amount: g.Sum(e => e.Amount))).OrderByDescending(g => g.Amount).ToList();
-        // Com 7 ou mais categorias, mostra as 5 maiores e junta o resto, mantendo a lista curta e legível.
-        if (groups.Count >= 7) { var rest = groups.Skip(5).ToList(); groups = [.. groups.Take(5), ($"Outras ({rest.Count})", rest.Sum(g => g.Amount))]; }
-        foreach (var (name, amount) in groups)
+        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var goalsButton = Button("Metas", () => _ = Run(ManageGoals), "link", "Target"); Grid.SetColumn(goalsButton, 1); heading.Children.Add(Text("Para onde vai o dinheiro", "section")); heading.Children.Add(goalsButton);
+        var panel = Stack(heading); panel.Spacing = 12;
+        var goals = GoalEngine.Progress(data, month).ToDictionary(g => g.Category);
+        if (expenses.Count == 0 && goals.Count == 0) { panel.Children.Add(Text("Nenhuma despesa neste mês. Use “Nova despesa” para começar. Em “Metas” você define um limite por categoria.", "muted")); return panel; }
+        var spent = expenses.GroupBy(e => e.Category).Select(g => (Name: g.Key, Amount: g.Sum(e => e.Amount))).ToList();
+        // Categorias com meta aparecem sempre (mesmo sem gasto no mês); as outras entram pelo gasto e podem ser agrupadas.
+        var rows = goals.Values.Select(g => (Name: g.Category, Amount: g.Spent)).ToList();
+        var others = spent.Where(c => !goals.ContainsKey(c.Name)).OrderByDescending(c => c.Amount).ToList();
+        var keep = Math.Max(2, 6 - rows.Count);
+        if (others.Count > keep + 1) { var rest = others.Skip(keep).ToList(); others = [.. others.Take(keep), ($"Outras ({rest.Count})", rest.Sum(c => c.Amount))]; }
+        rows.AddRange(others);
+        foreach (var (name, amount) in rows.OrderByDescending(r => !r.Name.StartsWith("Outras (") ? 1 : 0).ThenByDescending(r => r.Amount))
         {
-            var share = total == 0 ? 0 : (double)(amount / total * 100);
-            var values = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-            values.Children.Add(Text($"{share:0}% ·", "muted")); values.Children.Add(new TextBlock { Text = Money.Format(amount), FontWeight = FontWeight.Medium, Classes = { "num" } });
+            goals.TryGetValue(name, out var goal);
+            var values = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 }; double share; string[] barClass = [];
+            if (goal is null)
+            {
+                share = total == 0 ? 0 : (double)(amount / total * 100); values.Children.Add(Text($"{share:0}% ·", "muted"));
+                values.Children.Add(new TextBlock { Text = Money.Format(amount), FontWeight = FontWeight.Medium, Classes = { "num" } });
+            }
+            else
+            {
+                share = (double)Math.Min(100m, goal.Ratio * 100); barClass = goal.Level switch { GoalLevel.Over => ["over"], GoalLevel.Near => ["warn"], _ => [] };
+                var used = new TextBlock { Text = Money.Format(amount), FontWeight = FontWeight.Medium, Classes = { "num" } }; if (goal.Level == GoalLevel.Over) used.Classes.Add("negative");
+                values.Children.Add(used); values.Children.Add(Text($"de {Money.Format(goal.Goal)}", "muted"));
+            }
             var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; Grid.SetColumn(values, 1); line.Children.Add(new TextBlock { Text = name }); line.Children.Add(values);
-            // A cor da barra vem do estilo ProgressBar (token de destaque). Fina e sem rótulo, como no desenho.
-            var bar = Stack(line, new ProgressBar { Value = share, Maximum = 100, Height = 5 }); bar.Spacing = 6; panel.Children.Add(bar);
+            // A cor da barra vem do estilo ProgressBar (token de destaque) e das classes de alerta; fina e sem rótulo.
+            var bar = new ProgressBar { Value = share, Maximum = 100, Height = 5 }; foreach (var c in barClass) bar.Classes.Add(c);
+            var item = Stack(line, bar); item.Spacing = 6; panel.Children.Add(item);
         }
         return panel;
+    }
+    /// <summary>
+    /// Diálogo de metas: um campo por categoria; vazio significa "sem meta". A meta vale para todos os meses.
+    /// </summary>
+    private async Task ManageGoals()
+    {
+        var inputs = BudgetRules.AllCategories(data).Select(c => (Name: c, Box: Input(data.Goals.FirstOrDefault(g => g.Category == c)?.Amount.ToString("0.00", Money.Culture), "Sem meta", 12))).ToList();
+        var rows = new StackPanel { Spacing = 8 };
+        foreach (var (name, box) in inputs)
+        {
+            AutomationProperties.SetName(box, "Meta de " + name);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,190") }; var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center }; Grid.SetColumn(box, 1); row.Children.Add(label); row.Children.Add(box); rows.Children.Add(row);
+        }
+        var error = Text("", "error");
+        var panel = Stack(Heading("Metas por categoria", "Defina quanto quer gastar por mês em cada categoria. A meta vale para todos os meses; deixe em branco para não ter meta."), rows, error);
+        var dialog = Dialog("Metas por categoria", panel, 620); dialog.Height = 700;
+        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar metas", () =>
+        {
+            try
+            {
+                // Lê e valida tudo antes de gravar: uma meta com erro não deixa salvar as outras pela metade.
+                var parsed = inputs.Select(i => (i.Name, Amount: string.IsNullOrWhiteSpace(i.Box.Text) ? (decimal?)null : Money.Parse(i.Box.Text, "Meta de " + i.Name, true))).ToList();
+                Commit(d => { foreach (var (name, amount) in parsed) { if (amount is { } value) GoalEngine.Set(d, name, value); else GoalEngine.Clear(d, name); } }); dialog.Close();
+            }
+            catch (Exception ex) { error.Text = FriendlyError(ex); }
+        }, "primary")));
+        await dialog.ShowDialog(this);
     }
     /// <summary>
     /// "Divisão por pessoa": avatar, renda, sobra e quanto da renda está comprometido com as despesas do mês.

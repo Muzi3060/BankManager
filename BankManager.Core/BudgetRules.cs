@@ -20,7 +20,7 @@ public static class BudgetRules
     public static void Validate(BudgetData data)
     {
         if (data.Version != BudgetData.CurrentVersion) throw new BudgetException("Versão de arquivo não suportada.");
-        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.Settlements is null || data.Settlements.Count > 100_000 || data.CustomCategories is null || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
+        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.Settlements is null || data.Settlements.Count > 100_000 || data.CustomCategories is null || data.Goals is null || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
             throw new BudgetException("Arquivo inválido ou com registros demais.");
         // Conjuntos detectam repetições e permitem conferir referências de rendas e despesas às pessoas.
         var ids = new HashSet<Guid>();
@@ -50,6 +50,13 @@ public static class BudgetRules
         {
             Text(name, "Categoria", CategoryEngine.MaxLength);
             if (name != name.Trim() || !categoryNames.Add(name)) throw new BudgetException("Categoria própria inválida ou com nome repetido.");
+        }
+        // Metas: uma por categoria existente, com limite positivo.
+        var goalCategories = new HashSet<string>();
+        foreach (var goal in data.Goals)
+        {
+            if (goal is null || !categoryNames.Contains(goal.Category) || !goalCategories.Add(goal.Category.ToUpperInvariant())) throw new BudgetException("Meta inválida: use uma categoria existente, uma meta por categoria.");
+            Money.Validate(goal.Amount, "Meta", true);
         }
         // Um acerto liga duas pessoas diferentes que existem, com valor positivo.
         var settlementIds = new HashSet<Guid>();

@@ -63,6 +63,10 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 
 As 8 categorias padrão (Moradia, Mercado, Transporte, Saúde, Educação, Lazer, Serviços e Outros) são fixas. Em **Ajustes → Categorias** você cria as suas (até 40, nomes de até 30 caracteres, sem repetir um nome existente, ignorando maiúsculas). Renomear uma categoria atualiza todas as despesas e recorrências que a usam. Excluir só é possível quando nada a usa. Categorias próprias entram nos filtros, no editor e nas previsões.
 
+## Metas por categoria
+
+Em **Visão geral → Metas**, defina um limite mensal para cada categoria (campo vazio = sem meta). A meta é única por categoria e vale para todos os meses; mudá-la muda também a leitura dos meses passados. Na visão geral, cada categoria com meta mostra "R$ gasto de R$ meta", e a barra acompanha a meta: cor de destaque abaixo de 80%, âmbar de 80% a 100% e vermelha acima. O gasto considera todas as despesas do mês na categoria, pagas ou em aberto. Renomear uma categoria leva a meta junto; excluir a categoria remove a meta.
+
 ## Despesas recorrentes
 
 Marcar **Repetir todo mês** guarda um modelo (descrição, categoria, valor, dia, divisão e responsáveis) e cria uma despesa comum para cada mês, do vencimento informado até 12 meses à frente. Ao abrir o aplicativo, a janela avança e os meses novos são criados; nada é duplicado.

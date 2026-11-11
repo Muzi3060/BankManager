@@ -98,6 +98,16 @@ public sealed record Expense
     public DateOnly? RecurrenceMonth { get; set; }
 }
 /// <summary>
+/// Limite mensal de gasto em uma categoria (por exemplo, Mercado: R$ 800). Vale para todos os meses; há no máximo uma meta por categoria.
+/// </summary>
+public sealed record CategoryGoal
+{
+    /// <summary>Categoria (padrão ou própria) à qual a meta se aplica.</summary>
+    public string Category { get; set; } = "";
+    /// <summary>Limite mensal em reais, positivo e com até duas casas decimais.</summary>
+    public decimal Amount { get; set; }
+}
+/// <summary>
 /// Pagamento feito entre duas pessoas para quitar (total ou parcialmente) o que uma deve à outra.
 /// Abate o saldo calculado por <see cref="SettlementEngine"/>; não é uma despesa.
 /// </summary>
@@ -160,6 +170,8 @@ public sealed record BudgetData
     public List<Recurrence> Recurrences { get; set; } = [];
     /// <summary>Categorias criadas pelo usuário, além das padrão. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
     public List<string> CustomCategories { get; set; } = [];
+    /// <summary>Metas mensais por categoria. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<CategoryGoal> Goals { get; set; } = [];
     /// <summary>Acertos de contas já feitos entre pessoas. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
     public List<Settlement> Settlements { get; set; } = [];
 }

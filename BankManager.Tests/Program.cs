@@ -505,6 +505,47 @@ Test("Custom categories persist; older files still open", () =>
     finally { Directory.Delete(path, true); }
 });
 
+// ---- Metas por categoria ----
+// Gasto, meta e nível: 80% é "perto", exatamente 100% ainda é "perto", acima de 100% é "acima".
+Test("Goal progress levels", () =>
+{
+    var d = Family(); GoalEngine.Set(d, "Mercado", 1000);
+    GoalProgress At(decimal spent) { d.Expenses.Clear(); if (spent > 0) { var e = Bill(d, spent); e.Category = "Mercado"; d.Expenses.Add(e); } return GoalEngine.Progress(d, month).Single(); }
+    Equal(GoalLevel.Ok, At(0).Level); Equal(GoalLevel.Ok, At(799.99m).Level); Equal(GoalLevel.Near, At(800).Level); Equal(GoalLevel.Near, At(1000).Level); Equal(GoalLevel.Over, At(1000.01m).Level);
+    Equal(0.5m, At(500).Ratio); Equal(500m, At(500).Spent);
+});
+
+// Só despesas do mês e da categoria contam (pagas ou não); definir de novo troca o valor e limpar remove.
+Test("Goal counts the month and category only", () =>
+{
+    var d = Family(); GoalEngine.Set(d, "Mercado", 800); GoalEngine.Set(d, "Mercado", 600); Equal(1, d.Goals.Count); Equal(600m, d.Goals[0].Amount);
+    var a = Bill(d, 100); a.Category = "Mercado"; var b = Bill(d, 50); b.Category = "Mercado"; b.Paid = true; var other = Bill(d, 70); other.Category = "Lazer"; var later = Bill(d, 90); later.Category = "Mercado"; later.DueDate = month.AddMonths(1);
+    d.Expenses.AddRange([a, b, other, later]); Equal(150m, GoalEngine.Progress(d, month)[0].Spent);
+    GoalEngine.Clear(d, "Mercado"); Equal(0, d.Goals.Count);
+});
+
+// Meta inválida (categoria inexistente, valor zero ou duplicada) é recusada; renomear acompanha e excluir a categoria remove a meta.
+Test("Goal validation and category interplay", () =>
+{
+    var d = Family(); Reject(() => GoalEngine.Set(d, "Inexistente", 100)); Reject(() => GoalEngine.Set(d, "Mercado", 0));
+    d.Goals = [new() { Category = "Mercado", Amount = 10 }, new() { Category = "MERCADO", Amount = 20 }]; Reject(() => BudgetRules.Validate(d));
+    d = Family(); CategoryEngine.Add(d, "Pets"); GoalEngine.Set(d, "Pets", 200); CategoryEngine.Rename(d, "Pets", "Bichos"); Equal("Bichos", d.Goals[0].Category); BudgetRules.Validate(d);
+    CategoryEngine.Remove(d, "Bichos"); Equal(0, d.Goals.Count);
+});
+
+// Metas persistem; arquivos anteriores sem o campo abrem; v1 com metas é recusado.
+Test("Goals persist; older files open; v1 with goals rejected", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); GoalEngine.Set(d, "Mercado", 800); store.Save(d); Equal(800m, store.Load().Goals[0].Amount);
+        var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node.AsObject().Remove("Goals"); File.WriteAllText(store.FilePath, node.ToJsonString()); Equal(0, store.Load().Goals.Count);
+        node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node["Version"] = 1; node.AsObject().Remove("Recurrences"); File.WriteAllText(store.FilePath, node.ToJsonString()); Reject(() => store.Load());
+    }
+    finally { Directory.Delete(path, true); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

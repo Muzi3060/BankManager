@@ -33,6 +33,7 @@ public static class CategoryEngine
         data.CustomCategories[index] = newName;
         foreach (var expense in data.Expenses.Where(e => e.Category == oldName)) expense.Category = newName;
         foreach (var recurrence in data.Recurrences.Where(r => r.Category == oldName)) recurrence.Category = newName;
+        foreach (var goal in data.Goals.Where(g => g.Category == oldName)) goal.Category = newName;
     }
     /// <summary>
     /// Exclui uma categoria própria, desde que nenhuma despesa nem recorrência a use.
@@ -42,7 +43,8 @@ public static class CategoryEngine
         if (!data.CustomCategories.Contains(name)) throw new BudgetException("As categorias padrão não podem ser excluídas.");
         var expenses = data.Expenses.Count(e => e.Category == name); var recurrences = data.Recurrences.Count(r => r.Category == name);
         if (expenses + recurrences > 0) throw new BudgetException($"Esta categoria é usada por {expenses} despesa(s) e {recurrences} recorrência(s). Mude a categoria delas antes de excluí-la.");
-        data.CustomCategories.Remove(name);
+        // A meta de uma categoria excluída perde o sentido e sai junto.
+        data.CustomCategories.Remove(name); data.Goals.RemoveAll(g => g.Category == name);
     }
     private static string Clean(string? name)
     {

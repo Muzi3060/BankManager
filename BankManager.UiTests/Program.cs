@@ -38,6 +38,8 @@ static BudgetData DemoData()
     // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
     data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
     RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true;
+    // Metas: Mercado perto do limite (84%), Saúde acima (107%) e Lazer dentro (56%).
+    GoalEngine.Set(data, "Mercado", 1100); GoalEngine.Set(data, "Saúde", 600); GoalEngine.Set(data, "Lazer", 100);
     // Quem pagou as contas já quitadas: o cartão de acerto mostra o saldo entre Ana e Bruno.
     data.Expenses.First(e => e.RecurrenceMonth == first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Aluguel").PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Plano de saúde").PaidBy = bruno.Id;
     return data;
@@ -187,6 +189,12 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             saved = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(saved.Recurrences[0].EndMonth == Dates.Month(DateOnly.FromDateTime(DateTime.Today)) && saved.Expenses.Count(e => e.RecurrenceId is not null) == 1, "Ending a recurrence keeps only the selected month");
             await Click("Fechar");
+            // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
+            await Click("Visão geral", main); await Click("Metas", main);
+            Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Click("Salvar metas");
+            var goalSaved = LocalStore.Read(Path.Combine(directory, "financas.json"));
+            Check(goalSaved.Goals.Count == 1 && goalSaved.Goals[0].Category == "Mercado" && goalSaved.Goals[0].Amount == 500m, "Goal is saved from the dialog");
+            Check(main.GetVisualDescendants().OfType<ProgressBar>().Any(b => b.Classes.Contains("over")), "Goal over the limit is highlighted");
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.
             var output = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT");
