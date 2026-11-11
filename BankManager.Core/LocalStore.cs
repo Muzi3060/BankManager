@@ -59,6 +59,8 @@ public sealed class LocalStore : IDisposable
         BudgetData data;
         try { data = JsonSerializer.Deserialize<BudgetData>(stream, JsonOptions) ?? throw new BudgetException("Arquivo vazio."); }
         catch (JsonException) { throw new BudgetException("O arquivo não é um backup válido do BankManager. Os dados atuais foram preservados."); }
+        // Arquivos de versões anteriores são atualizados em memória; o arquivo em disco só muda no próximo salvamento.
+        BudgetMigrations.ToCurrent(data);
         // A leitura só entrega registros depois de validar as regras de negócio e todas as referências.
         BudgetRules.Validate(data);
         return data;

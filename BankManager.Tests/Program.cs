@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using BankManager.Core;
 
 // Executável de testes sem framework externo: registra cenários e retorna código não zero se algum falhar.
@@ -144,7 +145,7 @@ Test("Malformed and unsupported JSON cannot import", () =>
     var path = Path.GetTempFileName();
     try
     {
-        foreach (var json in new[] { "{", "null", "{\"Version\":2}", "{\"UnknownField\":true}", "{\"People\":[null]}" }) { File.WriteAllText(path, json); Reject(() => LocalStore.Read(path)); }
+        foreach (var json in new[] { "{", "null", "{\"Version\":3}", "{\"Version\":0}", "{\"UnknownField\":true}", "{\"People\":[null]}" }) { File.WriteAllText(path, json); Reject(() => LocalStore.Read(path)); }
         using (var stream = File.OpenWrite(path)) stream.SetLength(21 * 1024 * 1024);
         Reject(() => LocalStore.Read(path));
     }
@@ -199,6 +200,128 @@ Test("Saving settings leaves financial data untouched", () =>
         SettingsStore.Save(path, new AppSettings { Theme = ThemePreference.Light });
         Equal(true, before.SequenceEqual(File.ReadAllBytes(store.FilePath)));
         Equal(false, File.ReadAllText(store.FilePath).Contains("Theme"));
+    }
+    finally { Directory.Delete(path, true); }
+});
+
+// ---- Esquema v2: despesas recorrentes ----
+var today = new DateOnly(2026, 11, 11);
+// Modelo de aluguel que vence no dia 31, útil para testar meses curtos; começa em janeiro de 2026.
+Recurrence Rent(BudgetData d, int day = 31, DateOnly? start = null) => new() { Title = "Aluguel", Category = "Moradia", Amount = 1000, DayOfMonth = day, Split = SplitMode.Equal, Participants = d.People.Select(p => p.Id).ToList(), StartMonth = start ?? new DateOnly(2026, 1, 1) };
+// Reproduz um arquivo real da versão 1: sem a lista de recorrências e sem os campos novos das despesas.
+string V1Json(BudgetData d)
+{
+    var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node["Version"] = 1; node.AsObject().Remove("Recurrences");
+    foreach (var e in node["Expenses"]!.AsArray()) { e!.AsObject().Remove("RecurrenceId"); e.AsObject().Remove("RecurrenceMonth"); }
+    return node.ToJsonString();
+}
+
+// Um arquivo v1 é lido sem perda, ganha a versão 2 e, no primeiro salvamento, o v1 original vira o backup.
+Test("Version 1 file migrates to 2 without losing data", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(path);
+    try
+    {
+        var d = Family(); d.Expenses.Add(Bill(d, 800)); File.WriteAllText(Path.Combine(path, "financas.json"), V1Json(d));
+        using var store = new LocalStore(path); var loaded = store.Load();
+        Equal(2, loaded.Version); Equal(2, loaded.People.Count); Equal(800m, loaded.Expenses[0].Amount); Equal(0, loaded.Recurrences.Count);
+        store.Save(loaded);
+        Equal(1, (int)JsonNode.Parse(File.ReadAllText(store.BackupPath))!["Version"]!); Equal(2, (int)JsonNode.Parse(File.ReadAllText(store.FilePath))!["Version"]!);
+        Equal(800m, store.Load().Expenses[0].Amount);
+    }
+    finally { Directory.Delete(path, true); }
+});
+
+// Um arquivo que diz ser v1 mas traz recorrências está adulterado: é recusado em vez de adivinhado.
+Test("Version 1 file with recurrences is rejected", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d)); var path = Path.GetTempFileName();
+    try { var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node["Version"] = 1; File.WriteAllText(path, node.ToJsonString()); Reject(() => LocalStore.Read(path)); }
+    finally { File.Delete(path); }
+});
+
+// Do mês inicial ao horizonte (12 meses à frente), dia 31 vira o último dia dos meses curtos, e repetir não duplica nada.
+Test("Recurrence generates months up to the horizon and is idempotent", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d));
+    Equal(23, RecurrenceEngine.Generate(d, today)); // jan/2026 a nov/2027
+    Equal(0, RecurrenceEngine.Generate(d, today));
+    var due = d.Expenses.ToDictionary(e => e.RecurrenceMonth!.Value, e => e.DueDate);
+    Equal(new DateOnly(2026, 2, 28), due[new DateOnly(2026, 2, 1)]); Equal(new DateOnly(2026, 3, 31), due[new DateOnly(2026, 3, 1)]); Equal(new DateOnly(2027, 11, 30), due[new DateOnly(2027, 11, 1)]);
+    Equal(false, d.Expenses.Any(e => e.Paid)); BudgetRules.Validate(d);
+    // O rateio das ocorrências usa as regras de sempre: a soma fecha com o valor da despesa.
+    Equal(1000m, FinanceEngine.Allocate(d, d.Expenses[0]).Amounts.Values.Sum());
+});
+
+// Com o passar do tempo, a janela avança e só os meses novos são criados.
+Test("Recurrence tops up as time passes", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today);
+    Equal(2, RecurrenceEngine.Generate(d, new DateOnly(2027, 1, 5))); // dez/2027 e jan/2028
+    Equal(25, d.Expenses.Count);
+});
+
+// O horizonte respeita o limite de 2099 e um início distante ainda cria o primeiro mês.
+Test("Horizon clamp and far-future start", () =>
+{
+    Equal(new DateOnly(2099, 12, 1), RecurrenceEngine.Horizon(new DateOnly(2099, 6, 15)));
+    var d = Family(); d.Recurrences.Add(Rent(d, 5, new DateOnly(2030, 1, 1)));
+    Equal(1, RecurrenceEngine.Generate(d, today)); Equal(new DateOnly(2030, 1, 5), d.Expenses[0].DueDate);
+});
+
+// Excluir um mês de uma recorrência registra o mês como ignorado: a geração não o recria.
+Test("Deleted occurrence is not regenerated", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today);
+    var march = d.Expenses.First(e => e.RecurrenceMonth == new DateOnly(2026, 3, 1)); RecurrenceEngine.RemoveExpense(d, march.Id);
+    Equal(0, RecurrenceEngine.Generate(d, today)); Equal(22, d.Expenses.Count); Equal(1, d.Recurrences[0].SkippedMonths.Count); BudgetRules.Validate(d);
+});
+
+// Encerrar remove só o que está em aberto depois do mês final; o que já foi pago permanece no histórico.
+Test("Ending a recurrence keeps paid history", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today);
+    var december = d.Expenses.First(e => e.RecurrenceMonth == new DateOnly(2026, 12, 1)); december.Paid = true;
+    RecurrenceEngine.End(d, d.Recurrences[0].Id, new DateOnly(2026, 11, 20));
+    Equal(new DateOnly(2026, 11, 1), d.Recurrences[0].EndMonth!.Value); Equal(11 + 1, d.Expenses.Count); // jan..nov + dez pago
+    Equal(0, RecurrenceEngine.Generate(d, today)); BudgetRules.Validate(d);
+    Reject(() => RecurrenceEngine.End(d, d.Recurrences[0].Id, new DateOnly(2026, 12, 1)));
+});
+
+// Não se encerra antes do início; remover o modelo mantém os lançamentos como despesas comuns.
+Test("End before start is rejected and removing the model keeps expenses", () =>
+{
+    var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today);
+    Reject(() => RecurrenceEngine.End(d, d.Recurrences[0].Id, new DateOnly(2025, 12, 1)));
+    var count = d.Expenses.Count; RecurrenceEngine.Remove(d, d.Recurrences[0].Id);
+    Equal(count, d.Expenses.Count); Equal(true, d.Expenses.All(e => e.RecurrenceId is null && e.RecurrenceMonth is null)); BudgetRules.Validate(d);
+});
+
+// Dados de recorrência inconsistentes nunca são salvos nem importados.
+Test("Invalid recurrence data is rejected", () =>
+{
+    BudgetData Fresh() { var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today); return d; }
+    var d = Fresh(); d.Recurrences[0].DayOfMonth = 0; Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Recurrences[0].DayOfMonth = 32; Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Recurrences[0].EndMonth = new DateOnly(2025, 12, 1); Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Recurrences[0].StartMonth = new DateOnly(2026, 1, 15); Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Recurrences[0].Participants = []; Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Recurrences[0].Amount = 0; Reject(() => BudgetRules.Validate(d));
+    d = Fresh(); d.Expenses[0].RecurrenceId = Guid.NewGuid(); Reject(() => BudgetRules.Validate(d));          // modelo inexistente
+    d = Fresh(); d.Expenses[0].RecurrenceMonth = null; Reject(() => BudgetRules.Validate(d));                  // vínculo pela metade
+    d = Fresh(); d.Expenses[1].RecurrenceMonth = d.Expenses[0].RecurrenceMonth; Reject(() => BudgetRules.Validate(d)); // mês repetido
+    d = Fresh(); d.Expenses[0].InstallmentCount = 2; d.Expenses[0].InstallmentGroup = Guid.NewGuid(); Reject(() => BudgetRules.Validate(d)); // recorrente não parcela
+});
+
+// A recorrência sobrevive a gravar e ler (inclusive os meses ignorados).
+Test("Recurrence persistence roundtrip", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); d.Recurrences.Add(Rent(d)); RecurrenceEngine.Generate(d, today);
+        RecurrenceEngine.RemoveExpense(d, d.Expenses[3].Id); store.Save(d); var back = store.Load();
+        Equal(1, back.Recurrences.Count); Equal(22, back.Expenses.Count); Equal(1, back.Recurrences[0].SkippedMonths.Count); Equal(0, RecurrenceEngine.Generate(back, today));
     }
     finally { Directory.Delete(path, true); }
 });
