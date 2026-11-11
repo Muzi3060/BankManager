@@ -64,7 +64,7 @@ public sealed record Expense
     public Guid Id { get; init; } = Guid.NewGuid();
     /// <summary>Descrição curta da conta ou compra, usada na listagem e na busca.</summary>
     public string Title { get; set; } = "";
-    /// <summary>Uma das categorias admitidas por BudgetRules.Categories.</summary>
+    /// <summary>Uma categoria padrão (<see cref="BudgetRules.Categories"/>) ou uma criada pelo usuário (<see cref="BudgetData.CustomCategories"/>).</summary>
     public string Category { get; set; } = "Outros";
     /// <summary>Data de vencimento, que determina o mês do lançamento e a renda usada no rateio.</summary>
     public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
@@ -158,6 +158,8 @@ public sealed record BudgetData
     public List<Expense> Expenses { get; set; } = [];
     /// <summary>Modelos de despesas mensais. Ausente nos arquivos da versão 1, onde equivale a uma lista vazia.</summary>
     public List<Recurrence> Recurrences { get; set; } = [];
+    /// <summary>Categorias criadas pelo usuário, além das padrão. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<string> CustomCategories { get; set; } = [];
     /// <summary>Acertos de contas já feitos entre pessoas. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
     public List<Settlement> Settlements { get; set; } = [];
 }

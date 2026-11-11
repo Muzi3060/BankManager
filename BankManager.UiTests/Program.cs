@@ -153,6 +153,9 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast screen renders");
             await Click("Ajustes", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "Settings screen renders");
+            // Cenário 6b: categorias próprias são criadas em Ajustes e ficam disponíveis no editor de despesas.
+            Active().GetVisualDescendants().OfType<TextBox>().First(i => i.PlaceholderText == "Nova categoria").Text = "Pets"; await Click("Adicionar categoria", main);
+            Check(LocalStore.Read(Path.Combine(directory, "financas.json")).CustomCategories.SequenceEqual(["Pets"]), "Custom category is created in Settings");
             // Cenário 7: o tema muda na hora, vai para settings.json e não toca nas finanças.
             var financeBefore = File.ReadAllBytes(Path.Combine(directory, "financas.json"));
             await Click("Tema escuro", main);

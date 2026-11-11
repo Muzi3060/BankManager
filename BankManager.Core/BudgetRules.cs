@@ -10,13 +10,17 @@ public static class BudgetRules
     /// </summary>
     public static readonly string[] Categories = ["Moradia", "Mercado", "Transporte", "Saúde", "Educação", "Lazer", "Serviços", "Outros"];
     /// <summary>
+    /// Categorias disponíveis: as padrão seguidas das criadas pelo usuário.
+    /// </summary>
+    public static List<string> AllCategories(BudgetData data) => [.. Categories, .. data.CustomCategories];
+    /// <summary>
     /// Verifica versão, limites, unicidade, referências e coerência financeira, lançando BudgetException na primeira falha.
     /// </summary>
     /// <remarks>Não corrige registros nem altera o orçamento recebido. Campos são verificados mesmo que a interface já os tenha validado.</remarks>
     public static void Validate(BudgetData data)
     {
         if (data.Version != BudgetData.CurrentVersion) throw new BudgetException("Versão de arquivo não suportada.");
-        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.Settlements is null || data.Settlements.Count > 100_000 || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
+        if (data.People is null || data.Incomes is null || data.Expenses is null || data.Recurrences is null || data.Recurrences.Count > 1_000 || data.Settlements is null || data.Settlements.Count > 100_000 || data.CustomCategories is null || data.People.Count > 200 || data.Incomes.Count > 100_000 || data.Expenses.Count > 100_000)
             throw new BudgetException("Arquivo inválido ou com registros demais.");
         // Conjuntos detectam repetições e permitem conferir referências de rendas e despesas às pessoas.
         var ids = new HashSet<Guid>();
@@ -39,6 +43,14 @@ public static class BudgetRules
             if (perMonth[key] > 20) throw new BudgetException("Cada pessoa pode ter até 20 rendas por mês.");
             Money.Validate(income.Amount, "Renda");
         }
+        // Categorias próprias: até 40, nomes de 1 a 30 caracteres sem espaços nas pontas e sem repetir (ignorando maiúsculas) as padrão nem entre si.
+        if (data.CustomCategories.Count > CategoryEngine.MaxCustom) throw new BudgetException($"Use no máximo {CategoryEngine.MaxCustom} categorias próprias.");
+        var categoryNames = new HashSet<string>(Categories, StringComparer.OrdinalIgnoreCase);
+        foreach (var name in data.CustomCategories)
+        {
+            Text(name, "Categoria", CategoryEngine.MaxLength);
+            if (name != name.Trim() || !categoryNames.Add(name)) throw new BudgetException("Categoria própria inválida ou com nome repetido.");
+        }
         // Um acerto liga duas pessoas diferentes que existem, com valor positivo.
         var settlementIds = new HashSet<Guid>();
         foreach (var s in data.Settlements)
@@ -53,7 +65,7 @@ public static class BudgetRules
         {
             if (r is null || r.Id == Guid.Empty || !recurrenceIds.Add(r.Id)) throw new BudgetException("Identificador de recorrência inválido ou repetido.");
             Text(r.Title, "Descrição", 120);
-            if (!Categories.Contains(r.Category)) throw new BudgetException("Categoria inválida.");
+            if (!categoryNames.Contains(r.Category)) throw new BudgetException("Categoria inválida.");
             Money.Validate(r.Amount, "Valor da recorrência", true);
             if (r.DayOfMonth is < 1 or > 31) throw new BudgetException("Dia do vencimento da recorrência inválido: use de 1 a 31.");
             Sharing(r.Split, r.Participants, ids);
@@ -69,7 +81,7 @@ public static class BudgetRules
         {
             if (e is null || e.Id == Guid.Empty || !expenseIds.Add(e.Id)) throw new BudgetException("Identificador de despesa inválido ou repetido.");
             Text(e.Title, "Descrição", 120);
-            if (!Categories.Contains(e.Category)) throw new BudgetException("Categoria inválida.");
+            if (!categoryNames.Contains(e.Category)) throw new BudgetException("Categoria inválida.");
             Date(e.DueDate);
             Money.Validate(e.Amount, "Valor da despesa", true);
             // Referências inexistentes ou duplicadas causariam rateios ambíguos; o modo também precisa ser conhecido.

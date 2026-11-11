@@ -33,7 +33,7 @@ public sealed partial class MainWindow
             Collapsible("Privacidade e backups", "O aplicativo funciona sem internet e não envia nenhum dado para fora. Cada salvamento guarda uma cópia da versão anterior, que você pode recuperar aqui ao lado.\n\nOs arquivos não são criptografados: backups contêm informações financeiras em texto legível. Guarde-os em um local privado e não os envie a quem você não conhece.")));
         ((StackPanel)help.Child!).Spacing = 4;
         var below = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*") }; Grid.SetColumn(help, 2); below.Children.Add(yourData); below.Children.Add(help); yourData.VerticalAlignment = VerticalAlignment.Top; help.VerticalAlignment = VerticalAlignment.Top;
-        var page = Stack(PageHeader("Ajustes", "Aparência, seus dados e ajuda.", monthNavigation: false), appearance, below); page.Spacing = 20; return page;
+        var page = Stack(PageHeader("Ajustes", "Aparência, categorias, seus dados e ajuda.", monthNavigation: false), appearance, CategoriesCard(), below); page.Spacing = 20; return page;
     }
     /// <summary>
     /// Cartão clicável de tema: miniatura, nome e destaque na opção atual. Clicar aplica o tema na hora.
@@ -75,6 +75,36 @@ public sealed partial class MainWindow
     /// Barra arredondada da miniatura; a cor vem da classe ("mini-text", "mini-muted" ou "mini-accent").
     /// </summary>
     private static Border MiniBar(string style, double width) { var bar = new Border { Width = width }; bar.Classes.Add(style); return bar; }
+    /// <summary>
+    /// Cartão de categorias: as padrão (fixas) e as suas, que podem ser criadas, renomeadas e excluídas.
+    /// </summary>
+    private Control CategoriesCard()
+    {
+        var builtIn = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var name in BudgetRules.Categories) { var chip = Chip(name); chip.Margin = new Thickness(0, 0, 6, 6); builtIn.Children.Add(chip); }
+        var own = new StackPanel();
+        foreach (var name in data.CustomCategories)
+        {
+            if (own.Children.Count > 0) own.Children.Add(Divider());
+            var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center };
+            var rename = Button("Renomear " + name, () => _ = Run(async () =>
+            {
+                var renamed = await Prompt(this, "Renomear categoria", "Novo nome", name, CategoryEngine.MaxLength);
+                if (renamed is not null) Commit(d => CategoryEngine.Rename(d, name, renamed));
+            }), "ghost", "Edit", iconOnly: true);
+            var remove = Button("Excluir " + name, () => _ = Run(async () =>
+            {
+                if (await Confirm(this, "Excluir categoria?", $"Excluir a categoria “{name}”? Só é possível se nenhuma despesa ou recorrência a usar.")) Commit(d => CategoryEngine.Remove(d, name));
+            }), "ghost danger", "Trash", iconOnly: true);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 4) };
+            Grid.SetColumn(rename, 1); Grid.SetColumn(remove, 2); row.Children.Add(label); row.Children.Add(rename); row.Children.Add(remove); own.Children.Add(row);
+        }
+        if (data.CustomCategories.Count == 0) own.Children.Add(Text("Você ainda não criou categorias próprias.", "muted"));
+        var input = Input(null, "Nova categoria", CategoryEngine.MaxLength); AutomationProperties.SetName(input, "Nova categoria");
+        var add = Button("Adicionar categoria", () => _ = Run(() => { Commit(d => CategoryEngine.Add(d, input.Text ?? "")); return Task.CompletedTask; }), "primary", "Plus");
+        var form = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto") }; Grid.SetColumn(add, 2); form.Children.Add(input); form.Children.Add(add);
+        return Card(Stack(Text("Categorias", "section"), Text("As categorias padrão não mudam. Crie as suas para organizar melhor, por exemplo Pets ou Viagens.", "muted"), builtIn, own, form));
+    }
     /// <summary>
     /// Aplica o tema na hora e o guarda em settings.json. Se o disco falhar, o tema vale na sessão e o usuário é avisado.
     /// </summary>

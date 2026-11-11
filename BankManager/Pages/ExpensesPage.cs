@@ -20,13 +20,13 @@ public sealed partial class MainWindow
     {
         var search = Input(filter, "Buscar uma despesa…"); search.InnerLeftContent = Icon("Search", 16); search.Padding = new Thickness(12, 10, 12, 10);
         AutomationProperties.SetName(search, "Buscar despesas");
-        var category = Combo(new[] { "Todas as categorias" }.Concat(BudgetRules.Categories), categoryFilter); category.MinWidth = 210; category.VerticalAlignment = VerticalAlignment.Center;
+        var categories = BudgetRules.AllCategories(data); var category = Combo(new[] { "Todas as categorias" }.Concat(categories), categoryFilter); category.MinWidth = 210; category.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetName(category, "Categoria");
         var summary = Text("", "muted"); var table = new Border(); table.Classes.Add("card"); table.Padding = new Thickness(0);
         // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
         void Refresh()
         {
-            var entries = FinanceEngine.Expenses(data, month).Where(e => e.Title.Contains(filter, StringComparison.CurrentCultureIgnoreCase) && (statusFilter == 0 || e.Paid == (statusFilter == 2)) && (categoryFilter == 0 || e.Category == BudgetRules.Categories[categoryFilter - 1])).ToList();
+            var entries = FinanceEngine.Expenses(data, month).Where(e => e.Title.Contains(filter, StringComparison.CurrentCultureIgnoreCase) && (statusFilter == 0 || e.Paid == (statusFilter == 2)) && (categoryFilter == 0 || e.Category == categories[categoryFilter - 1])).ToList();
             summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}";
             table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(entries);
         }
@@ -157,7 +157,7 @@ public sealed partial class MainWindow
     {
         if (data.People.Count == 0) { currentPage = 1; Render(); throw new BudgetException("Cadastre pelo menos uma pessoa antes de adicionar despesas."); }
         var title = Input(existing?.Title, "Ex.: Compra do mercado", 120);
-        var category = Combo(BudgetRules.Categories, existing is null ? 1 : Array.IndexOf(BudgetRules.Categories, existing.Category));
+        var categories = BudgetRules.AllCategories(data); var category = Combo(categories, existing is null ? 1 : categories.IndexOf(existing.Category));
         var date = Input((existing?.DueDate ?? (month == Dates.Month(DateOnly.FromDateTime(DateTime.Today)) ? DateOnly.FromDateTime(DateTime.Today) : month)).ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
         var amount = Input(existing?.Amount.ToString("0.00", Money.Culture), "Ex.: 1000,00", 12);
         var installments = Input((existing?.InstallmentCount ?? 1).ToString(), "1", 3); installments.IsEnabled = existing is null;
@@ -254,7 +254,7 @@ public sealed partial class MainWindow
             if (isRepeat && paid.IsChecked == true) throw new BudgetException("Crie a despesa recorrente em aberto e marque cada mês como pago na lista de despesas.");
             var entry = new Expense
             {
-                Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = BudgetRules.Categories[category.SelectedIndex], DueDate = due,
+                Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = categories[category.SelectedIndex], DueDate = due,
                 Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true, PaidBy = paid.IsChecked == true && payer.SelectedIndex > 0 ? data.People[payer.SelectedIndex - 1].Id : null,
                 Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
                 InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1,

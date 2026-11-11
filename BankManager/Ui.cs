@@ -126,6 +126,17 @@ internal static class Ui
         return await dialog.ShowDialog<bool>(owner);
     }
     /// <summary>
+    /// Pede um texto curto em um diálogo. Devolve o texto digitado ou nulo se o usuário cancelar; a validação fica com quem chama.
+    /// </summary>
+    public static async Task<string?> Prompt(Window owner, string title, string label, string initial, int max)
+    {
+        var input = Input(initial, null, max); string? result = null;
+        var panel = Stack(Text(title, "section"), Field(label, input));
+        var dialog = Dialog(title, panel, 480); dialog.Height = 300;
+        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar", () => { result = input.Text; dialog.Close(); }, "primary")));
+        await dialog.ShowDialog(owner); return result;
+    }
+    /// <summary>
     /// Linha divisória fina entre itens de uma lista.
     /// </summary>
     public static Border Divider() { var line = new Border(); line.Classes.Add("divider"); return line; }

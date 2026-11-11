@@ -457,6 +457,54 @@ Test("Older income records without id and label still open", () =>
     finally { File.Delete(path); }
 });
 
+// ---- Categorias personalizadas ----
+// Adicionar, usar numa despesa e ver a categoria nas previsões; as padrão continuam disponíveis.
+Test("Custom category can be added and used", () =>
+{
+    var d = Family(); CategoryEngine.Add(d, "  Pets "); Equal("Pets", d.CustomCategories[0]); Equal(9, BudgetRules.AllCategories(d).Count);
+    var e = Bill(d, 90); e.Category = "Pets"; e.DueDate = month.AddMonths(1); d.Expenses.Add(e); BudgetRules.Validate(d);
+    Equal(true, FinanceEngine.Forecasts(d, month.AddMonths(1)).Any(f => f.Category == "Pets" && f.Estimate == 90m));
+});
+
+// Nome vazio, longo, repetido (ignorando caixa), igual a uma padrão e acima de 40 categorias são recusados.
+Test("Custom category names are validated", () =>
+{
+    var d = Family(); CategoryEngine.Add(d, "Pets");
+    Reject(() => CategoryEngine.Add(d, "  ")); Reject(() => CategoryEngine.Add(d, new string('x', 31))); Reject(() => CategoryEngine.Add(d, "pets")); Reject(() => CategoryEngine.Add(d, "mercado")); Reject(() => CategoryEngine.Add(d, "Ab\nc"));
+    for (var i = 1; i < CategoryEngine.MaxCustom; i++) CategoryEngine.Add(d, "Cat " + i); Reject(() => CategoryEngine.Add(d, "Uma a mais"));
+    var bad = Family(); bad.CustomCategories = ["Moradia"]; Reject(() => BudgetRules.Validate(bad)); bad.CustomCategories = ["A", "a"]; Reject(() => BudgetRules.Validate(bad)); bad.CustomCategories = [" A"]; Reject(() => BudgetRules.Validate(bad));
+    var unknown = Family(); unknown.Expenses.Add(Bill(unknown, 10)); unknown.Expenses[0].Category = "Inexistente"; Reject(() => BudgetRules.Validate(unknown));
+});
+
+// Renomear atualiza despesas e recorrências; as padrão não podem ser renomeadas nem excluídas.
+Test("Renaming a category updates its expenses and recurrences", () =>
+{
+    var d = Family(); CategoryEngine.Add(d, "Pets"); var e = Bill(d, 90); e.Category = "Pets"; d.Expenses.Add(e);
+    var r = Rent(d); r.Category = "Pets"; d.Recurrences.Add(r);
+    CategoryEngine.Rename(d, "Pets", "Bichos"); Equal("Bichos", d.Expenses[0].Category); Equal("Bichos", d.Recurrences[0].Category); BudgetRules.Validate(d);
+    CategoryEngine.Rename(d, "Bichos", "bichos"); Equal("bichos", d.CustomCategories[0]);
+    Reject(() => CategoryEngine.Rename(d, "Mercado", "Feira")); Reject(() => CategoryEngine.Remove(d, "Mercado")); CategoryEngine.Add(d, "Outra"); Reject(() => CategoryEngine.Rename(d, "bichos", "outra"));
+});
+
+// Excluir só é possível sem uso; com uso, a mensagem explica o que fazer.
+Test("A category in use cannot be removed", () =>
+{
+    var d = Family(); CategoryEngine.Add(d, "Pets"); var e = Bill(d, 90); e.Category = "Pets"; d.Expenses.Add(e);
+    Reject(() => CategoryEngine.Remove(d, "Pets")); d.Expenses.Clear(); CategoryEngine.Remove(d, "Pets"); Equal(0, d.CustomCategories.Count);
+});
+
+// As categorias próprias sobrevivem a gravar e ler; arquivos sem o campo continuam abrindo.
+Test("Custom categories persist; older files still open", () =>
+{
+    var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        using var store = new LocalStore(path); var d = Family(); CategoryEngine.Add(d, "Pets"); store.Save(d); Equal("Pets", store.Load().CustomCategories[0]);
+        var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node.AsObject().Remove("CustomCategories"); File.WriteAllText(store.FilePath, node.ToJsonString()); Equal(0, store.Load().CustomCategories.Count);
+    }
+    finally { Directory.Delete(path, true); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

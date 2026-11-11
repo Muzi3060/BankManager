@@ -101,7 +101,7 @@ public static class FinanceEngine
         var first = data.Expenses.Where(e => e.DueDate < target && e.InstallmentCount == 1).Select(e => Dates.Month(e.DueDate)).DefaultIfEmpty(target).Min();
         var start = first > target.AddMonths(-3) ? first : target.AddMonths(-3);
         int months = (target.Year - start.Year) * 12 + target.Month - start.Month;
-        return BudgetRules.Categories.Select(category =>
+        return BudgetRules.AllCategories(data).Select(category =>
         {
             // Parcelas não entram na média para que uma dívida encerrada não seja projetada indefinidamente.
             var history = data.Expenses.Where(e => e.Category == category && e.InstallmentCount == 1 && e.DueDate >= start && e.DueDate < target).Sum(e => e.Amount);
