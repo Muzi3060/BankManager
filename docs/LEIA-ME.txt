@@ -31,11 +31,11 @@ PRIMEIROS PASSOS
 1. Cadastre as pessoas e a renda do mês em Pessoas e rendas.
 2. Adicione suas despesas e escolha quem paga e como dividir.
 3. Use as setas do mês para consultar o histórico.
-4. Em Dados e ajuda, exporte um backup regularmente para outra pasta/dispositivo.
+4. Em Ajustes, exporte um backup regularmente para outra pasta/dispositivo.
 
 DADOS E ATUALIZAÇÕES
 Seus dados ficam na pasta de dados do usuário, separada do programa. O caminho
-exato aparece em Dados e ajuda. No Windows, normalmente é
+exato aparece em Ajustes. No Windows, normalmente é
 %LOCALAPPDATA%\BankManager; no Linux, normalmente ~/.local/share/BankManager.
 Os dados e backups são legíveis, sem criptografia. Não envie backups pessoais
 junto com o aplicativo. Cada amigo começa com a sua própria base vazia.

@@ -4,7 +4,8 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 **Sobre o desenvolvimento:** este projeto foi desenvolvido com **vibe coding**, usando o Codex para gerar e ajustar o código a partir de instruções em linguagem natural. A proposta, os requisitos e as decisões de produto foram definidos pelo autor do projeto.
 
-![Visão geral com dados temporários do teste](docs/visao-geral.png)
+![Visão geral no tema claro, com dados de demonstração](docs/visao-geral.png)
+![Lista de despesas no tema escuro, com dados de demonstração](docs/despesas-escuro.png)
 
 ## Baixar pronto e compartilhar
 
@@ -43,9 +44,9 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 2. Em **Despesas**, adicione descrição, categoria, vencimento, valor e responsáveis. Para uma compra detalhada, expanda **Lista de itens da compra**, preencha quantidade e preço e clique em **Adicionar item** para cada produto.
 3. Escolha divisão **individual**, **igual** ou **proporcional**. Use **Conferir divisão antes de salvar** para ver o resultado.
 4. Para dívidas parceladas, informe o **valor total**, incluindo juros já negociados, e até 120 parcelas. Cada vencimento é criado no mês correspondente. Listas de itens são lançadas à vista.
-5. Marque pagamentos na lista, edite lançamentos, filtre por categoria/situação e navegue entre meses para consultar o histórico.
+5. Na lista de despesas, use o menu **⋯** de cada linha para marcar como paga, editar ou excluir; filtre por busca, situação e categoria e navegue entre meses. **Ctrl+N** abre uma nova despesa em qualquer tela.
 6. Em **Previsões**, consulte a estimativa do mês seguinte ao selecionado.
-7. Em **Dados e ajuda**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
+7. Em **Ajustes**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
 
 ## Regras financeiras
 
@@ -107,10 +108,10 @@ dotnet run --project BankManager.UiTests
 
 Os executáveis de teste retornam código diferente de zero se falharem. `dotnet test` não executa essas verificações. O domínio cobre rateio, 1.000 combinações de valores, falta de renda, histórico mensal, parcelas, previsões, validação e arquivos. A interface cobre cadastro, prévia, gravação, pagamento, edição inválida e lista de itens. Seletores nativos de arquivos e leitores de tela ainda precisam de testes manuais.
 
-Para gerar uma captura da interface com dados do teste:
+Para gerar capturas de todas as telas, nos temas claro e escuro, com dados de demonstração (fictícios):
 
 ```bash
-BANKMANAGER_SCREENSHOT="$PWD/docs/visao-geral.png" dotnet run --project BankManager.UiTests
+mkdir -p /tmp/capturas && BANKMANAGER_SCREENSHOTS=/tmp/capturas dotnet run --project BankManager.UiTests
 ```
 
 ## Referências de projeto

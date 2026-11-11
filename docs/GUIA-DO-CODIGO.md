@@ -14,6 +14,7 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 8. `BankManager/Ui.cs`: fábricas de controles (`Text`, `Button`, `Icon`, `Card`, `Dialog`…).
 9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos.
 10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
+11. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -110,6 +111,10 @@ Nenhuma cor aparece no código C#. `Styles/Tokens.axaml` define cada cor com nom
 A preferência (Automático, Claro ou Escuro) fica em `settings.json`, lida por `SettingsStore` antes de a janela aparecer. `App.ApplyTheme` ajusta `RequestedThemeVariant`; no modo Automático ele volta ao padrão, que acompanha o sistema.
 
 Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os desenha com a cor do botão que os contém, igual em Windows e Linux. O ícone do aplicativo vem de `Assets/icon.svg`; `scripts/make-icons.sh` gera o `icon.png` (janela) e o `icon.ico` (executável do Windows).
+
+### Componentes de interface
+
+`Ui.cs` reúne as peças reaproveitadas pelas páginas: `Chip` (etiqueta de situação), `Avatar` (inicial da pessoa), `Segmented` (opções lado a lado), `Collapsible` (seção de ajuda que abre e fecha), `Divider` e `Button` (com ícone, ou só ícone). Cada página monta o próprio cabeçalho com `PageHeader` (título, navegação de mês e, se for o caso, "Nova despesa"). A decisão de "quantos dias faltam" não está na interface: `DueStatus.Of` (Core, com testes) a calcula e a tela só escolhe o texto e a cor do chip.
 
 ### Por que não MVVM (por enquanto)
 
