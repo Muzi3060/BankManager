@@ -10,5 +10,5 @@ else
   bankmanager_dotnet=dotnet
 fi
 # Compila antes de abrir; exec repassa sinais e código de saída ao processo do aplicativo.
-"$bankmanager_dotnet" build BankManager/BankManager.csproj -m:1 --disable-build-servers --verbosity quiet
-exec "$bankmanager_dotnet" BankManager/bin/Debug/net10.0/BankManager.dll "$@"
+"$bankmanager_dotnet" build codigo/BankManager/BankManager.csproj -m:1 --disable-build-servers --verbosity quiet
+exec "$bankmanager_dotnet" codigo/BankManager/bin/Debug/net10.0/BankManager.dll "$@"

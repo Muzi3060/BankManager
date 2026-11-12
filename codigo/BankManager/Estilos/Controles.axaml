@@ -1,12 +1,12 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ctl="using:BankManager.Controles">
   <!--
-    Estilos dos controles ("Estilo C"). Nenhuma cor é escrita aqui: tudo vem dos tokens de Tokens.axaml via
-    DynamicResource. As classes aplicadas por Ui.cs e pelas páginas selecionam os estilos abaixo.
+    Estilos dos controles ("Estilo C"). Nenhuma cor é escrita aqui: tudo vem dos tokens de Cores.axaml via
+    DynamicResource. As classes aplicadas por Componentes.cs e pelas páginas selecionam os estilos abaixo.
     Lembrete: no Avalonia vale a ORDEM das regras (a última vence), não a especificidade como no CSS.
   -->
 
   <!-- Base: texto e fundo herdados por toda a janela. O fundo é um degradê claríssimo; os diálogos usam a superfície sólida.
-       A fonte Inter embutida é a padrão do aplicativo (Program.cs, WithInterFont); definir FontFamily aqui a trocaria pela do sistema.
+       A fonte Inter embutida é a padrão do aplicativo (Programa.cs, WithInterFont); definir FontFamily aqui a trocaria pela do sistema.
        "+tnum" liga os algarismos tabulares (todos com a mesma largura) em todo o aplicativo, para valores alinhados. -->
   <Style Selector="Window">
     <Setter Property="FontSize" Value="14"/>
@@ -90,7 +90,7 @@
   <Style Selector="MenuItem Path.icon"><Setter Property="Stroke" Value="{DynamicResource TextBrush}"/></Style>
   <Style Selector="MenuItem.danger Path.icon"><Setter Property="Stroke" Value="{DynamicResource NegativeBrush}"/></Style>
 
-  <!-- Campos: altura mínima de 42 px, canto 12. As cores vêm dos recursos do Fluent mapeados em Tokens.axaml. -->
+  <!-- Campos: altura mínima de 42 px, canto 12. As cores vêm dos recursos do Fluent mapeados em Cores.axaml. -->
   <Style Selector="TextBox"><Setter Property="MinHeight" Value="42"/><Setter Property="CornerRadius" Value="12"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
   <Style Selector="ComboBox"><Setter Property="MinHeight" Value="42"/><Setter Property="CornerRadius" Value="12"/><Setter Property="HorizontalAlignment" Value="Stretch"/></Style>
 

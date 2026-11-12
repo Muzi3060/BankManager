@@ -726,7 +726,7 @@ Teste("Real version 1 and 2 files migrate to version 3 in a chain", () =>
         var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(caminho);
         try
         {
-            var original = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", nome)); File.WriteAllBytes(Path.Combine(caminho, "financas.json"), original);
+            var original = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "ArquivosDeTeste", nome)); File.WriteAllBytes(Path.Combine(caminho, "financas.json"), original);
             var antes = JsonNode.Parse(original)!; Igual(versao, (int)antes["Version"]!);
             using var armazenamento = new ArmazenamentoLocal(caminho); var carregado = armazenamento.Carregar();
             Igual(3, carregado.Versao); Igual(2, carregado.Pessoas.Count); Igual(antes["Expenses"]!.AsArray().Count, carregado.Despesas.Count); Igual(antes["Incomes"]!.AsArray().Count, carregado.Rendas.Count);

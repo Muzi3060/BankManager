@@ -8,7 +8,7 @@ using BankManager.Nucleo;
 
 namespace BankManager;
 /// <summary>
-/// Fábricas de controles compartilhados. As classes visuais referenciam os estilos em App.axaml; não contêm regras financeiras.
+/// Fábricas de controles compartilhados. As classes visuais referenciam os estilos em Aplicativo.axaml; não contêm regras financeiras.
 /// </summary>
 internal static class Componentes
 {
@@ -16,9 +16,9 @@ internal static class Componentes
     /// <summary>
     /// Ícone do aplicativo (janela e diálogos), carregado uma vez a partir dos recursos embutidos.
     /// </summary>
-    public static WindowIcon IconeDoAplicativo => iconeDoAplicativo ??= new WindowIcon(AssetLoader.Open(new Uri("avares://BankManager/Assets/icon.png")));
+    public static WindowIcon IconeDoAplicativo => iconeDoAplicativo ??= new WindowIcon(AssetLoader.Open(new Uri("avares://BankManager/Recursos/icone.png")));
     /// <summary>
-    /// Cria um ícone vetorial pelo nome definido em Styles/Icons.axaml (por exemplo "Home" usa Icon.Home).
+    /// Cria um ícone vetorial pelo nome definido em Estilos/Icones.axaml (por exemplo "Home" usa Icon.Home).
     /// Os traços são desenhados em uma área 24x24 e ampliados ou reduzidos para o tamanho pedido; a cor vem do estilo Path.icon.
     /// </summary>
     public static Control Icone(string nome, double tamanho = 18)

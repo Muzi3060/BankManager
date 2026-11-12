@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Gera o instalador do Windows (Inno Setup) e o AppImage do Linux, a partir da pasta publicada por package.py.
+"""Gera o instalador do Windows (Inno Setup) e o AppImage do Linux, a partir da pasta publicada por empacotar.py.
 
-Uso (rode antes: python3 scripts/package.py --runtime <alvo>):
-    python3 scripts/installers.py windows     # precisa do Inno Setup (ISCC.exe), normalmente em um Windows
-    python3 scripts/installers.py appimage    # precisa de Linux x86_64; baixa o appimagetool fixado e confere o checksum
+Uso (rode antes: python3 scripts/empacotar.py --runtime <alvo>):
+    python3 scripts/instaladores.py windows     # precisa do Inno Setup (ISCC.exe), normalmente em um Windows
+    python3 scripts/instaladores.py appimage    # precisa de Linux x86_64; baixa o appimagetool fixado e confere o checksum
 
 Saídas em artifacts/releases, com arquivos .sha256. O aplicativo não tem atualizador interno (ele nunca acessa a internet):
 o instalador do Windows atualiza por cima da versão instalada, e o AppImage carrega a informação de atualização que a
@@ -23,7 +23,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
-PROJECT = ROOT / "BankManager" / "BankManager.csproj"
+PROJECT = ROOT / "codigo" / "BankManager" / "BankManager.csproj"
 RELEASES = ROOT / "artifacts" / "releases"
 # Ferramenta fixada por versão e checksum: um download alterado é recusado antes de ser executado.
 APPIMAGETOOL_URL = "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage"
@@ -44,10 +44,10 @@ def write_checksum(path):
 
 
 def published(version, runtime):
-    """Localiza a pasta publicada por package.py, ou explica como gerá-la."""
+    """Localiza a pasta publicada por empacotar.py, ou explica como gerá-la."""
     folder = ROOT / "artifacts" / "publish" / f"BankManager-{version}-{runtime}"
     if not (folder / "BankManager.runtimeconfig.json").is_file():
-        sys.exit(f"Pasta publicada não encontrada: {folder}\nRode antes: python3 scripts/package.py --runtime {runtime}")
+        sys.exit(f"Pasta publicada não encontrada: {folder}\nRode antes: python3 scripts/empacotar.py --runtime {runtime}")
     return folder
 
 
@@ -76,8 +76,8 @@ def windows(version):
     source = published(version, "win-x64")
     RELEASES.mkdir(parents=True, exist_ok=True)
     subprocess.run([str(find_iscc()), "/Qp", f"/DAppVersion={version}", f"/DNumericVersion={numeric_version(version)}",
-                    f"/DSourceDir={source}", f"/DIconFile={ROOT / 'BankManager' / 'Assets' / 'icon.ico'}",
-                    f"/DOutputDir={RELEASES}", str(ROOT / "installer" / "windows" / "BankManager.iss")], check=True)
+                    f"/DSourceDir={source}", f"/DIconFile={ROOT / 'codigo' / 'BankManager' / 'Recursos' / 'icone.ico'}",
+                    f"/DOutputDir={RELEASES}", str(ROOT / "instalador" / "windows" / "BankManager.iss")], check=True)
     setup = RELEASES / f"BankManager-{version}-win-x64-setup.exe"
     write_checksum(setup)
     print(f"\nPronto: {setup} ({setup.stat().st_size / 1024 / 1024:.1f} MiB)", flush=True)
@@ -109,10 +109,10 @@ def build_appdir(version):
     # Arquivos do launcher de pasta portátil não fazem sentido dentro do AppImage.
     for leftover in ("Iniciar.sh", "Instalar-atalho.sh", "bankmanager.png"):
         (program / leftover).unlink(missing_ok=True)
-    assets = ROOT / "installer" / "linux"
+    assets = ROOT / "instalador" / "linux"
     shutil.copy2(assets / "AppRun", appdir / "AppRun")
     (appdir / "AppRun").chmod(0o755)
-    icon = ROOT / "BankManager" / "Assets" / "icon.png"
+    icon = ROOT / "codigo" / "BankManager" / "Recursos" / "icone.png"
     shutil.copy2(assets / "bankmanager.desktop", appdir / "bankmanager.desktop")
     shutil.copy2(icon, appdir / "bankmanager.png")
     shutil.copy2(icon, appdir / ".DirIcon")

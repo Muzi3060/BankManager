@@ -1,5 +1,5 @@
 ; Instalador do BankManager para Windows (Inno Setup).
-; Compilado por scripts/installers.py, que informa a versão e as pastas pelas opções /D da linha de comando.
+; Compilado por scripts/instaladores.py, que informa a versão e as pastas pelas opções /D da linha de comando.
 ; Por padrão instala só para o usuário atual (sem administrador), em %LOCALAPPDATA%\Programs\BankManager;
 ; no assistente, quem preferir pode escolher instalar para todos os usuários (pede administrador).
 ; Os dados financeiros ficam em %LOCALAPPDATA%\BankManager, fora da pasta do programa: atualizar ou desinstalar NÃO os apaga.

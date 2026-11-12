@@ -18,7 +18,7 @@ public sealed record PontoDoGrafico(string Rotulo, decimal Valor, string Exibica
 /// Gráfico de barras simples, desenhado pelo próprio controle (sem biblioteca externa). O eixo sempre começa em zero,
 /// para não exagerar diferenças; as linhas de grade são pontilhadas e os rótulos são calculados a partir dos dados.
 /// A barra selecionada fica destacada com um balão; ao passar o mouse sobre outra barra, o balão mostra o valor dela.
-/// As cores chegam pelo estilo em Controls.axaml (tokens do tema), então o gráfico acompanha a troca de tema.
+/// As cores chegam pelo estilo em Controles.axaml (tokens do tema), então o gráfico acompanha a troca de tema.
 /// </summary>
 public sealed class GraficoDeBarras : Control
 {

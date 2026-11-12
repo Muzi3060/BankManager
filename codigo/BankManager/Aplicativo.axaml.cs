@@ -6,7 +6,7 @@ using BankManager.Nucleo;
 
 namespace BankManager;
 /// <summary>
-/// Conecta os recursos definidos em App.axaml ao ciclo de vida desktop do Avalonia.
+/// Conecta os recursos definidos em Aplicativo.axaml ao ciclo de vida desktop do Avalonia.
 /// </summary>
 public sealed partial class Aplicativo : Application
 {

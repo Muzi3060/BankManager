@@ -39,35 +39,35 @@ jobs:
         shell: python
         run: |
           import os, xml.etree.ElementTree as ET
-          version = ET.parse('BankManager/BankManager.csproj').findtext('./PropertyGroup/Version')
+          version = ET.parse('codigo/BankManager/BankManager.csproj').findtext('./PropertyGroup/Version')
           assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Tag must match csproj Version'
       - name: Build
         run: dotnet build BankManager.sln -c Release -m:1 --disable-build-servers
       - name: Domain and persistence tests
-        run: dotnet run --project BankManager.Tests -c Release --no-build
+        run: dotnet run --project testes/BankManager.Testes -c Release --no-build
       # No runner Linux, Xvfb fornece o display para os testes de janela real.
       - name: UI integration tests (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libx11-6 libice6 libsm6 libfontconfig1
-          xvfb-run -a dotnet run --project BankManager.UiTests -c Release --no-build
+          xvfb-run -a dotnet run --project testes/BankManager.TestesDeInterface -c Release --no-build
       # No Windows o runner tem sessão gráfica, então a janela real abre sem Xvfb. Este passo ainda não foi validado em um
       # Windows de verdade: enquanto não tiver ficado verde algumas vezes, uma falha aparece como aviso, sem bloquear a release.
       # Depois de confirmado, remova a linha continue-on-error.
       - name: UI integration tests (Windows)
         if: runner.os == 'Windows'
         continue-on-error: true
-        run: dotnet run --project BankManager.UiTests -c Release --no-build
+        run: dotnet run --project testes/BankManager.TestesDeInterface -c Release --no-build
       - name: Publish and archive
-        run: python scripts/package.py --runtime ${{ matrix.runtime }}
+        run: python scripts/empacotar.py --runtime ${{ matrix.runtime }}
       # ---- Windows: instalador (Inno Setup). Instala por usuário, sem administrador, e atualiza por cima da versão anterior. ----
       - name: Install Inno Setup (Windows)
         if: runner.os == 'Windows'
         run: choco install innosetup -y --no-progress
       - name: Windows installer
         if: runner.os == 'Windows'
-        run: python scripts/installers.py windows
+        run: python scripts/instaladores.py windows
       # Instala em silêncio numa pasta temporária, confere o executável e desinstala. Também ainda não validado em um Windows
       # real: um erro aqui aparece como aviso até o passo ser confirmado.
       - name: Installer smoke test (Windows)
@@ -85,7 +85,7 @@ jobs:
       # ---- Linux: AppImage com informação de atualização (zsync). O appimagetool é baixado em versão fixa, com checksum conferido. ----
       - name: AppImage (Linux)
         if: runner.os == 'Linux'
-        run: python scripts/installers.py appimage
+        run: python scripts/instaladores.py appimage
       # O AppImage precisa abrir de verdade: rodando sob Xvfb por 10 segundos, "continuar vivo até o timeout" (código 124) é sucesso.
       - name: AppImage smoke test (Linux)
         if: runner.os == 'Linux'

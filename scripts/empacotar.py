@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gera pacotes desktop portáteis com .NET incluído, usando apenas a biblioteca padrão do Python.
 
-Exemplo: python3 scripts/package.py --runtime linux-x64
+Exemplo: python3 scripts/empacotar.py --runtime linux-x64
 Saídas: artifacts/publish (pastas completas) e artifacts/releases (arquivos para distribuir).
 """
 import argparse
@@ -18,7 +18,7 @@ import zipfile
 
 # Resolve caminhos pela localização do script, permitindo chamá-lo a partir de qualquer diretório.
 ROOT = Path(__file__).resolve().parent.parent
-PROJECT = ROOT / "BankManager" / "BankManager.csproj"
+PROJECT = ROOT / "codigo" / "BankManager" / "BankManager.csproj"
 RUNTIMES = ("win-x64", "linux-x64")
 
 
@@ -37,7 +37,7 @@ def dotnet():
 def third_party_notices(destination, runtime):
     """Copia avisos disponíveis e lista as dependências e o runtime usados na publicação."""
     # Usa o grafo realmente restaurado para registrar dependências diretas e transitivas.
-    assets = json.loads((ROOT / "BankManager" / "obj" / "project.assets.json").read_text())
+    assets = json.loads((ROOT / "codigo" / "BankManager" / "obj" / "project.assets.json").read_text())
     package_roots = [Path(p) for p in assets["packageFolders"]]
     notices = ["BankManager — componentes de terceiros", "",
                "As licenças dos componentes abaixo continuam pertencendo aos seus autores.",
@@ -117,9 +117,9 @@ def package(runtime, version):
         launcher.write_text('#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\nexec ./BankManager "$@"\n', encoding="utf-8")
         launcher.chmod(0o755)
         # Atalho no menu de aplicativos (só do usuário, sem sudo): script e ícone acompanham o pacote portátil.
-        shutil.copy2(ROOT / "installer" / "linux" / "Instalar-atalho.sh", destination / "Instalar-atalho.sh")
+        shutil.copy2(ROOT / "instalador" / "linux" / "Instalar-atalho.sh", destination / "Instalar-atalho.sh")
         (destination / "Instalar-atalho.sh").chmod(0o755)
-        shutil.copy2(ROOT / "BankManager" / "Assets" / "icon.png", destination / "bankmanager.png")
+        shutil.copy2(ROOT / "codigo" / "BankManager" / "Recursos" / "icone.png", destination / "bankmanager.png")
         archive = releases / f"{name}.tar.gz"
         with tarfile.open(archive, "w:gz") as output:
             output.add(destination, arcname=name)
