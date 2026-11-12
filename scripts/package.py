@@ -116,6 +116,10 @@ def package(runtime, version):
         # O iniciador muda para sua própria pasta para funcionar mesmo quando aberto de outro diretório.
         launcher.write_text('#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\nexec ./BankManager "$@"\n', encoding="utf-8")
         launcher.chmod(0o755)
+        # Atalho no menu de aplicativos (só do usuário, sem sudo): script e ícone acompanham o pacote portátil.
+        shutil.copy2(ROOT / "installer" / "linux" / "Instalar-atalho.sh", destination / "Instalar-atalho.sh")
+        (destination / "Instalar-atalho.sh").chmod(0o755)
+        shutil.copy2(ROOT / "BankManager" / "Assets" / "icon.png", destination / "bankmanager.png")
         archive = releases / f"{name}.tar.gz"
         with tarfile.open(archive, "w:gz") as output:
             output.add(destination, arcname=name)

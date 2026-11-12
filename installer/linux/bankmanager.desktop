@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=BankManager
+GenericName=Gestão financeira
+GenericName[pt_BR]=Gestão financeira
+Comment=Personal and family finances, with data kept only on your computer
+Comment[pt_BR]=Finanças pessoais e familiares, com os dados só no seu computador
+Exec=BankManager
+Icon=bankmanager
+Terminal=false
+Categories=Office;Finance;
+Keywords=finanças;despesas;orçamento;dinheiro;finance;budget;
+StartupWMClass=BankManager

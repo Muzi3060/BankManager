@@ -25,10 +25,15 @@ public sealed record Person
     public string Name { get; set; } = "";
 }
 /// <summary>
-/// Renda líquida de uma pessoa em um mês específico; não é repetida automaticamente nos meses seguintes.
+/// Uma linha de renda líquida de uma pessoa em um mês específico (salário, extra, 13º); a renda do mês é a soma das linhas.
+/// Não é repetida automaticamente nos meses seguintes.
 /// </summary>
 public sealed record MonthlyIncome
 {
+    /// <summary>Identificador estável desta linha de renda. Arquivos antigos não o tinham: ele é gerado ao ler e gravado no próximo salvamento.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>Nome da linha ("Salário", "Extra", "13º"). Arquivos antigos, com uma renda por mês, aparecem como "Renda".</summary>
+    public string Label { get; set; } = "Renda";
     /// <summary>Pessoa à qual a renda pertence; deve existir em BudgetData.People.</summary>
     public Guid PersonId { get; set; }
     /// <summary>Competência da renda, representada obrigatoriamente pelo primeiro dia do mês.</summary>
@@ -59,7 +64,7 @@ public sealed record Expense
     public Guid Id { get; init; } = Guid.NewGuid();
     /// <summary>Descrição curta da conta ou compra, usada na listagem e na busca.</summary>
     public string Title { get; set; } = "";
-    /// <summary>Uma das categorias admitidas por BudgetRules.Categories.</summary>
+    /// <summary>Uma categoria padrão (<see cref="BudgetRules.Categories"/>) ou uma criada pelo usuário (<see cref="BudgetData.CustomCategories"/>).</summary>
     public string Category { get; set; } = "Outros";
     /// <summary>Data de vencimento, que determina o mês do lançamento e a renda usada no rateio.</summary>
     public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
@@ -79,20 +84,111 @@ public sealed record Expense
     public int InstallmentNumber { get; set; } = 1;
     /// <summary>Quantidade de parcelas da compra original; vale 1 para lançamentos à vista.</summary>
     public int InstallmentCount { get; set; } = 1;
+    /// <summary>
+    /// Pessoa que efetivamente pagou a despesa. Só faz sentido com <see cref="Paid"/> verdadeiro; nulo significa "não informado"
+    /// (inclusive nos lançamentos antigos) e deixa a despesa fora do acerto de contas.
+    /// </summary>
+    public Guid? PaidBy { get; set; }
+    /// <summary>
+    /// Dia em que a despesa foi paga (esquema versão 3). Só existe em despesas pagas e é opcional: despesas pagas em versões
+    /// anteriores não têm essa informação, e as telas usam o vencimento como referência, sem inventar uma data.
+    /// </summary>
+    public DateOnly? PaidDate { get; set; }
+    /// <summary>
+    /// Identificador de origem de uma despesa recebida por um arquivo de compartilhamento (esquema versão 3): o Id que ela
+    /// tinha na base de quem a enviou. Serve para reconhecer a mesma despesa em uma nova importação e não duplicá-la.
+    /// </summary>
+    public Guid? OriginId { get; set; }
+    /// <summary>
+    /// Data usada nas listas de movimentações: a do pagamento, quando informada; caso contrário, o vencimento.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DateOnly ReferenceDate => PaidDate ?? DueDate;
+    /// <summary>Recorrência que gerou este lançamento (aluguel, assinatura...); nulo para lançamentos comuns. Veja <see cref="Recurrence"/>.</summary>
+    public Guid? RecurrenceId { get; set; }
+    /// <summary>
+    /// Mês (primeiro dia) para o qual a recorrência gerou este lançamento. Fica fixo mesmo que o vencimento seja editado
+    /// para outro mês, para que a geração automática não recrie a ocorrência. Nulo se, e somente se, <see cref="RecurrenceId"/> for nulo.
+    /// </summary>
+    public DateOnly? RecurrenceMonth { get; set; }
+}
+/// <summary>
+/// Limite mensal de gasto em uma categoria (por exemplo, Mercado: R$ 800). Vale para todos os meses; há no máximo uma meta por categoria.
+/// </summary>
+public sealed record CategoryGoal
+{
+    /// <summary>Categoria (padrão ou própria) à qual a meta se aplica.</summary>
+    public string Category { get; set; } = "";
+    /// <summary>Limite mensal em reais, positivo e com até duas casas decimais.</summary>
+    public decimal Amount { get; set; }
+}
+/// <summary>
+/// Pagamento feito entre duas pessoas para quitar (total ou parcialmente) o que uma deve à outra.
+/// Abate o saldo calculado por <see cref="SettlementEngine"/>; não é uma despesa.
+/// </summary>
+public sealed record Settlement
+{
+    /// <summary>Identificador estável, usado para excluir um acerto registrado por engano.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>Pessoa que pagou (quem devia).</summary>
+    public Guid PayerId { get; set; }
+    /// <summary>Pessoa que recebeu (quem estava sendo paga). Deve ser diferente de <see cref="PayerId"/>.</summary>
+    public Guid ReceiverId { get; set; }
+    /// <summary>Valor em reais, positivo e com até duas casas decimais.</summary>
+    public decimal Amount { get; set; }
+    /// <summary>Dia em que o acerto aconteceu.</summary>
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+}
+/// <summary>
+/// Modelo de uma despesa que se repete todo mês (aluguel, internet, assinaturas). O aplicativo cria lançamentos comuns,
+/// um por mês, a partir deste modelo; cada um pode ser editado, pago ou excluído sem afetar os outros.
+/// </summary>
+public sealed record Recurrence
+{
+    /// <summary>Identificador estável; os lançamentos gerados o referenciam em <see cref="Expense.RecurrenceId"/>.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>Descrição copiada para cada lançamento gerado.</summary>
+    public string Title { get; set; } = "";
+    /// <summary>Categoria copiada para cada lançamento gerado.</summary>
+    public string Category { get; set; } = "Outros";
+    /// <summary>Valor mensal em reais, positivo e com até duas casas decimais.</summary>
+    public decimal Amount { get; set; }
+    /// <summary>Dia do vencimento, de 1 a 31. Em meses mais curtos vale o último dia (31 vira 28 ou 29 em fevereiro).</summary>
+    public int DayOfMonth { get; set; } = 1;
+    /// <summary>Regra de divisão aplicada a cada lançamento gerado.</summary>
+    public SplitMode Split { get; set; }
+    /// <summary>Responsáveis de cada lançamento gerado; as mesmas regras de <see cref="Expense.Participants"/> valem aqui.</summary>
+    public List<Guid> Participants { get; set; } = [];
+    /// <summary>Primeiro mês da recorrência, representado pelo primeiro dia do mês.</summary>
+    public DateOnly StartMonth { get; set; }
+    /// <summary>Último mês em que a recorrência gera lançamentos (primeiro dia do mês); nulo enquanto estiver ativa.</summary>
+    public DateOnly? EndMonth { get; set; }
+    /// <summary>Meses cujo lançamento o usuário excluiu de propósito; a geração automática não os recria.</summary>
+    public List<DateOnly> SkippedMonths { get; set; } = [];
 }
 /// <summary>
 /// Raiz do arquivo JSON local. Reúne os registros de todos os meses e a versão do formato de persistência.
 /// </summary>
 public sealed record BudgetData
 {
+    /// <summary>Versão do esquema atual. A 2 acrescentou as despesas recorrentes; arquivos da versão 1 são migrados ao ler.</summary>
+    public const int CurrentVersion = 3;
     /// <summary>Versão do esquema JSON; formatos não suportados são rejeitados antes de importar ou salvar.</summary>
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = CurrentVersion;
     /// <summary>Cadastro de pessoas compartilhado entre todos os meses.</summary>
     public List<Person> People { get; set; } = [];
-    /// <summary>Histórico de renda, com no máximo um registro por pessoa e competência.</summary>
+    /// <summary>Histórico de renda: até 20 linhas, com nomes diferentes, por pessoa e competência.</summary>
     public List<MonthlyIncome> Incomes { get; set; } = [];
     /// <summary>Histórico e compromissos futuros, incluindo parcelas criadas antecipadamente.</summary>
     public List<Expense> Expenses { get; set; } = [];
+    /// <summary>Modelos de despesas mensais. Ausente nos arquivos da versão 1, onde equivale a uma lista vazia.</summary>
+    public List<Recurrence> Recurrences { get; set; } = [];
+    /// <summary>Categorias criadas pelo usuário, além das padrão. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<string> CustomCategories { get; set; } = [];
+    /// <summary>Metas mensais por categoria. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<CategoryGoal> Goals { get; set; } = [];
+    /// <summary>Acertos de contas já feitos entre pessoas. Ausente em arquivos antigos, onde equivale a uma lista vazia.</summary>
+    public List<Settlement> Settlements { get; set; } = [];
 }
 /// <summary>
 /// Centraliza apresentação, leitura e limites de valores monetários, usando decimal para evitar imprecisão binária.

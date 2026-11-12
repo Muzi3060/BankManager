@@ -1,0 +1,456 @@
+{
+  "Version": 2,
+  "People": [
+    {
+      "Id": "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+      "Name": "Ana"
+    },
+    {
+      "Id": "9752c10d-b781-44f8-8258-f238e5e293fa",
+      "Name": "Bruno"
+    }
+  ],
+  "Incomes": [
+    {
+      "Id": "5addf52c-4a22-42cb-9521-407709c7e7f8",
+      "Label": "Renda",
+      "PersonId": "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+      "Month": "2026-10-01",
+      "Amount": 3000
+    },
+    {
+      "Id": "72417ff4-4307-47a4-af35-88c4ffc768f0",
+      "Label": "Renda",
+      "PersonId": "9752c10d-b781-44f8-8258-f238e5e293fa",
+      "Month": "2026-10-01",
+      "Amount": 1000
+    },
+    {
+      "Id": "d76098a4-7efb-48a6-a55d-5172d31cd669",
+      "Label": "Extra",
+      "PersonId": "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+      "Month": "2026-10-01",
+      "Amount": 500
+    }
+  ],
+  "Expenses": [
+    {
+      "Id": "da8b4a35-8393-45cb-a58e-4629da268568",
+      "Title": "Aluguel",
+      "Category": "Moradia",
+      "DueDate": "2026-10-05",
+      "Amount": 1800,
+      "Paid": true,
+      "Split": 2,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "67d6f702-bbef-4b0e-b11e-033d701f464f",
+      "Title": "Mercado",
+      "Category": "Mercado",
+      "DueDate": "2026-10-20",
+      "Amount": 51,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [
+        {
+          "Name": "Arroz",
+          "Quantity": 2,
+          "UnitPrice": 25.50,
+          "Total": 51.00
+        }
+      ],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "eb4278e9-6b88-4e72-b1b3-0e76883bdb14",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-10-15",
+      "Amount": 333.34,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2"
+      ],
+      "Items": [],
+      "InstallmentGroup": "9727bf9d-7ca2-4783-be55-b8019ba0d860",
+      "InstallmentNumber": 1,
+      "InstallmentCount": 3,
+      "PaidBy": null,
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "89e09a48-0b2c-4bf6-9848-3be3a83df6a0",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-11-15",
+      "Amount": 333.33,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2"
+      ],
+      "Items": [],
+      "InstallmentGroup": "9727bf9d-7ca2-4783-be55-b8019ba0d860",
+      "InstallmentNumber": 2,
+      "InstallmentCount": 3,
+      "PaidBy": null,
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "25b90d9b-e5a4-4526-9c4a-de7a54cbe040",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-12-15",
+      "Amount": 333.33,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2"
+      ],
+      "Items": [],
+      "InstallmentGroup": "9727bf9d-7ca2-4783-be55-b8019ba0d860",
+      "InstallmentNumber": 3,
+      "InstallmentCount": 3,
+      "PaidBy": null,
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "40f41cab-0a82-4beb-a1f2-2acc1747f664",
+      "Title": "Ra\u00E7\u00E3o",
+      "Category": "Pets",
+      "DueDate": "2026-10-09",
+      "Amount": 89.90,
+      "Paid": true,
+      "Split": 0,
+      "Participants": [
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": null,
+      "RecurrenceMonth": null
+    },
+    {
+      "Id": "30a13e50-0a24-4c74-ad5a-eac7c7b40ce6",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2026-10-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2026-10-01"
+    },
+    {
+      "Id": "736e9f9c-b99f-4c58-93f0-4109fc814f70",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2026-11-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2026-11-01"
+    },
+    {
+      "Id": "3349bbeb-eb00-42a8-a701-98a018cc451b",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2026-12-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2026-12-01"
+    },
+    {
+      "Id": "58c1095e-4c60-4f38-bad6-d0f95d91dcd0",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-01-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-01-01"
+    },
+    {
+      "Id": "002ba71e-43b4-4e6f-a451-0f643e6ec391",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-02-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-02-01"
+    },
+    {
+      "Id": "42aadd82-5e8f-4fdf-bfbb-25210a238852",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-03-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-03-01"
+    },
+    {
+      "Id": "738ade49-8753-4d1f-bc85-35fa2da68e11",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-04-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-04-01"
+    },
+    {
+      "Id": "ef5c79ff-98e7-4475-b4c5-62ea1a026249",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-05-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-05-01"
+    },
+    {
+      "Id": "c8f03df5-f323-421d-a0c7-04ef0b09e540",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-06-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-06-01"
+    },
+    {
+      "Id": "a3561312-7206-48b9-b687-10f7e801cc1a",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-07-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-07-01"
+    },
+    {
+      "Id": "7c478756-1ffd-4234-b23f-b24a92410cfa",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-08-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-08-01"
+    },
+    {
+      "Id": "e82b0e2f-b361-419c-b999-f08fa53bc010",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-09-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-09-01"
+    },
+    {
+      "Id": "557ce532-0b88-4d0d-afc4-cc7414a20a91",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "DueDate": "2027-10-08",
+      "Amount": 119.90,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1,
+      "PaidBy": null,
+      "RecurrenceId": "9a300ea0-d958-4634-932f-362a0469a922",
+      "RecurrenceMonth": "2027-10-01"
+    }
+  ],
+  "Recurrences": [
+    {
+      "Id": "9a300ea0-d958-4634-932f-362a0469a922",
+      "Title": "Internet",
+      "Category": "Servi\u00E7os",
+      "Amount": 119.90,
+      "DayOfMonth": 8,
+      "Split": 1,
+      "Participants": [
+        "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+        "9752c10d-b781-44f8-8258-f238e5e293fa"
+      ],
+      "StartMonth": "2026-10-01",
+      "EndMonth": null,
+      "SkippedMonths": []
+    }
+  ],
+  "CustomCategories": [
+    "Pets"
+  ],
+  "Goals": [
+    {
+      "Category": "Mercado",
+      "Amount": 800
+    }
+  ],
+  "Settlements": [
+    {
+      "Id": "245df7a0-9703-4448-89f5-a322eb8159d7",
+      "PayerId": "9752c10d-b781-44f8-8258-f238e5e293fa",
+      "ReceiverId": "568ea405-3bb2-479b-bcad-e2ef69c949b2",
+      "Amount": 100,
+      "Date": "2026-10-12"
+    }
+  ]
+}

@@ -52,8 +52,50 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libx11-6 libice6 libsm6 libfontconfig1
           xvfb-run -a dotnet run --project BankManager.UiTests -c Release --no-build
+      # No Windows o runner tem sessão gráfica, então a janela real abre sem Xvfb. Este passo ainda não foi validado em um
+      # Windows de verdade: enquanto não tiver ficado verde algumas vezes, uma falha aparece como aviso, sem bloquear a release.
+      # Depois de confirmado, remova a linha continue-on-error.
+      - name: UI integration tests (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        run: dotnet run --project BankManager.UiTests -c Release --no-build
       - name: Publish and archive
         run: python scripts/package.py --runtime ${{ matrix.runtime }}
+      # ---- Windows: instalador (Inno Setup). Instala por usuário, sem administrador, e atualiza por cima da versão anterior. ----
+      - name: Install Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        run: choco install innosetup -y --no-progress
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        run: python scripts/installers.py windows
+      # Instala em silêncio numa pasta temporária, confere o executável e desinstala. Também ainda não validado em um Windows
+      # real: um erro aqui aparece como aviso até o passo ser confirmado.
+      - name: Installer smoke test (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem artifacts/releases -Filter '*-setup.exe' | Select-Object -First 1
+          $dir = Join-Path $env:RUNNER_TEMP 'bm-install'
+          Start-Process -FilePath $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$dir" -Wait
+          if (-not (Test-Path "$dir\BankManager.exe")) { throw 'O executável não foi instalado' }
+          $uninstaller = Get-ChildItem $dir -Filter 'unins*.exe' | Select-Object -First 1
+          Start-Process -FilePath $uninstaller.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          if (Test-Path "$dir\BankManager.exe") { throw 'A desinstalação deixou o executável' }
+      # ---- Linux: AppImage com informação de atualização (zsync). O appimagetool é baixado em versão fixa, com checksum conferido. ----
+      - name: AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: python scripts/installers.py appimage
+      # O AppImage precisa abrir de verdade: rodando sob Xvfb por 10 segundos, "continuar vivo até o timeout" (código 124) é sucesso.
+      - name: AppImage smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set +e
+          chmod +x artifacts/releases/BankManager-*-x86_64.AppImage
+          BANKMANAGER_DATA_DIR="$(mktemp -d)" xvfb-run -a timeout 10 artifacts/releases/BankManager-*-x86_64.AppImage --appimage-extract-and-run
+          code=$?
+          test "$code" = 124 || { echo "O AppImage encerrou com código $code"; exit 1; }
+          test -f artifacts/releases/BankManager-*-x86_64.AppImage.zsync
       # Artifacts ficam disponíveis também em builds comuns; dados pessoais nunca entram no pacote.
       - uses: actions/upload-artifact@v4
         with:
@@ -76,7 +118,7 @@ jobs:
           path: release-assets
           merge-multiple: true
       # O token temporário do GitHub é passado via ambiente, sem ser gravado no repositório.
-      - name: Publish portable packages
+      - name: Publish packages and installers
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-

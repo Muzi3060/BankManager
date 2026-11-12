@@ -34,12 +34,17 @@ public sealed class LocalStore : IDisposable
     /// <param name="directory">Pasta alternativa para testes; quando nula, utiliza a pasta local de dados do usuário.</param>
     public LocalStore(string? directory = null)
     {
-        DirectoryPath = directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager");
+        DirectoryPath = DefaultDirectory(directory);
         Directory.CreateDirectory(DirectoryPath);
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(DirectoryPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         try { lease = new FileStream(Path.Combine(DirectoryPath, ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
         catch (IOException) { throw new BudgetException("Não foi possível abrir os dados. Feche outra janela do BankManager e tente novamente."); }
     }
+    /// <summary>
+    /// Resolve a pasta de dados: a indicada (testes) ou a pasta local da conta, compartilhada com as preferências.
+    /// </summary>
+    public static string DefaultDirectory(string? directory = null) =>
+        string.IsNullOrWhiteSpace(directory) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager") : directory;
     /// <summary>
     /// Lê a base atual ou retorna um orçamento vazio apenas se o arquivo ainda não existe; erros não apagam dados.
     /// </summary>
@@ -53,7 +58,15 @@ public sealed class LocalStore : IDisposable
         if (stream.Length > 20 * 1024 * 1024) throw new BudgetException("O arquivo deve ter no máximo 20 MB.");
         BudgetData data;
         try { data = JsonSerializer.Deserialize<BudgetData>(stream, JsonOptions) ?? throw new BudgetException("Arquivo vazio."); }
-        catch (JsonException) { throw new BudgetException("O arquivo não é um backup válido do BankManager. Os dados atuais foram preservados."); }
+        catch (JsonException)
+        {
+            // Um arquivo de compartilhamento é outro tipo de arquivo: ele só ADICIONA despesas e tem o seu próprio caminho de importação.
+            stream.Dispose();
+            if (ExpenseShare.LooksLikeShare(path)) throw new BudgetException("Este arquivo é um compartilhamento de despesas, não um backup. Use “Importar despesas compartilhadas”. Os dados atuais foram preservados.");
+            throw new BudgetException("O arquivo não é um backup válido do BankManager. Os dados atuais foram preservados.");
+        }
+        // Arquivos de versões anteriores são atualizados em memória; o arquivo em disco só muda no próximo salvamento.
+        BudgetMigrations.ToCurrent(data);
         // A leitura só entrega registros depois de validar as regras de negócio e todas as referências.
         BudgetRules.Validate(data);
         return data;
@@ -78,7 +91,7 @@ public sealed class LocalStore : IDisposable
     /// Grava em temporário no mesmo diretório, força flush e substitui o destino após o arquivo estar completo.
     /// </summary>
     /// <remarks>Uma falha é propagada ao chamador. O backup é atualizado antes da troca, e o temporário é removido ao sair quando possível.</remarks>
-    private static void AtomicWrite(string path, string content, string? backup = null)
+    internal static void AtomicWrite(string path, string content, string? backup = null)
     {
         // Aplica na saída o mesmo limite da entrada para não salvar uma base que o próprio aplicativo recusaria abrir.
         if (Encoding.UTF8.GetByteCount(content) > 20 * 1024 * 1024) throw new BudgetException("O conjunto de dados excede o limite de 20 MB. Nenhuma alteração foi salva.");

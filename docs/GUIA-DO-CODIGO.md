@@ -8,10 +8,20 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 2. `BankManager/App.axaml.cs`: carrega recursos e cria a janela principal.
 3. `BankManager.Core/Models.cs`: vocabulário do domínio: pessoas, renda mensal, despesas, itens e tipos de divisão.
 4. `BankManager.Core/BudgetRules.cs`: o que um orçamento válido pode conter.
-5. `BankManager.Core/FinanceEngine.cs`: consulta mensal, divisão, saldos e estimativa.
+5. `BankManager.Core/FinanceEngine.cs`: consulta mensal, divisão, saldos, estimativa, totais por mês (gráfico) e últimas movimentações.
 6. `BankManager.Core/LocalStore.cs`: leitura, validação de arquivos, gravação, backup e bloqueio de outra instância.
-7. `BankManager/MainWindow.cs`: navegação, formulários e ligação entre tela, cálculo e disco.
-8. `BankManager/Ui.cs` e `BankManager/App.axaml`: componentes compartilhados e apresentação.
+7. `BankManager/MainWindow.cs`: estado ativo, navegação, gravação (`Commit`) e tratamento de erros. Cada página é uma parte da mesma classe (`partial class`), em `BankManager/Pages/`: `DashboardPage.cs`, `PeoplePage.cs`, `ExpensesPage.cs`, `ForecastPage.cs` (Previsões e metas, com o submenu) e `SettingsPage.cs`; os blocos reaproveitados ficam em `GoalPanels.cs`, `SettlementPanels.cs`, `RecurrencesDialog.cs` e `CsvDialogs.cs`.
+8. `BankManager/Ui.cs`: fábricas de controles (`Text`, `Button`, `Icon`, `Card`, `Dialog`…).
+9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos. `BankManager/Controls/BarChart.cs` é o gráfico de barras, desenhado pelo próprio controle.
+10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
+11. `BankManager.Core/RecurrenceEngine.cs` e `BudgetMigrations.cs`: despesas mensais e atualização de arquivos antigos.
+12. `BankManager.Core/SettlementEngine.cs`: quem deve a quem (acerto de contas).
+13. `BankManager.Core/CategoryEngine.cs`: categorias próprias (criar, renomear, excluir).
+14. `BankManager.Core/GoalEngine.cs`: metas mensais por categoria e seu progresso.
+15. `BankManager.Core/ExpenseSearch.cs`: busca e filtros da lista (um mês ou todos).
+16. `BankManager.Core/Csv.cs`, `CsvExport.cs` e `StatementImport.cs`: leitura/escrita de CSV, exportação e importação de extratos.
+17. `BankManager.Core/ExpenseShare.cs`: arquivo de compartilhamento de despesas (exportar as escolhidas, importar adicionando); o modo de seleção fica em `Pages/ExpensesPage.cs`, o diálogo de exportar em `Pages/ShareExport.cs`, o assistente de importação em `Pages/ShareImport.cs` e a base dos diálogos sobrepostos em `BankManager/Overlay.cs`.
+18. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -26,7 +36,7 @@ Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspe
 | `scripts/package.py` | Publicação, compactação, licenças e checksums | Python e SDK .NET |
 | `.github/workflows/release.yml` | Builds e testes nos dois sistemas, publicação de tags | GitHub Actions |
 
-As telas são compostas em C# com as fábricas de `Ui`; o XAML concentra os estilos globais. Nesta versão, `MainWindow` coordena estado, eventos e navegação, sem uma camada separada de ViewModels. Já as regras de cálculo podem ser usadas e testadas sem abrir uma janela.
+As telas são compostas em C# com as fábricas de `Ui`; o XAML concentra cores, ícones e estilos. Nesta versão, `MainWindow` coordena estado, eventos e navegação, sem uma camada separada de ViewModels (veja “Por que não MVVM” abaixo). Já as regras de cálculo podem ser usadas e testadas sem abrir uma janela.
 
 ## Caminho de uma edição
 
@@ -52,9 +62,11 @@ Cancelar um formulário descarta seu rascunho. A prévia de divisão também usa
 `BudgetData` é a raiz serializada em JSON e guarda todo o histórico. `Version` identifica o formato, não a versão comercial do aplicativo.
 
 - `Person.Id` é a chave estável de uma pessoa; mudar seu nome preserva as referências.
-- `MonthlyIncome` usa a chave composta pessoa + primeiro dia do mês. Ausência de registro equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
+- `MonthlyIncome` é uma linha de renda (`Label` e `Amount`) de uma pessoa em um mês (primeiro dia), com `Id` próprio. A renda do mês é a soma das linhas (`FinanceEngine.Income`). Ausência de linhas equivale a zero no cálculo, mas a tela sinaliza que a renda não foi preenchida.
 - `Expense.Participants` referencia pessoas por identificador. O modo individual exige um único participante.
 - `Expense.Items` detalha uma compra à vista; a soma dos itens determina o valor.
+- `Expense.PaidBy` guarda quem pagou (só em despesas pagas; nulo é "não informado"). `Settlement` é um pagamento entre duas pessoas que abate uma dívida; não é uma despesa.
+- `Recurrence` é o modelo de uma despesa mensal. Os lançamentos que ela gera são `Expense` comuns, ligados por `RecurrenceId` e `RecurrenceMonth` (o mês de origem, que não muda mesmo que o vencimento seja editado).
 - `InstallmentGroup` relaciona parcelas criadas juntas, mas cada `Expense` tem seu próprio `Id`, vencimento, valor e situação de pagamento.
 
 Os modelos são `record`, mas suas propriedades e listas são mutáveis. Uma expressão `with` faz uma cópia superficial; não garante isolamento das listas. `LocalStore.Clone` faz a cópia profunda pelo formato JSON para isolar o estado ativo durante a edição. Na criação de parcelas, as coleções são copiadas explicitamente.
@@ -70,6 +82,16 @@ Os modelos são `record`, mas suas propriedades e listas são mutáveis. Uma exp
 Dinheiro usa `decimal`. `ExpenseItem.Total` arredonda quantidade × preço para centavos, afastando empates de zero; a compra soma esses totais já arredondados. Uma dívida parcelada recebe o valor total já com os juros negociados; o motor não calcula taxas bancárias.
 
 `BudgetRules.Installments` converte o total em centavos inteiros. O quociente define a parcela básica e o resto acrescenta um centavo às primeiras parcelas. Exemplo: R$ 100 em três parcelas produz R$ 33,34, R$ 33,33 e R$ 33,33. As datas partem sempre do vencimento original, evitando que o ajuste de fevereiro altere o dia de março.
+
+### Recorrências e versões do esquema
+
+`RecurrenceEngine.Generate` é idempotente: para cada modelo, cria só os meses que faltam entre o mês inicial e o horizonte (12 meses à frente), pulando os que o usuário excluiu (`SkippedMonths`). Por isso a interface sempre exclui lançamentos com `RemoveExpense`, que registra o mês ignorado. `End` e `Remove` mantêm o histórico pago. A data de referência entra por parâmetro, o que torna tudo testável.
+
+`BudgetData.Version` é a versão do esquema (hoje 3: a 2 trouxe recorrências, quem pagou, metas e categorias; a 3, `Expense.PaidDate` e `Expense.OriginId`). A migração é em cadeia (1 → 2 → 3) e os testes a exercitam com arquivos reais das versões 1 e 2, guardados em `BankManager.Tests/Fixtures/`. `BudgetMigrations.ToCurrent` leva dados antigos à versão atual em memória, passo a passo, e `LocalStore.Read` o chama antes de validar; assim importações, recuperação e a base normal se beneficiam. Para criar a versão 3, acrescente um passo ali, suba `CurrentVersion` e escreva o teste "arquivo v2 migra para v3". Regra do projeto: a Fase 3 inteira usa o esquema 2, e novos campos desta fase entram nele com valores padrão que equivalem a "não usado".
+
+### Acerto de contas
+
+`SettlementEngine.Debts` percorre as despesas pagas com `PaidBy` e acumula, para cada par (devedor, credor), a parte de cada participante obtida de `FinanceEngine.Allocate`. Depois subtrai os `Settlement` e compensa o sentido contrário de cada par. O resultado é uma lista de `Debt` e não é gravado: sempre recalculado a partir das despesas e dos acertos. Não há simplificação entre três ou mais pessoas, de propósito: "Bruno deve a Ana" só aparece se Ana pagou algo por Bruno.
 
 ### Rateio
 
@@ -101,6 +123,32 @@ A média exclui parcelamentos; estes contribuem apenas com parcelas que vencem n
 
 Em `Ui.Field`, o rótulo e a ajuda também são registrados nas propriedades de acessibilidade. As classes aplicadas aos controles, como `primary`, `card` e `muted`, são definidas em `App.axaml`.
 
+### Temas, cores e ícones
+
+Nenhuma cor aparece no código C#. `Styles/Tokens.axaml` define cada cor com nome (por exemplo `SurfaceBrush`, `PrimaryBrush`) duas vezes, uma para `Light` e outra para `Dark`, em `ThemeDictionaries`. Os estilos de `Controls.axaml` e o C# só citam esses nomes (`DynamicResource` ou classes como `muted`, `positive`, `negative`), então trocar de tema atualiza tudo ao vivo. Para mudar uma cor, edite apenas o `Tokens.axaml`.
+
+O visual é o "Estilo C": o fundo da janela é um degradê (`BgBrush`, um `LinearGradientBrush`), os cartões comuns são translúcidos (`SurfaceBrush`, branco com opacidade; não há desfoque real nem acrílico, que variam por sistema), os cartões de meta são sólidos (`SolidSurfaceBrush`) e o "Resumo da casa" é um cartão escuro em degradê (`SummaryBrush`). As sombras também são tokens (`CardShadow`, `SolidShadow`, `SummaryShadow`, `NavShadow`), aplicadas com `BoxShadow`. Cada estado tem três cores: a do texto (`PositiveBrush`, `WarnBrush`, `NegativeBrush`), a do fundo suave (`...SoftBrush`, usada em chips e trilhos) e a da barra (`ProgressOkBrush`, `ProgressWarnBrush`, `ProgressOverBrush`). O estilo da janela liga os algarismos tabulares (`FontFeatures="+tnum"`) para o aplicativo inteiro.
+
+A preferência (Automático, Claro ou Escuro) fica em `settings.json`, lida por `SettingsStore` antes de a janela aparecer. `App.ApplyTheme` ajusta `RequestedThemeVariant`; no modo Automático ele volta ao padrão, que acompanha o sistema.
+
+Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os desenha com a cor do botão que os contém, igual em Windows e Linux. O ícone do aplicativo vem de `Assets/icon.svg`; `scripts/make-icons.sh` gera o `icon.png` (janela) e o `icon.ico` (executável do Windows).
+
+### Compartilhar despesas
+
+`ExpenseShare` (Core) cuida de tudo sem tocar na interface. `Build` monta um `ShareFile` com as despesas escolhidas; as pessoas vão pelo nome, porque os Ids de quem envia não existem na base de quem recebe. `Read` e `Validate` aplicam as proteções do backup (tamanho, profundidade, campos desconhecidos, versão) e conferem o campo `Kind`, que distingue o compartilhamento do backup; `LocalStore.Read` faz a conferência inversa. `Suggest` propõe o mapeamento de pessoas e categorias, e `Import` calcula o resultado em uma cópia profunda e valida o orçamento inteiro: serve de prévia e não altera nada. Para gravar, a tela chama `Commit(d => ExpenseShare.Apply(d, ...))`, o mesmo caminho seguro de qualquer edição (cópia, validação, gravação atômica, cópia anterior). Cada despesa importada guarda em `OriginId` o Id que tinha na origem; é por ele que uma segunda importação reconhece as duplicadas.
+
+Na interface, o fluxo tem três partes. O **modo de seleção** (`selecting` e `selectedIds`, na janela) faz a lista de despesas desenhar caixas de marcação e mostra uma barra flutuante que fica fora da área rolável. O **diálogo de exportar** e o **assistente de importação** não são janelas do sistema: são cartões desenhados sobre a própria janela, por `ShowOverlay` (`Overlay.cs`). A camada escura bloqueia cliques no que está atrás, o Tab circula só dentro do cartão, o foco vai para o título ao abrir e volta ao botão de origem ao fechar, e a tecla Esc é entregue ao diálogo. O assistente guarda as escolhas em variáveis locais de `ImportShared` e redesenha cada passo a partir delas; por isso voltar um passo não perde nada. `ExpenseShare.Import` devolve uma `ShareLine` por despesa do arquivo (adicionar, pular ou erro), e é isso que a prévia mostra. Os testes de interface usam `TestSavePath` e `TestOpenPath` no lugar do seletor de arquivos do sistema.
+
+### Componentes de interface
+
+`Ui.cs` reúne as peças reaproveitadas pelas páginas: `Chip` (etiqueta de situação), `Avatar` (inicial da pessoa), `Segmented` (opções lado a lado), `Collapsible` (seção de ajuda que abre e fecha), `Divider`, `IconCircle` (círculo com o ícone da categoria, escolhido por `CategoryIconName`), `Card` (estilos `card`, `solid` e `summary`) e `Button` (com ícone, ou só ícone; variantes `primary`, `ink`, `ghost`, `link`). Cada página monta o próprio cabeçalho com `PageHeader` (título, navegação de mês em pílula e "Nova despesa").
+
+O gráfico da visão geral é o controle `BarChart` (`Controls/BarChart.cs`): ele recebe os pontos prontos e desenha tudo em `Render` com `DrawingContext` (linhas pontilhadas, barras, rótulos e balão), sem biblioteca externa. `BarChart.Axis` escolhe o topo e o passo do eixo, que sempre começa em zero. As cores chegam por propriedades preenchidas no estilo de `Controls.axaml`, então o gráfico acompanha o tema. Os dados vêm de `FinanceEngine.MonthlyTotals` e a lista "Últimas movimentações" de `FinanceEngine.RecentMovements`, ambos no Core e com testes. A decisão de "quantos dias faltam" não está na interface: `DueStatus.Of` (Core, com testes) a calcula e a tela só escolhe o texto e a cor do chip.
+
+### Por que não MVVM (por enquanto)
+
+Migrar para ViewModels exigiria reescrever todas as telas, sem ganho visível. As regras já estão isoladas no Core e testáveis sem janela, que é o benefício principal. MVVM passa a compensar se as telas crescerem muito ou se for preciso testar a lógica de apresentação sem abrir janelas; a divisão em `Pages/` já prepara esse passo.
+
 ## Persistência e seus limites
 
 `LocalStore` abre `.lock` sem compartilhamento e mantém o handle até `Dispose`, ligado ao fechamento da janela. Isso impede outro acesso cooperante pelo aplicativo; não protege contra programas externos que ignorem esse mecanismo.
@@ -117,8 +165,10 @@ O JSON é legível, sem criptografia. No Unix, a pasta e os arquivos novos receb
 
 `BankManager.UiTests/Program.cs` configura a pasta temporária antes de criar o aplicativo, espera a inicialização gráfica e executa o roteiro na thread da interface. Os cliques disparam eventos dos botões, sem coordenadas do mouse. Há verificações na tela e no JSON salvo. Seletores de arquivos nativos e leitores de tela não são cobertos por esse roteiro.
 
+`scripts/installers.py` parte da pasta publicada por `package.py` e gera o instalador do Windows (Inno Setup, `installer/windows/BankManager.iss`) e o AppImage do Linux (`installer/linux/`: `AppRun`, `.desktop`, metadados). O `appimagetool` é fixado por versão e checksum. `Instalar-atalho.sh`, que acompanha o pacote portátil do Linux, cria o atalho do menu para o usuário. Não há atualizador dentro do aplicativo, por escolha: ele nunca acessa a internet.
+
 `run.sh` compila e inicia a versão de desenvolvimento. Já `scripts/package.py` publica o aplicativo com o .NET incluído, coleta avisos de terceiros, prepara o iniciador Linux, compacta e calcula SHA-256. A validação de versão ocorre antes de construir nomes de diretório.
 
-O workflow executa os testes de domínio nos dois sistemas e os testes gráficos no Linux via Xvfb. Somente tags com versão correspondente ao projeto podem criar releases, e o job de publicação depende do sucesso de ambos os destinos. `global.json` seleciona a família do SDK; por ser JSON, sua explicação fica neste guia em vez de comentários dentro do arquivo.
+O workflow executa os testes de domínio nos dois sistemas e os testes gráficos no Linux via Xvfb (no Windows eles rodam como aviso, com `continue-on-error`, até serem validados lá), gera o instalador e o AppImage e faz um teste de fumaça de cada um. Somente tags com versão correspondente ao projeto podem criar releases, e o job de publicação depende do sucesso de ambos os destinos. `global.json` seleciona a família do SDK; por ser JSON, sua explicação fica neste guia em vez de comentários dentro do arquivo.
 
 Para os comandos de execução, testes e distribuição, consulte o [README](../README.md).

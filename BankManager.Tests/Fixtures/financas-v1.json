@@ -1,0 +1,116 @@
+{
+  "Version": 1,
+  "People": [
+    {
+      "Id": "023a4035-2384-4d24-839f-f1f0cdd72286",
+      "Name": "Ana"
+    },
+    {
+      "Id": "21ce9ec0-5906-4c21-a94a-5ccce4156bad",
+      "Name": "Bruno"
+    }
+  ],
+  "Incomes": [
+    {
+      "PersonId": "023a4035-2384-4d24-839f-f1f0cdd72286",
+      "Month": "2026-10-01",
+      "Amount": 3000
+    },
+    {
+      "PersonId": "21ce9ec0-5906-4c21-a94a-5ccce4156bad",
+      "Month": "2026-10-01",
+      "Amount": 1000
+    }
+  ],
+  "Expenses": [
+    {
+      "Id": "0026a482-244e-4e08-8504-bdc600f20d0d",
+      "Title": "Aluguel",
+      "Category": "Moradia",
+      "DueDate": "2026-10-05",
+      "Amount": 1800,
+      "Paid": true,
+      "Split": 2,
+      "Participants": [
+        "023a4035-2384-4d24-839f-f1f0cdd72286",
+        "21ce9ec0-5906-4c21-a94a-5ccce4156bad"
+      ],
+      "Items": [],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1
+    },
+    {
+      "Id": "b23a52b3-e2e9-4693-a065-5c93aed4f00d",
+      "Title": "Mercado",
+      "Category": "Mercado",
+      "DueDate": "2026-10-20",
+      "Amount": 51,
+      "Paid": false,
+      "Split": 1,
+      "Participants": [
+        "023a4035-2384-4d24-839f-f1f0cdd72286",
+        "21ce9ec0-5906-4c21-a94a-5ccce4156bad"
+      ],
+      "Items": [
+        {
+          "Name": "Arroz",
+          "Quantity": 2,
+          "UnitPrice": 25.50,
+          "Total": 51.00
+        }
+      ],
+      "InstallmentGroup": null,
+      "InstallmentNumber": 1,
+      "InstallmentCount": 1
+    },
+    {
+      "Id": "4fc52144-e3c5-4a8a-8707-d8ff82007b40",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-10-15",
+      "Amount": 333.34,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "023a4035-2384-4d24-839f-f1f0cdd72286"
+      ],
+      "Items": [],
+      "InstallmentGroup": "c7420c6b-7ef4-4587-90ee-bc0b3e2d97de",
+      "InstallmentNumber": 1,
+      "InstallmentCount": 3
+    },
+    {
+      "Id": "e657ef14-c358-4e42-9ed4-c5bac9f8566a",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-11-15",
+      "Amount": 333.33,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "023a4035-2384-4d24-839f-f1f0cdd72286"
+      ],
+      "Items": [],
+      "InstallmentGroup": "c7420c6b-7ef4-4587-90ee-bc0b3e2d97de",
+      "InstallmentNumber": 2,
+      "InstallmentCount": 3
+    },
+    {
+      "Id": "e35e71ca-0b84-42b2-9f2d-682fd7cb8f8d",
+      "Title": "Notebook",
+      "Category": "Educa\u00E7\u00E3o",
+      "DueDate": "2026-12-15",
+      "Amount": 333.33,
+      "Paid": false,
+      "Split": 0,
+      "Participants": [
+        "023a4035-2384-4d24-839f-f1f0cdd72286"
+      ],
+      "Items": [],
+      "InstallmentGroup": "c7420c6b-7ef4-4587-90ee-bc0b3e2d97de",
+      "InstallmentNumber": 3,
+      "InstallmentCount": 3
+    }
+  ]
+}
