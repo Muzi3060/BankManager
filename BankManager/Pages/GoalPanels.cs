@@ -15,13 +15,15 @@ public sealed partial class MainWindow
     /// o percentual restante ou quanto passou. Embaixo, chips com as despesas da categoria no mês.
     /// A barra é verde até 79%, âmbar de 80% a 100% e vermelha acima de 100%.
     /// </summary>
-    private static Border GoalCard(GoalProgress goal, IReadOnlyList<Expense> expenses)
+    /// <param name="wide">Versão em lista (página de metas): acrescenta, à direita do valor, quanto ainda resta em reais.</param>
+    private static Border GoalCard(GoalProgress goal, IReadOnlyList<Expense> expenses, bool wide = false)
     {
         // Arredonda para baixo: "79%" nunca aparece em âmbar e "100%" só fica vermelho quando de fato passou.
         var used = (int)Math.Floor(goal.Ratio * 100); var tone = goal.Level switch { GoalLevel.Over => "negative", GoalLevel.Near => "warn", _ => "positive" };
         var bar = new ProgressBar { Value = (double)Math.Min(100m, goal.Ratio * 100), Maximum = 100 }; if (goal.Level == GoalLevel.Over) bar.Classes.Add("over"); else if (goal.Level == GoalLevel.Near) bar.Classes.Add("warn");
         var usedLabel = Text($"{used}% usado", tone); usedLabel.Classes.Add("small"); usedLabel.Classes.Add("strong");
-        var rest = Text(goal.Level == GoalLevel.Over ? $"Acima em {Money.Format(goal.Spent - goal.Goal)}" : $"{100 - used}% restante", "muted"); rest.Classes.Add("small"); rest.TextAlignment = TextAlignment.Right;
+        // Na lista, o valor que passou já aparece no topo do cartão; aqui fica o percentual.
+        var rest = Text(goal.Level != GoalLevel.Over ? $"{100 - used}% restante" : wide ? $"{used - 100}% acima" : $"Acima em {Money.Format(goal.Spent - goal.Goal)}", "muted"); rest.Classes.Add("small"); rest.TextAlignment = TextAlignment.Right;
         var labels = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") }; Grid.SetColumn(rest, 1); labels.Children.Add(usedLabel); labels.Children.Add(rest);
         var chips = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, -6) };
         var inCategory = expenses.Where(e => e.Category == goal.Category).OrderByDescending(e => e.Amount).ToList();
@@ -29,7 +31,18 @@ public sealed partial class MainWindow
         foreach (var e in inCategory.Take(3)) { var chip = Chip(e.Title); ((TextBlock)chip.Child!).TextTrimming = TextTrimming.CharacterEllipsis; chip.MaxWidth = 150; chip.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(chip); }
         if (inCategory.Count > 3) { var extra = Chip($"+{inCategory.Count - 3}", "status"); extra.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(extra); }
         if (inCategory.Count == 0) { var none = Chip("Sem despesas no mês"); none.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(none); }
-        var panel = Stack(Text(Money.Format(goal.Spent), "money"), Text($"{goal.Category} · meta {Money.Format(goal.Goal)}", "muted").WithClass("small"), bar, labels, chips); panel.Spacing = 6;
+        var head = Stack(Text(Money.Format(goal.Spent), "money"), Text($"{goal.Category} · meta {Money.Format(goal.Goal)}", "muted").WithClass("small")); head.Spacing = 6;
+        Control top = head;
+        if (wide)
+        {
+            // Na lista há espaço para o valor que resta (ou que passou), alinhado à direita.
+            var left = Text(Money.Format(Math.Abs(goal.Goal - goal.Spent)), "strong"); left.FontSize = 16; left.TextAlignment = TextAlignment.Right; if (goal.Level == GoalLevel.Over) left.Classes.Add("negative");
+            var caption = Text(goal.Level == GoalLevel.Over ? "Acima da meta" : "Restante", "muted").WithClass("small"); caption.TextAlignment = TextAlignment.Right;
+            var side = Stack(caption, left); side.Spacing = 2; Grid.SetColumn(side, 2);
+            var icon = IconCircle(CategoryIconName(goal.Category)); icon.Margin = new Thickness(0, 0, 14, 0); Grid.SetColumn(head, 1);
+            top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Children = { icon, head, side } };
+        }
+        var panel = Stack(top, bar, labels, chips); panel.Spacing = 6;
         bar.Margin = new Thickness(0, 6, 0, 0);
         var card = Card(panel, "solid"); AutomationProperties.SetName(card, $"Meta de {goal.Category}: {Money.Format(goal.Spent)} de {Money.Format(goal.Goal)}, {used}% usado"); return card;
     }

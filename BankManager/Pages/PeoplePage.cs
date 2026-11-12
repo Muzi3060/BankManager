@@ -7,22 +7,19 @@ using BankManager.Core;
 using static BankManager.Ui;
 
 namespace BankManager;
-// Página "Pessoas e rendas": cadastro de quem divide as despesas e da renda de cada mês.
+// Página "Pessoas e rendas": cadastro de quem divide as despesas, a renda de cada mês e quanto cada pessoa assume das despesas.
 public sealed partial class MainWindow
 {
     /// <summary>
-    /// Lista pessoas e a renda da competência em linhas, com edição e exclusão protegida por referências no histórico.
+    /// Lista pessoas em linhas: renda da competência, parte das despesas que cada uma assume e quanto sobra, com edição e exclusão
+    /// protegida por referências no histórico.
     /// </summary>
     private Control PeoplePage()
     {
-        var actions = Row(Button("Adicionar pessoa", () => _ = Run(() => EditPerson()), "primary", "Plus"), Button("Copiar rendas do mês anterior", () => _ = Run(CopyIncome)));
-        var panel = Stack(PageHeader("Pessoas e rendas", "Quem divide as despesas e quanto cada pessoa recebe neste mês."), actions); panel.Spacing = 20;
-        if (data.People.Count == 0)
-        {
-            var empty = Stack(Text("Ninguém por aqui ainda", "section"), Text("Adicione você e as pessoas que compartilham as despesas. Depois informe a renda de cada uma neste mês.", "muted")); empty.Spacing = 8; empty.Margin = new Thickness(24, 40);
-            empty.HorizontalAlignment = HorizontalAlignment.Center; foreach (var t in empty.Children.OfType<TextBlock>()) t.TextAlignment = TextAlignment.Center;
-            panel.Children.Add(Card(empty)); return panel;
-        }
+        var actions = Row(Button("Adicionar pessoa", () => _ = Run(() => EditPerson()), "ink", "Plus"), Button("Copiar rendas do mês anterior", () => _ = Run(CopyIncome)));
+        var panel = Stack(PageHeader("Pessoas e rendas", "Quem divide as despesas, quanto cada pessoa recebe e quanto assume neste mês."), actions); panel.Spacing = 18;
+        if (data.People.Count == 0) { panel.Children.Add(EmptyCard("Ninguém por aqui ainda", "Adicione você e as pessoas que compartilham as despesas. Depois informe a renda de cada uma neste mês.")); return panel; }
+        var balances = FinanceEngine.Balances(data, month).ToDictionary(b => b.Person.Id);
         var rows = new StackPanel();
         foreach (var person in data.People)
         {
@@ -30,9 +27,13 @@ public sealed partial class MainWindow
             // Resumo das rendas do mês: nenhuma (alerta), uma (só o nome) ou várias ("Salário R$ 3.000,00 · Extra R$ 500,00").
             var lines = FinanceEngine.IncomeLines(data, person.Id, month);
             var status = lines.Count == 0 ? "Renda ainda não informada neste mês" : lines.Count == 1 ? lines[0].Label : string.Join(" · ", lines.Select(l => $"{l.Label} {Money.Format(l.Amount)}"));
-            var who = Stack(new TextBlock { Text = person.Name, FontWeight = FontWeight.Medium }, Text(status, lines.Count == 0 ? "warn" : "muted")); who.Spacing = 0; who.VerticalAlignment = VerticalAlignment.Center;
-            var avatar = Avatar(person.Name); avatar.Margin = new Thickness(0, 0, 12, 0);
-            var income = Text(Money.Format(FinanceEngine.Income(data, person.Id, month)), "num"); income.FontWeight = FontWeight.SemiBold; income.VerticalAlignment = VerticalAlignment.Center; income.Margin = new Thickness(16, 0);
+            var who = Stack(new TextBlock { Text = person.Name, FontWeight = FontWeight.SemiBold }, Text(status, lines.Count == 0 ? "warn" : "muted").WithClass("small")); who.Spacing = 1; who.VerticalAlignment = VerticalAlignment.Center; who.Margin = new Thickness(12, 0);
+            // Divisão do mês: quanto a pessoa assume das despesas e quanto isso compromete da renda dela.
+            var b = balances[person.Id]; var committed = b.Income > 0 ? (double)Math.Min(100, b.Assigned / b.Income * 100) : 0;
+            var share = Stack(Text(b.Income > 0 ? $"Assume {Money.Format(b.Assigned)} · {committed:0}% da renda" : $"Assume {Money.Format(b.Assigned)}", "muted").WithClass("small"), new ProgressBar { Value = committed, Maximum = 100, Height = 6 }.WithClass("neutral")); share.Spacing = 6; share.VerticalAlignment = VerticalAlignment.Center; share.Margin = new Thickness(0, 0, 20, 0);
+            var remaining = Text($"Sobra {Money.Format(b.Remaining)}", b.Remaining < 0 ? "negative" : "positive"); remaining.Classes.Add("small"); remaining.TextAlignment = TextAlignment.Right;
+            var incomeValue = Text(Money.Format(b.Income), "strong"); incomeValue.TextAlignment = TextAlignment.Right;
+            var income = Stack(incomeValue, remaining); income.Spacing = 1; income.VerticalAlignment = VerticalAlignment.Center; income.Margin = new Thickness(0, 0, 16, 0); income.MinWidth = 130;
             var edit = Button("Editar", () => _ = Run(() => EditPerson(person)));
             var delete = Button("Excluir pessoa", () => _ = Run(async () =>
             {
@@ -41,14 +42,17 @@ public sealed partial class MainWindow
                 if (data.Expenses.Any(e => e.PaidBy == person.Id) || data.Settlements.Any(s => s.PayerId == person.Id || s.ReceiverId == person.Id)) throw new BudgetException("Esta pessoa aparece como quem pagou uma despesa ou em um acerto de contas. Remova esses registros antes de excluí-la.");
                 if (data.Recurrences.Any(r => r.Participants.Contains(person.Id))) throw new BudgetException("Esta pessoa participa de uma despesa recorrente. Em Despesas → Recorrentes, encerre e remova a recorrência antes de excluí-la.");
                 if (await Confirm(this, "Excluir pessoa?", $"Excluir {person.Name} e todos os seus registros de renda?")) Commit(d => { d.People.RemoveAll(p => p.Id == person.Id); d.Incomes.RemoveAll(i => i.PersonId == person.Id); });
-            }), "ghost danger", "Trash", iconOnly: true);
+            }), "ghost round danger", "Trash", iconOnly: true);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center }; buttons.Children.Add(edit); buttons.Children.Add(delete);
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(20, 12) };
-            Grid.SetColumn(who, 1); Grid.SetColumn(income, 2); Grid.SetColumn(buttons, 3); row.Children.Add(avatar); row.Children.Add(who); row.Children.Add(income); row.Children.Add(buttons);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,230,Auto,Auto"), Margin = new Thickness(0, 12) };
+            Control[] cells = [Avatar(person.Name), who, share, income, buttons];
+            for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); row.Children.Add(cells[i]); }
             rows.Children.Add(row);
         }
-        var card = Card(rows); card.Padding = new Thickness(0); panel.Children.Add(card);
-        panel.Children.Add(Text("Cada mês guarda sua própria renda. Alterar o nome vale para todo o histórico; alterar a renda afeta apenas este mês e recalcula a divisão dele.", "muted"));
+        panel.Children.Add(Card(rows));
+        // Avisos do rateio (por exemplo, divisão igual por falta de renda disponível) aparecem uma vez cada.
+        foreach (var warning in FinanceEngine.Expenses(data, month).Select(e => FinanceEngine.Allocate(data, e).Warning).Where(w => w is not null).Distinct()) panel.Children.Add(InlineNotice(warning!));
+        panel.Children.Add(Text("Cada mês guarda sua própria renda. Alterar o nome vale para todo o histórico; alterar a renda afeta apenas este mês e recalcula a divisão dele. Na divisão proporcional, quem tem mais renda disponível assume uma parte maior.", "muted"));
         return panel;
     }
     /// <summary>
@@ -81,7 +85,7 @@ public sealed partial class MainWindow
             foreach (var line in lines.ToList())
             {
                 AutomationProperties.SetName(line.Label, "Nome da renda"); AutomationProperties.SetName(line.Amount, "Valor da renda (R$)");
-                var remove = Button("Remover renda", () => { lines.Remove(line); Refresh(); }, "ghost danger", "Trash", iconOnly: true);
+                var remove = Button("Remover renda", () => { lines.Remove(line); Refresh(); }, "ghost round danger", "Trash", iconOnly: true);
                 var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,170,Auto") }; line.Label.Margin = new Thickness(0, 0, 8, 0); line.Amount.Margin = new Thickness(0, 0, 8, 0);
                 Grid.SetColumn(line.Amount, 1); Grid.SetColumn(remove, 2); row.Children.Add(line.Label); row.Children.Add(line.Amount); row.Children.Add(remove); linePanel.Children.Add(row);
             }

@@ -42,10 +42,11 @@ public sealed partial class MainWindow
     /// Cartão "Acerto de contas": quem deve a quem (saldo acumulado de todos os meses), com os avatares das duas pessoas
     /// e a ação de registrar um acerto. Sem dívidas, mostra "Tudo certo por aqui".
     /// </summary>
-    private Control SettlementCard()
+    /// <param name="history">Mostra o link "Histórico" (a aba de acerto já traz o histórico na própria página).</param>
+    private Control SettlementCard(bool history = true)
     {
         var debts = SettlementEngine.Debts(data);
-        var panel = Stack(SectionHeading("Acerto de contas", data.Settlements.Count > 0 ? Button("Histórico", () => _ = Run(ShowSettlements), "link") : null)); panel.Spacing = 10;
+        var panel = Stack(SectionHeading("Acerto de contas", history && data.Settlements.Count > 0 ? Button("Histórico", () => _ = Run(ShowSettlements), "link") : null)); panel.Spacing = 10;
         if (debts.Count == 0)
         {
             var anyPayer = data.Settlements.Count > 0 || data.Expenses.Any(e => e.Paid && e.PaidBy is not null);
@@ -98,32 +99,39 @@ public sealed partial class MainWindow
         await dialog.ShowDialog(this);
     }
     /// <summary>
-    /// Lista os acertos registrados, do mais recente ao mais antigo, e permite excluir um registrado por engano (a dívida volta).
+    /// Linhas do histórico de acertos, do mais recente ao mais antigo, com a opção de excluir um registrado por engano (a dívida volta).
+    /// Usadas no diálogo de histórico e na aba de acerto de "Previsões e metas".
+    /// </summary>
+    /// <param name="owner">Janela sobre a qual a confirmação abre.</param>
+    /// <param name="after">Chamado depois de uma exclusão, para o diálogo refazer a lista (a página se refaz sozinha).</param>
+    private Control SettlementRows(Func<Window> owner, Action after)
+    {
+        var rows = new StackPanel();
+        foreach (var s in data.Settlements.OrderByDescending(x => x.Date))
+        {
+            if (rows.Children.Count > 0) rows.Children.Add(Divider());
+            var id = s.Id;
+            var text = Text($"{s.Date:dd/MM/yyyy} · {NameOf(s.PayerId)} pagou a {NameOf(s.ReceiverId)}"); text.VerticalAlignment = VerticalAlignment.Center;
+            var amount = Text(Money.Format(s.Amount), "strong"); amount.VerticalAlignment = VerticalAlignment.Center; amount.Margin = new Thickness(16, 0);
+            var delete = Button("Excluir acerto", () => _ = Run(async () =>
+            {
+                if (await Confirm(owner(), "Excluir acerto?", "O acerto sai do histórico e a dívida correspondente volta a aparecer.")) Commit(d => d.Settlements.RemoveAll(x => x.Id == id));
+                after();
+            }), "ghost round danger", "Trash", iconOnly: true);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 6) };
+            Grid.SetColumn(amount, 1); Grid.SetColumn(delete, 2); row.Children.Add(text); row.Children.Add(amount); row.Children.Add(delete); rows.Children.Add(row);
+        }
+        if (data.Settlements.Count == 0) rows.Children.Add(Text("Nenhum acerto registrado ainda.", "muted"));
+        return rows;
+    }
+    /// <summary>
+    /// Abre o histórico de acertos em um diálogo (atalho a partir do cartão da visão geral).
     /// </summary>
     private async Task ShowSettlements()
     {
         var holder = new ContentControl(); Window? dialog = null;
-        Control Build()
-        {
-            var rows = new StackPanel();
-            foreach (var s in data.Settlements.OrderByDescending(x => x.Date))
-            {
-                if (rows.Children.Count > 0) rows.Children.Add(Divider());
-                var id = s.Id;
-                var text = Text($"{s.Date:dd/MM/yyyy} · {NameOf(s.PayerId)} pagou a {NameOf(s.ReceiverId)}"); text.VerticalAlignment = VerticalAlignment.Center;
-                var amount = Text(Money.Format(s.Amount), "num"); amount.FontWeight = FontWeight.SemiBold; amount.VerticalAlignment = VerticalAlignment.Center; amount.Margin = new Thickness(16, 0);
-                var delete = Button("Excluir acerto", () => _ = Run(async () =>
-                {
-                    if (await Confirm(dialog!, "Excluir acerto?", "O acerto sai do histórico e a dívida correspondente volta a aparecer.")) Commit(d => d.Settlements.RemoveAll(x => x.Id == id));
-                    holder.Content = Build();
-                }), "ghost danger", "Trash", iconOnly: true);
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 8) };
-                Grid.SetColumn(amount, 1); Grid.SetColumn(delete, 2); row.Children.Add(text); row.Children.Add(amount); row.Children.Add(delete); rows.Children.Add(row);
-            }
-            if (data.Settlements.Count == 0) rows.Children.Add(Text("Nenhum acerto registrado.", "muted"));
-            return rows;
-        }
-        holder.Content = Build();
+        void Refresh() => holder.Content = SettlementRows(() => dialog!, Refresh);
+        Refresh();
         var panel = Stack(Heading("Histórico de acertos", "Pagamentos já feitos entre as pessoas."), holder);
         dialog = Dialog("Histórico de acertos", panel, 640); dialog.Height = 520;
         panel.Children.Add(Row(Button("Fechar", () => dialog.Close(), "primary")));

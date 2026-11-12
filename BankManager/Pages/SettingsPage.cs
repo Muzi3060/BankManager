@@ -22,7 +22,7 @@ public sealed partial class MainWindow
         for (var i = 0; i < cards.Length; i++) { Grid.SetColumn(cards[i], i * 2); themes.Children.Add(cards[i]); }
         var appearance = Card(Stack(Text("Aparência", "section"), Text("Escolha como o aplicativo aparece. A opção automática acompanha o tema do seu computador.", "muted"), themes));
         var wrap = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var button in new[] { Button("Exportar backup", () => _ = Run(Export), "primary"), Button("Importar backup", () => _ = Run(Import)), Button("Recuperar versão anterior", () => _ = Run(Recover)) }) { button.Margin = new Thickness(0, 0, 8, 8); wrap.Children.Add(button); }
+        foreach (var button in new[] { Button("Exportar backup", () => _ = Run(Export), "ink"), Button("Importar backup", () => _ = Run(Import)), Button("Recuperar versão anterior", () => _ = Run(Recover)) }) { button.Margin = new Thickness(0, 0, 8, 8); wrap.Children.Add(button); }
         var folder = Text(store?.DirectoryPath ?? "—", "muted"); folder.FontSize = 12;
         // Planilhas: exportar as despesas e importar um extrato bancário, ambos em CSV.
         var sheets = new WrapPanel { Orientation = Orientation.Horizontal };
@@ -37,7 +37,7 @@ public sealed partial class MainWindow
             Collapsible("Privacidade e backups", "O aplicativo funciona sem internet e não envia nenhum dado para fora. Cada salvamento guarda uma cópia da versão anterior, que você pode recuperar aqui ao lado.\n\nOs arquivos não são criptografados: backups contêm informações financeiras em texto legível. Guarde-os em um local privado e não os envie a quem você não conhece.")));
         ((StackPanel)help.Child!).Spacing = 4;
         var below = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*") }; Grid.SetColumn(help, 2); below.Children.Add(yourData); below.Children.Add(help); yourData.VerticalAlignment = VerticalAlignment.Top; help.VerticalAlignment = VerticalAlignment.Top;
-        var page = Stack(PageHeader("Ajustes", "Aparência, categorias, seus dados e ajuda.", monthNavigation: false), appearance, CategoriesCard(), below); page.Spacing = 20; return page;
+        var page = Stack(PageHeader("Ajustes", "Aparência, categorias, seus dados e ajuda.", monthNavigation: false), appearance, CategoriesCard(), below); page.Spacing = 18; return page;
     }
     /// <summary>
     /// Cartão clicável de tema: miniatura, nome e destaque na opção atual. Clicar aplica o tema na hora.
@@ -52,26 +52,28 @@ public sealed partial class MainWindow
         return card;
     }
     /// <summary>
-    /// Miniatura de uma tela (menu lateral, título e um cartão) desenhada no tema pedido, independentemente do tema atual.
+    /// Miniatura de uma tela (menu, cartão translúcido e cartão escuro sobre o degradê) desenhada no tema pedido, independentemente do tema atual.
     /// </summary>
-    private static Control ThemeMini(ThemeVariant variant)
+    private static Control ThemeMini(ThemeVariant variant) => new ThemeVariantScope { RequestedThemeVariant = variant, Child = new Border { Child = MiniScreen(true), Height = 76 }.WithClass("mini-frame") };
+    /// <summary>
+    /// Conteúdo da miniatura: fundo em degradê, barras do menu (opcionais) e dois cartões.
+    /// </summary>
+    private static Control MiniScreen(bool menu)
     {
-        var bars = new StackPanel { Spacing = 4, Margin = new Thickness(6, 8) }; foreach (var width in new[] { 14d, 12d, 14d }) bars.Children.Add(MiniBar("mini-muted", width));
-        var side = new Border { Child = bars, Width = 28 }; side.Classes.Add("mini-side");
-        var inner = Stack(MiniBar("mini-text", 46), new Border { Child = Stack(MiniBar("mini-accent", 26), MiniBar("mini-muted", 40)), Padding = new Thickness(6) }.WithClass("mini-card")); ((StackPanel)inner).Spacing = 6;
-        var content = new Border { Child = inner, Padding = new Thickness(8) }; content.Classes.Add("mini-bg");
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*") }; Grid.SetColumn(content, 1); grid.Children.Add(side); grid.Children.Add(content);
-        return new ThemeVariantScope { RequestedThemeVariant = variant, Child = new Border { Child = grid, Height = 76 }.WithClass("mini-frame") };
+        var bars = new StackPanel { Spacing = 4, Margin = new Thickness(7, 9, 0, 0), Width = 22 }; foreach (var width in new[] { 16d, 12d, 14d }) bars.Children.Add(MiniBar("mini-muted", width));
+        var card = new Border { Child = Stack(MiniBar("mini-text", 26), MiniBar("mini-accent", 18)), Padding = new Thickness(6), Margin = new Thickness(0, 0, 5, 0) }.WithClass("mini-card"); ((StackPanel)card.Child!).Spacing = 5;
+        var dark = new Border().WithClass("mini-dark"); Grid.SetColumn(dark, 1);
+        var cards = new Grid { ColumnDefinitions = new ColumnDefinitions("1.7*,*"), Margin = new Thickness(8, 10, 8, 10), Children = { card, dark } }; Grid.SetColumn(cards, 1);
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(menu ? "Auto,*" : "0,*"), Children = { bars, cards } }; bars.IsVisible = menu;
+        return new Border { Child = grid }.WithClass("mini-bg");
     }
     /// <summary>
     /// Miniatura do modo automático: metade clara, metade escura.
     /// </summary>
     private static Control AutoThemeMini()
     {
-        var light = new Border { Height = 76 }.WithClass("mini-bg"); var lightSide = new Border { Width = 28, HorizontalAlignment = HorizontalAlignment.Left }.WithClass("mini-side");
-        var dark = new Border { Height = 76, Padding = new Thickness(8) }.WithClass("mini-bg"); dark.Child = new Border { Padding = new Thickness(6), Child = Stack(MiniBar("mini-accent", 26), MiniBar("mini-muted", 30)), VerticalAlignment = VerticalAlignment.Bottom }.WithClass("mini-card");
-        var left = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Light, Child = new Grid { Children = { light, lightSide } } };
-        var right = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Dark, Child = dark };
+        var left = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Light, Child = MiniScreen(true) };
+        var right = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Dark, Child = MiniScreen(false) };
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") }; Grid.SetColumn(right, 1); grid.Children.Add(left); grid.Children.Add(right);
         return new Border { Child = grid, Height = 76 }.WithClass("mini-frame");
     }
@@ -85,7 +87,7 @@ public sealed partial class MainWindow
     private Control CategoriesCard()
     {
         var builtIn = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var name in BudgetRules.Categories) { var chip = Chip(name); chip.Margin = new Thickness(0, 0, 6, 6); builtIn.Children.Add(chip); }
+        foreach (var name in BudgetRules.Categories) { var chip = Chip(name, "status"); chip.Margin = new Thickness(0, 0, 6, 6); builtIn.Children.Add(chip); }
         var own = new StackPanel();
         foreach (var name in data.CustomCategories)
         {
@@ -95,17 +97,17 @@ public sealed partial class MainWindow
             {
                 var renamed = await Prompt(this, "Renomear categoria", "Novo nome", name, CategoryEngine.MaxLength);
                 if (renamed is not null) Commit(d => CategoryEngine.Rename(d, name, renamed));
-            }), "ghost", "Edit", iconOnly: true);
+            }), "ghost round", "Edit", iconOnly: true);
             var remove = Button("Excluir " + name, () => _ = Run(async () =>
             {
                 if (await Confirm(this, "Excluir categoria?", $"Excluir a categoria “{name}”? Só é possível se nenhuma despesa ou recorrência a usar.")) Commit(d => CategoryEngine.Remove(d, name));
-            }), "ghost danger", "Trash", iconOnly: true);
+            }), "ghost round danger", "Trash", iconOnly: true);
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 4) };
             Grid.SetColumn(rename, 1); Grid.SetColumn(remove, 2); row.Children.Add(label); row.Children.Add(rename); row.Children.Add(remove); own.Children.Add(row);
         }
         if (data.CustomCategories.Count == 0) own.Children.Add(Text("Você ainda não criou categorias próprias.", "muted"));
         var input = Input(null, "Nova categoria", CategoryEngine.MaxLength); AutomationProperties.SetName(input, "Nova categoria");
-        var add = Button("Adicionar categoria", () => _ = Run(() => { Commit(d => CategoryEngine.Add(d, input.Text ?? "")); return Task.CompletedTask; }), "primary", "Plus");
+        var add = Button("Adicionar categoria", () => _ = Run(() => { Commit(d => CategoryEngine.Add(d, input.Text ?? "")); return Task.CompletedTask; }), icon: "Plus");
         var form = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto") }; Grid.SetColumn(add, 2); form.Children.Add(input); form.Children.Add(add);
         return Card(Stack(Text("Categorias", "section"), Text("As categorias padrão não mudam. Crie as suas para organizar melhor, por exemplo Pets ou Viagens.", "muted"), builtIn, own, form));
     }

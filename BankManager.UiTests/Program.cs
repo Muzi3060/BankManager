@@ -110,6 +110,10 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                         Shot(main, $"{file}-2-{themeName}"); scroller.Offset = default;
                     }
                 }
+                // As outras abas de "Previsões e metas" (a captura "previsoes" mostra as metas), no tema claro.
+                App.ApplyTheme(ThemePreference.Light); await Click("Previsões e metas", main);
+                foreach (var (label, file) in new[] { ("Previsão do próximo mês", "previsao"), ("Despesas recorrentes", "recorrentes-aba"), ("Acerto de contas", "acerto") }) { await Click(label, main); await Task.Delay(300); Shot(main, file); }
+                await Click("Metas por categoria", main);
                 // Diálogo de recorrentes, que mostra o estado com a internet mensal.
                 await Click("Despesas", main); await Click("Recorrentes", main); await Task.Delay(250);
                 Shot(Active(), "recorrentes");
@@ -184,8 +188,15 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             var itemExpense = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single(e => e.Title == "Compra detalhada");
             Check(itemExpense.Amount == 51m && itemExpense.Items.Single().Quantity == 2m, "Item list calculates and persists 2 × 25.50");
             // Cenário 6: navegação renderiza as páginas de previsão e backup sem erros.
+            // "Previsões e metas" abre nas metas (ainda vazias) e o submenu leva às outras três abas.
             await Click("Previsões e metas", main);
-            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast screen renders");
+            Check(FindButton(main, "Criar primeira meta").IsVisible, "Goals tab shows the empty state");
+            await Click("Previsão do próximo mês", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast tab renders");
+            await Click("Despesas recorrentes", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Nenhuma despesa recorrente ainda"), "Recurrences tab renders");
+            await Click("Acerto de contas", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Histórico de acertos") && main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("Ana pagou a") == true || t.Text?.Contains("Bruno pagou a Ana") == true), "Settlement tab shows the history");
             await Click("Ajustes", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "Settings screen renders");
             // Cenário 6b: categorias próprias são criadas em Ajustes e ficam disponíveis no editor de despesas.
@@ -245,6 +256,9 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             var goalSaved = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(goalSaved.Goals.Count == 1 && goalSaved.Goals[0].Category == "Mercado" && goalSaved.Goals[0].Amount == 500m, "Goal is saved from the dialog");
             Check(main.GetVisualDescendants().OfType<ProgressBar>().Any(b => b.Classes.Contains("over")), "Goal over the limit is highlighted");
+            // A mesma meta aparece em lista na aba de metas, com o valor que passou do limite.
+            await Click("Previsões e metas", main); await Click("Metas por categoria", main);
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Acima da meta") && main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Mercado · meta " + Money.Format(500m)), "Goals tab lists the goal card");
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.
             var output = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT");

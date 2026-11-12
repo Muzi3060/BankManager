@@ -69,7 +69,7 @@ public sealed partial class MainWindow
     private Control ExpenseTable(IReadOnlyList<Expense> entries)
     {
         var rows = new StackPanel();
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(20, 12) };
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(22, 14, 14, 12) };
         string[] titles = ["Descrição", "Vence", "Divisão", "Situação", "Valor", ""];
         for (var i = 0; i < titles.Length; i++) { var label = Text(titles[i], "muted"); label.FontSize = 12; label.FontWeight = FontWeight.Medium; if (i == 4) label.TextAlignment = TextAlignment.Right; Grid.SetColumn(label, i); header.Children.Add(label); }
         rows.Children.Add(header);
@@ -81,15 +81,15 @@ public sealed partial class MainWindow
     /// </summary>
     private Control ExpenseRow(Expense expense)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(20, 12) };
-        var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.Medium, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted")); title.Spacing = 0; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
-        var due = Text(allMonths ? $"{expense.DueDate:dd/MM/yy}" : $"{expense.DueDate:dd/MM}", "num"); due.VerticalAlignment = VerticalAlignment.Center;
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(22, 10, 14, 10) };
+        var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted").WithClass("small")); title.Spacing = 1; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
+        var due = Text(allMonths ? $"{expense.DueDate:dd/MM/yy}" : $"{expense.DueDate:dd/MM}", "support"); due.VerticalAlignment = VerticalAlignment.Center;
         // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
         var shares = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; line.Classes.Add("num"); shares.Children.Add(line); }
+        foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; shares.Children.Add(line); }
         var chip = StatusChip(expense);
-        var amount = Text(Money.Format(expense.Amount), "num"); amount.FontWeight = FontWeight.SemiBold; amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center;
-        var more = Button("Mais ações", () => { }, "ghost", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
+        var amount = Text(Money.Format(expense.Amount), "strong"); amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center;
+        var more = Button("Mais ações", () => { }, "ghost round", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
         Control[] cells = [title, due, shares, chip, amount, more];
         for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); grid.Children.Add(cells[i]); }
         return grid;
@@ -144,7 +144,7 @@ public sealed partial class MainWindow
             DueKind.Paid => Chip("Pago", "positive"),
             DueKind.Overdue => Chip("Em atraso", "negative"),
             DueKind.DueSoon => Chip(s.Days == 0 ? "Vence hoje" : $"Vence em {s.Days} {(s.Days == 1 ? "dia" : "dias")}", "warn"),
-            _ => Chip("Em aberto")
+            _ => Chip("Em aberto", "status")
         };
     }
     /// <summary>
