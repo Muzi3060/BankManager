@@ -9,7 +9,7 @@ namespace BankManager.Core;
 public static class CsvExport
 {
     /// <summary>Cabeçalho das colunas, na ordem em que são escritas.</summary>
-    public static readonly string[] Columns = ["Data", "Descrição", "Categoria", "Valor", "Situação", "Pago por", "Responsáveis", "Divisão", "Parcela", "Recorrente"];
+    public static readonly string[] Columns = ["Data", "Descrição", "Categoria", "Valor", "Situação", "Pago por", "Responsáveis", "Divisão", "Parcela", "Recorrente", "Pago em"];
     /// <summary>
     /// Monta o CSV de todas as despesas (ou só as do mês, se informado), da mais antiga à mais recente.
     /// </summary>
@@ -23,7 +23,8 @@ public static class CsvExport
             string[] cells =
             [
                 e.DueDate.ToString("dd/MM/yyyy"), e.Title, e.Category, e.Amount.ToString("0.00", br), e.Paid ? "Pago" : "Em aberto", e.PaidBy is { } p ? names.GetValueOrDefault(p, "—") : "",
-                string.Join(" / ", e.Participants.Select(id => names.GetValueOrDefault(id, "—"))), shares, e.InstallmentCount > 1 ? $"{e.InstallmentNumber}/{e.InstallmentCount}" : "", e.RecurrenceId is null ? "" : "Sim"
+                string.Join(" / ", e.Participants.Select(id => names.GetValueOrDefault(id, "—"))), shares, e.InstallmentCount > 1 ? $"{e.InstallmentNumber}/{e.InstallmentCount}" : "", e.RecurrenceId is null ? "" : "Sim",
+                e.PaidDate?.ToString("dd/MM/yyyy") ?? ""
             ];
             builder.Append(string.Join(';', cells.Select(c => Csv.Cell(c)))).Append("\r\n");
         }

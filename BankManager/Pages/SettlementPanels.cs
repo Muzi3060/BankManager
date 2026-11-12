@@ -17,24 +17,33 @@ public sealed partial class MainWindow
     /// </summary>
     private string NameOf(Guid id) => data.People.FirstOrDefault(p => p.Id == id)?.Name ?? "—";
     /// <summary>
-    /// Pergunta quem pagou uma despesa. Com uma só pessoa cadastrada não pergunta. Em despesa individual, o responsável vem destacado.
+    /// Pergunta quem pagou uma despesa e em que dia (padrão: hoje). Com uma só pessoa cadastrada não pergunta: ela pagou hoje, e a
+    /// data pode ser corrigida ao editar a despesa. Em despesa individual, o responsável vem destacado.
     /// </summary>
-    /// <returns>Se o usuário escolheu (falso ao cancelar) e a pessoa (nula em "Não informar").</returns>
-    private async Task<(bool Chosen, Guid? Payer)> AskPayer(Expense expense)
+    /// <returns>Se o usuário escolheu (falso ao cancelar), a pessoa (nula em "Não informar") e a data do pagamento.</returns>
+    private async Task<(bool Chosen, Guid? Payer, DateOnly PaidDate)> AskPayer(Expense expense)
     {
-        if (data.People.Count == 1) return (true, data.People[0].Id);
-        var result = (Chosen: false, Payer: (Guid?)null);
-        Window? dialog = null;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (data.People.Count == 1) return (true, data.People[0].Id, today);
+        var result = (Chosen: false, Payer: (Guid?)null, PaidDate: today);
+        Window? dialog = null; var error = Text("", "error");
+        var date = Input(today.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        // Só fecha com uma data válida; caso contrário, mostra o erro e deixa corrigir.
+        void Choose(Guid? payer)
+        {
+            try { result = (true, payer, ParseDate(date.Text, "Data do pagamento")); dialog!.Close(); }
+            catch (Exception ex) { error.Text = FriendlyError(ex); }
+        }
         var suggested = expense.Split == SplitMode.Individual && expense.Participants.Count == 1 ? expense.Participants[0] : (Guid?)null;
-        var panel = Stack(Heading("Quem pagou?", $"{expense.Title} · {Money.Format(expense.Amount)}"));
+        var panel = Stack(Heading("Quem pagou?", $"{expense.Title} · {Money.Format(expense.Amount)}"), Field("Data do pagamento (dd/mm/aaaa)", date), error);
         foreach (var person in data.People)
         {
-            var id = person.Id; var button = Button(person.Name, () => { result = (true, id); dialog!.Close(); }, id == suggested ? "primary" : null); button.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(button);
+            var id = person.Id; var button = Button(person.Name, () => Choose(id), id == suggested ? "primary" : null); button.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(button);
         }
-        var none = Button("Não informar", () => { result = (true, null); dialog!.Close(); }, "ghost"); none.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(none);
+        var none = Button("Não informar", () => Choose(null), "ghost"); none.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(none);
         panel.Children.Add(Text("Quem pagou entra no acerto de contas: quem não pagou deve a sua parte a quem pagou. Sem informar, a despesa fica fora do acerto.", "muted"));
         panel.Children.Add(Button("Cancelar", () => dialog!.Close(), "ghost"));
-        dialog = Dialog("Quem pagou?", panel, 460); dialog.Height = Math.Min(680, 330 + 50 * data.People.Count);
+        dialog = Dialog("Quem pagou?", panel, 460); dialog.Height = Math.Min(760, 440 + 50 * data.People.Count);
         await dialog.ShowDialog(this);
         return result;
     }

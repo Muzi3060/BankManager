@@ -30,7 +30,7 @@ static BudgetData DemoData()
     var group = Guid.NewGuid();
     void Add(string title, string category, int day, decimal amount, bool paid = false, int installment = 1, int monthsAgo = 0) => data.Expenses.Add(new Expense
     {
-        Title = title, Category = category, DueDate = first.AddMonths(-monthsAgo).AddDays(day - 1), Amount = amount, Paid = paid, PaidBy = monthsAgo > 0 ? ana.Id : null, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
+        Title = title, Category = category, DueDate = first.AddMonths(-monthsAgo).AddDays(day - 1), Amount = amount, Paid = paid, PaidBy = monthsAgo > 0 ? ana.Id : null, PaidDate = paid ? first.AddMonths(-monthsAgo).AddDays(day - 1) : null, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
         InstallmentGroup = installment > 1 ? group : null, InstallmentNumber = installment, InstallmentCount = installment > 1 ? 10 : 1
     });
     Add("Aluguel", "Moradia", 5, 1800, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
@@ -46,7 +46,7 @@ static BudgetData DemoData()
     }
     // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
     data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
-    RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true;
+    RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true; data.Expenses.First(e => e.RecurrenceMonth == first).PaidDate = first.AddDays(7);
     // Metas: Mercado perto do limite (87%), Saúde acima (106%) e Lazer dentro (55%).
     GoalEngine.Set(data, "Mercado", 1100); GoalEngine.Set(data, "Saúde", 600); GoalEngine.Set(data, "Lazer", 100);
     // Quem pagou as contas já quitadas: o cartão de acerto mostra o saldo entre Ana e Bruno.
@@ -155,7 +155,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             // Marcar como pago pergunta quem pagou: aqui, Ana.
             await Click("Visão geral", main); await Menu("Marcar como pago"); await Click("Ana");
             var paidData = LocalStore.Read(Path.Combine(directory, "financas.json"));
-            Check(paidData.Expenses.Single().Paid && paidData.Expenses.Single().PaidBy == paidData.People[0].Id, "Payment action persists with who paid");
+            Check(paidData.Expenses.Single().Paid && paidData.Expenses.Single().PaidBy == paidData.People[0].Id && paidData.Expenses.Single().PaidDate == DateOnly.FromDateTime(DateTime.Today), "Payment action persists with who paid and today's date");
             // A visão geral nova: o gráfico tem texto alternativo com os valores e a despesa paga entra nas últimas movimentações, depois das rendas.
             var chart = main.GetVisualDescendants().OfType<BankManager.Controls.BarChart>().Single();
             Check(AutomationProperties.GetName(chart)!.StartsWith("Despesas dos últimos 6 meses") && AutomationProperties.GetName(chart)!.Contains(Money.Format(800m)), "Chart exposes its values as alternative text");
@@ -178,6 +178,17 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(lifetime.Windows.Count == 2, "Invalid expense keeps editor open");
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Amount == 800m, "Invalid edit preserves saved value");
             await Click("Cancelar");
+            // Cenário 4b: reabrir apaga a data do pagamento; pagar de novo com uma data inválida mantém o diálogo aberto, e uma data
+            // válida é gravada e aparece na linha como "Pago em dd/MM".
+            await Menu("Marcar em aberto");
+            var reopened = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single(); Check(!reopened.Paid && reopened.PaidDate is null && reopened.PaidBy is null, "Reopening clears the paid date");
+            await Menu("Marcar como pago");
+            var payDate = Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Data do pagamento (dd/mm/aaaa)");
+            payDate.Text = "31/02/2026"; await Click("Bruno"); Check(lifetime.Windows.Count == 2, "Invalid paid date keeps the dialog open");
+            var chosenDate = Dates.Month(DateOnly.FromDateTime(DateTime.Today)).AddDays(1);
+            payDate.Text = chosenDate.ToString("dd/MM/yyyy"); await Click("Ana");
+            var repaid = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single(); Check(repaid.Paid && repaid.PaidDate == chosenDate, "Chosen paid date persists");
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == $"Pago em {chosenDate:dd/MM}"), "Expense row shows the paid date");
             // Cenário 5: duas unidades de 25,50 devem gerar uma despesa de 51,00 com a quantidade registrada.
             await Click("Nova despesa", main);
             inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray();
@@ -250,7 +261,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("2 despesas serão importadas") == true), "Import wizard previews the statement");
             await Click("Importar");
             var imported = LocalStore.Read(Path.Combine(directory, "financas.json"));
-            Check(imported.Expenses.Count == before + 2 && imported.Expenses.Any(e => e.Title == "FARMACIA CENTRAL" && e.Amount == 1234.56m && e.Paid && e.PaidBy is null), "Statement import creates paid expenses");
+            Check(imported.Expenses.Count == before + 2 && imported.Expenses.Any(e => e.Title == "FARMACIA CENTRAL" && e.Amount == 1234.56m && e.Paid && e.PaidBy is null && e.PaidDate == new DateOnly(2026, 11, 4)), "Statement import creates paid expenses");
             // Importar o mesmo arquivo outra vez não repete nada: o botão Importar fica desligado e o aviso mostra as repetidas.
             _ = ((MainWindow)main).ImportStatementFromFile(statement); await Task.Delay(500);
             Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !FindButton(Active(), "Importar").IsEnabled, "Re-importing the same statement finds only duplicates");

@@ -22,5 +22,13 @@ public static class BudgetMigrations
             data.Recurrences = []; data.Settlements = []; data.CustomCategories = []; data.Goals = [];
             data.Version = 2;
         }
+        // Passo 2 → 3: acrescenta a data de pagamento e a origem de despesas importadas, ambos opcionais. Despesas já pagas
+        // ficam sem data de pagamento (ninguém a informou); a versão 2 não conhecia esses campos, então um arquivo v2 que os traga é recusado.
+        if (data.Version == 2)
+        {
+            if (data.Expenses?.Any(e => e is not null && (e.PaidDate is not null || e.OriginId is not null)) == true)
+                throw new BudgetException("O arquivo declara a versão 2, mas contém dados que só existem a partir da versão 3 (data de pagamento ou origem de importação). Ele pode estar corrompido.");
+            data.Version = 3;
+        }
     }
 }

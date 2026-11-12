@@ -120,13 +120,22 @@ public sealed partial class MainWindow
         AutomationProperties.SetName(item, text); item.Click += (_, _) => action(); return item;
     }
     /// <summary>
-    /// Alterna a situação de pagamento. Ao marcar como paga, pergunta quem pagou (alimenta o acerto de contas); ao reabrir, esquece o pagador.
+    /// Alterna a situação de pagamento. Ao marcar como paga, pergunta quem pagou (alimenta o acerto de contas) e grava a data do
+    /// pagamento (hoje, ou a informada no diálogo); ao reabrir, esquece o pagador e a data.
     /// </summary>
     private async Task TogglePaid(Expense expense)
     {
-        if (expense.Paid) { Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = false; e.PaidBy = null; }); return; }
-        var (ok, payer) = await AskPayer(expense); if (!ok) return;
-        Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = true; e.PaidBy = payer; });
+        if (expense.Paid) { Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = false; e.PaidBy = null; e.PaidDate = null; }); return; }
+        var (ok, payer, paidOn) = await AskPayer(expense); if (!ok) return;
+        Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = true; e.PaidBy = payer; e.PaidDate = paidOn; });
+    }
+    /// <summary>
+    /// Lê uma data digitada no formato dd/mm/aaaa e recusa datas inválidas ou fora do intervalo aceito pelo aplicativo.
+    /// </summary>
+    private static DateOnly ParseDate(string? text, string label)
+    {
+        if (!DateOnly.TryParseExact(text?.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) throw new BudgetException($"{label}: informe uma data válida no formato dd/mm/aaaa.");
+        BudgetRules.Date(date); return date;
     }
     /// <summary>
     /// Linha de apoio sob o título. Na lista: categoria e parcela ("parcela 3 de 10") ou "mensal". Na forma curta (visão geral):
@@ -136,14 +145,15 @@ public sealed partial class MainWindow
         ? (expense.InstallmentCount > 1 ? $"Parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.Category) + $" · {expense.DueDate:dd/MM}"
         : expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · mensal" : "");
     /// <summary>
-    /// Chip de situação da lista: Pago, Em aberto, Vence em N dias ou Em atraso.
+    /// Chip de situação da lista: "Pago em dd/MM" (ou só "Pago", quando a data do pagamento não foi informada), Em aberto,
+    /// Vence em N dias ou Em atraso.
     /// </summary>
-    private static Border StatusChip(Expense expense)
+    private Border StatusChip(Expense expense)
     {
         var s = DueStatus.Of(expense, DateOnly.FromDateTime(DateTime.Today));
         return s.Kind switch
         {
-            DueKind.Paid => Chip("Pago", "positive"),
+            DueKind.Paid => Chip(expense.PaidDate is { } paidOn ? "Pago em " + paidOn.ToString(allMonths ? "dd/MM/yy" : "dd/MM") : "Pago", "positive"),
             DueKind.Overdue => Chip("Em atraso", "negative"),
             DueKind.DueSoon => Chip(s.Days == 0 ? "Vence hoje" : $"Vence em {s.Days} {(s.Days == 1 ? "dia" : "dias")}", "warn"),
             _ => Chip("Em aberto", "status")
@@ -177,7 +187,9 @@ public sealed partial class MainWindow
         var paid = new CheckBox { Content = "Esta despesa já foi paga", IsChecked = existing?.Paid ?? false };
         // "Quem pagou" só aparece com a despesa marcada como paga. Com uma única pessoa cadastrada, ela é o padrão.
         var payer = Combo(new[] { "Não informar" }.Concat(data.People.Select(p => p.Name)), existing?.PaidBy is { } known ? data.People.FindIndex(p => p.Id == known) + 1 : data.People.Count == 1 ? 1 : 0);
-        var payerField = Field("Quem pagou", payer, "Sem informar, a despesa não entra no acerto de contas."); payerField.IsVisible = paid.IsChecked == true;
+        // Data do pagamento: hoje ao marcar como paga; vazia em despesas pagas antes de essa informação existir (vale o vencimento).
+        var paidDate = Input(existing?.PaidDate?.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        var payerField = Columns(Field("Quem pagou", payer, "Sem informar, a despesa não entra no acerto de contas."), Field("Data do pagamento (dd/mm/aaaa)", paidDate, "Em branco, o vencimento é usado como referência.")); payerField.IsVisible = paid.IsChecked == true;
         var participants = data.People.Select((p, i) => (Person: p, Check: new CheckBox { Content = p.Name, IsChecked = existing?.Participants.Contains(p.Id) ?? true })).ToList();
         // No modo individual, as caixas funcionam como uma escolha exclusiva; nos demais, permitem várias pessoas.
         foreach (var participant in participants)
@@ -198,6 +210,7 @@ public sealed partial class MainWindow
         paid.IsCheckedChanged += (_, _) =>
         {
             payerField.IsVisible = paid.IsChecked == true;
+            if (paid.IsChecked == true && string.IsNullOrWhiteSpace(paidDate.Text) && existing?.Paid != true) paidDate.Text = DateTime.Today.ToString("dd/MM/yyyy");
             var chosen = participants.Where(p => p.Check.IsChecked == true).ToList();
             if (paid.IsChecked == true && payer.SelectedIndex == 0 && chosen.Count == 1) payer.SelectedIndex = data.People.FindIndex(p => p.Id == chosen[0].Person.Id) + 1;
         };
@@ -257,8 +270,9 @@ public sealed partial class MainWindow
         {
             // Evita perder um item digitado que ainda não foi confirmado pelo botão Adicionar item.
             if (!string.IsNullOrWhiteSpace(itemName.Text) || !string.IsNullOrWhiteSpace(price.Text)) throw new BudgetException("Há um item não adicionado. Clique em “Adicionar item” ou limpe seus campos antes de salvar.");
-            if (!DateOnly.TryParseExact(date.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var due)) throw new BudgetException("Vencimento: informe uma data válida no formato dd/mm/aaaa.");
-            BudgetRules.Date(due);
+            var due = ParseDate(date.Text, "Vencimento");
+            // A data do pagamento é opcional, mas, se preenchida, precisa ser uma data válida.
+            DateOnly? paidOn = paid.IsChecked == true && !string.IsNullOrWhiteSpace(paidDate.Text) ? ParseDate(paidDate.Text, "Data do pagamento") : null;
             if (!int.TryParse(installments.Text, out var count) || count is < 1 or > 120) throw new BudgetException("Use de 1 a 120 parcelas.");
             if (count > 1 && paid.IsChecked == true && existing is null) throw new BudgetException("Crie as parcelas em aberto e marque cada parcela paga na lista de despesas.");
             var isRepeat = repeat.IsChecked == true && existing is null;
@@ -267,7 +281,7 @@ public sealed partial class MainWindow
             var entry = new Expense
             {
                 Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = categories[category.SelectedIndex], DueDate = due,
-                Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true, PaidBy = paid.IsChecked == true && payer.SelectedIndex > 0 ? data.People[payer.SelectedIndex - 1].Id : null,
+                Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true, PaidBy = paid.IsChecked == true && payer.SelectedIndex > 0 ? data.People[payer.SelectedIndex - 1].Id : null, PaidDate = paidOn, OriginId = existing?.OriginId,
                 Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
                 InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1,
                 // Editar um mês de uma recorrência preserva o vínculo (e o mês de origem) para ela não recriá-lo.

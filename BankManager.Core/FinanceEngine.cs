@@ -38,7 +38,7 @@ public sealed record MonthTotal(DateOnly Month, decimal Total);
 /// <summary>
 /// Uma entrada ou saída de dinheiro mostrada em "Últimas movimentações".
 /// </summary>
-/// <param name="Date">Data da movimentação: o vencimento da despesa paga ou o dia 1 do mês para rendas (a renda só tem mês).</param>
+/// <param name="Date">Data da movimentação: o dia do pagamento da despesa (ou o vencimento, se o pagamento não tem data) ou o dia 1 do mês para rendas (a renda só tem mês).</param>
 /// <param name="Title">Descrição da despesa ou nome da linha de renda (por exemplo "Salário").</param>
 /// <param name="Category">Categoria da despesa ou, nas rendas, "Renda de" seguido do nome da pessoa.</param>
 /// <param name="Amount">Valor sempre positivo; <paramref name="IsIncome"/> indica o sentido.</param>
@@ -144,14 +144,16 @@ public static class FinanceEngine
     /// </summary>
     /// <remarks>
     /// Entram as rendas do mês (com data no dia 1; linhas de valor zero ficam de fora) e as despesas já marcadas como pagas.
-    /// Como a despesa não guarda a data do pagamento, vale o vencimento. Em datas iguais a ordem é estável: primeiro as
-    /// despesas (por descrição), depois as rendas (na ordem de cadastro).
+    /// A data de uma despesa paga é a do pagamento; quando ela não foi informada (despesas pagas em versões antigas), vale o
+    /// vencimento. A despesa aparece no mês em que essa data cai, mesmo que o vencimento seja em outro mês.
+    /// Em datas iguais a ordem é estável: primeiro as despesas (por vencimento e descrição), depois as rendas (na ordem de cadastro).
     /// </remarks>
     public static List<Movement> RecentMovements(BudgetData data, DateOnly month, int limit = 6)
     {
         if (limit < 1) throw new ArgumentOutOfRangeException(nameof(limit));
         var first = Dates.Month(month);
-        var paid = Expenses(data, first).Where(e => e.Paid).Select(e => new Movement(e.DueDate, e.Title, e.Category, e.Amount, false));
+        var paid = data.Expenses.Where(e => e.Paid && Dates.Month(e.ReferenceDate) == first).OrderBy(e => e.DueDate).ThenBy(e => e.Title)
+            .Select(e => new Movement(e.ReferenceDate, e.Title, e.Category, e.Amount, false));
         var incomes = data.Incomes.Where(i => i.Month == first && i.Amount > 0)
             .Select(i => new Movement(first, i.Label, "Renda de " + (data.People.FirstOrDefault(p => p.Id == i.PersonId)?.Name ?? "—"), i.Amount, true));
         // OrderByDescending é estável: itens da mesma data mantêm a ordem em que foram concatenados.

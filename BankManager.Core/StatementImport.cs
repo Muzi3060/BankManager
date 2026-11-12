@@ -92,7 +92,7 @@ public static class StatementImport
             var title = Title(Cell(mapping.DescriptionColumn));
             var key = (date, amount, ExpenseSearch.Fold(title));
             if (existing.TryGetValue(key, out var count) && count > 0) { existing[key] = count - 1; duplicates++; continue; }
-            expenses.Add(new Expense { Title = title, Category = "Outros", DueDate = date, Amount = amount, Paid = true, Split = split, Participants = [.. participants] });
+            expenses.Add(new Expense { Title = title, Category = "Outros", DueDate = date, Amount = amount, Paid = true, PaidDate = date, Split = split, Participants = [.. participants] });
         }
         return new ImportPlan(expenses, ignored, duplicates, errors, errorCount);
     }

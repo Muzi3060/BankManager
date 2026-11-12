@@ -109,6 +109,9 @@ public static class BudgetRules
                 throw new BudgetException("O total da despesa precisa ser igual à soma dos itens. Listas devem ser salvas à vista.");
             // Quem pagou só existe em despesas pagas e precisa ser uma pessoa cadastrada.
             if (e.PaidBy is { } payer && (!e.Paid || !ids.Contains(payer))) throw new BudgetException("Quem pagou: escolha uma pessoa cadastrada em uma despesa já paga.");
+            // A data de pagamento só existe em despesas pagas e fica no mesmo intervalo de datas aceito pelo aplicativo.
+            if (e.PaidDate is { } paidOn) { if (!e.Paid) throw new BudgetException("Data do pagamento: só pode ser informada em uma despesa já paga."); Date(paidOn); }
+            if (e.OriginId == Guid.Empty) throw new BudgetException("Origem da despesa importada inválida.");
             // Vínculo com recorrência: id e mês andam juntos, o modelo existe, o mês é exclusivo e o lançamento é simples.
             if ((e.RecurrenceId is null) != (e.RecurrenceMonth is null)) throw new BudgetException("Vínculo com a recorrência incompleto.");
             if (e.RecurrenceId is { } recurrence && (!recurrenceIds.Contains(recurrence) || e.RecurrenceMonth!.Value.Day != 1 || !occurrences.Add((recurrence, e.RecurrenceMonth.Value)) || e.InstallmentCount > 1 || e.Items.Count > 0))
@@ -159,7 +162,7 @@ public static class BudgetRules
             Id = Guid.NewGuid(), Amount = (cents / count + (i < cents % count ? 1 : 0)) / 100m,
             DueDate = original.DueDate.AddMonths(i), InstallmentGroup = group,
             InstallmentNumber = i + 1, InstallmentCount = count,
-            Paid = count == 1 && original.Paid, Participants = [..original.Participants], Items = [..original.Items]
+            Paid = count == 1 && original.Paid, PaidBy = count == 1 ? original.PaidBy : null, PaidDate = count == 1 ? original.PaidDate : null, Participants = [..original.Participants], Items = [..original.Items]
         }).ToList();
     }
 }

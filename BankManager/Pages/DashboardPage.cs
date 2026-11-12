@@ -167,7 +167,7 @@ public sealed partial class MainWindow
         var movements = FinanceEngine.RecentMovements(data, month, MovementRows);
         if (movements.Count == 0)
         {
-            var empty = Stack(Text("Nada por aqui ainda", "strong"), Text("As rendas do mês e as despesas marcadas como pagas aparecem nesta lista.", "muted")); empty.Spacing = 4; empty.Margin = new Thickness(0, 12, 0, 0);
+            var empty = Stack(Text("Nada por aqui ainda", "strong"), Text("As rendas do mês (no dia 1) e as despesas pagas neste mês aparecem nesta lista, pela data do pagamento.", "muted")); empty.Spacing = 4; empty.Margin = new Thickness(0, 12, 0, 0);
             panel.Children.Add(empty);
         }
         for (var i = 0; i < movements.Count; i++)

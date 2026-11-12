@@ -145,7 +145,7 @@ Test("Malformed and unsupported JSON cannot import", () =>
     var path = Path.GetTempFileName();
     try
     {
-        foreach (var json in new[] { "{", "null", "{\"Version\":3}", "{\"Version\":0}", "{\"UnknownField\":true}", "{\"People\":[null]}" }) { File.WriteAllText(path, json); Reject(() => LocalStore.Read(path)); }
+        foreach (var json in new[] { "{", "null", "{\"Version\":4}", "{\"Version\":0}", "{\"UnknownField\":true}", "{\"People\":[null]}" }) { File.WriteAllText(path, json); Reject(() => LocalStore.Read(path)); }
         using (var stream = File.OpenWrite(path)) stream.SetLength(21 * 1024 * 1024);
         Reject(() => LocalStore.Read(path));
     }
@@ -216,17 +216,17 @@ string V1Json(BudgetData d)
     return node.ToJsonString();
 }
 
-// Um arquivo v1 é lido sem perda, ganha a versão 2 e, no primeiro salvamento, o v1 original vira o backup.
-Test("Version 1 file migrates to 2 without losing data", () =>
+// Um arquivo v1 é lido sem perda, ganha a versão atual e, no primeiro salvamento, o v1 original vira o backup.
+Test("Version 1 file migrates to the current version without losing data", () =>
 {
     var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(path);
     try
     {
         var d = Family(); d.Expenses.Add(Bill(d, 800)); File.WriteAllText(Path.Combine(path, "financas.json"), V1Json(d));
         using var store = new LocalStore(path); var loaded = store.Load();
-        Equal(2, loaded.Version); Equal(2, loaded.People.Count); Equal(800m, loaded.Expenses[0].Amount); Equal(0, loaded.Recurrences.Count);
+        Equal(BudgetData.CurrentVersion, loaded.Version); Equal(2, loaded.People.Count); Equal(800m, loaded.Expenses[0].Amount); Equal(0, loaded.Recurrences.Count);
         store.Save(loaded);
-        Equal(1, (int)JsonNode.Parse(File.ReadAllText(store.BackupPath))!["Version"]!); Equal(2, (int)JsonNode.Parse(File.ReadAllText(store.FilePath))!["Version"]!);
+        Equal(1, (int)JsonNode.Parse(File.ReadAllText(store.BackupPath))!["Version"]!); Equal(BudgetData.CurrentVersion, (int)JsonNode.Parse(File.ReadAllText(store.FilePath))!["Version"]!);
         Equal(800m, store.Load().Expenses[0].Amount);
     }
     finally { Directory.Delete(path, true); }
@@ -715,6 +715,92 @@ Test("Recent movements list incomes and paid expenses, newest first", () =>
     Equal(2, FinanceEngine.RecentMovements(d, month, 2).Count); Equal(0, FinanceEngine.RecentMovements(new BudgetData(), month).Count);
     // Mesma entrada, mesma saída: a ordem não muda entre chamadas.
     Equal(true, all.SequenceEqual(FinanceEngine.RecentMovements(d, month, 10)));
+});
+
+// Arquivos REAIS gravados pelas versões anteriores (pasta Fixtures): o v1 pelo código da branch main, o v2 pelo BankManager 2.1.
+// Cada um abre sem perda, passa para a versão 3 só em memória e, ao salvar, o arquivo original vira a cópia anterior, byte a byte.
+Test("Real version 1 and 2 files migrate to version 3 in a chain", () =>
+{
+    foreach (var (name, version) in new[] { ("financas-v1.json", 1), ("financas-v2.json", 2) })
+    {
+        var path = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(path);
+        try
+        {
+            var original = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", name)); File.WriteAllBytes(Path.Combine(path, "financas.json"), original);
+            var before = JsonNode.Parse(original)!; Equal(version, (int)before["Version"]!);
+            using var store = new LocalStore(path); var loaded = store.Load();
+            Equal(3, loaded.Version); Equal(2, loaded.People.Count); Equal(before["Expenses"]!.AsArray().Count, loaded.Expenses.Count); Equal(before["Incomes"]!.AsArray().Count, loaded.Incomes.Count);
+            Equal(before["Expenses"]!.AsArray().Sum(e => (decimal)e!["Amount"]!), loaded.Expenses.Sum(e => e.Amount));
+            // Ler não altera o arquivo em disco.
+            Equal(true, original.SequenceEqual(File.ReadAllBytes(store.FilePath)));
+            // Despesas pagas antes da versão 3 ficam sem data de pagamento: a referência é o vencimento.
+            var rent = loaded.Expenses.Single(e => e.Title == "Aluguel"); Equal(true, rent.Paid && rent.PaidDate is null && rent.OriginId is null); Equal(rent.DueDate, rent.ReferenceDate);
+            Equal(3, loaded.Expenses.Count(e => e.Title == "Notebook" && e.InstallmentCount == 3)); Equal(2m, loaded.Expenses.Single(e => e.Title == "Mercado").Items[0].Quantity);
+            if (version == 2)
+            {
+                Equal(true, rent.PaidBy == loaded.People[0].Id && loaded.CustomCategories.SequenceEqual(["Pets"]) && loaded.Goals.Single().Amount == 800m && loaded.Settlements.Single().Amount == 100m);
+                Equal(1, loaded.Recurrences.Count); Equal(true, loaded.Expenses.Count(e => e.RecurrenceId is not null) > 1); Equal(3500m, FinanceEngine.Income(loaded, loaded.People[0].Id, month));
+            }
+            else Equal(3000m, FinanceEngine.Income(loaded, loaded.People[0].Id, month));
+            store.Save(loaded);
+            Equal(true, original.SequenceEqual(File.ReadAllBytes(store.BackupPath))); Equal(3, (int)JsonNode.Parse(File.ReadAllText(store.FilePath))!["Version"]!);
+            Equal(loaded.Expenses.Sum(e => e.Amount), store.Load().Expenses.Sum(e => e.Amount));
+            Equal(0, Directory.GetFiles(path, "*.tmp").Length);
+        }
+        finally { Directory.Delete(path, true); }
+    }
+});
+
+// Um arquivo que diz ser v2 (ou v1) mas traz data de pagamento está adulterado; uma versão maior que a do aplicativo é recusada.
+Test("Older versions with version 3 data and newer versions are rejected", () =>
+{
+    var path = Path.GetTempFileName();
+    try
+    {
+        var d = Family(); var bill = Bill(d, 800); bill.Paid = true; bill.PaidDate = month.AddDays(3); d.Expenses.Add(bill);
+        foreach (var version in new[] { 1, 2, 4 })
+        {
+            var node = JsonNode.Parse(JsonSerializer.Serialize(d, LocalStore.JsonOptions))!; node["Version"] = version; File.WriteAllText(path, node.ToJsonString()); Reject(() => LocalStore.Read(path));
+        }
+        // O mesmo conteúdo na versão 3 é válido e a data de pagamento sobrevive à gravação.
+        LocalStore.Export(path, d); Equal(month.AddDays(3), LocalStore.Read(path).Expenses[0].PaidDate);
+    }
+    finally { File.Delete(path); }
+});
+
+// A data de pagamento só existe em despesa paga, dentro do intervalo de datas aceito; parcelas novas nascem sem ela.
+Test("Paid date requires a paid expense and a valid date", () =>
+{
+    var d = Family(); var bill = Bill(d, 100); bill.PaidDate = month; d.Expenses.Add(bill); Reject(() => BudgetRules.Validate(d));
+    bill.Paid = true; BudgetRules.Validate(d);
+    bill.PaidDate = new DateOnly(1999, 12, 31); Reject(() => BudgetRules.Validate(d));
+    bill.PaidDate = null; BudgetRules.Validate(d); Equal(bill.DueDate, bill.ReferenceDate);
+    var source = Bill(d, 300); source.Paid = true; source.PaidDate = month; source.PaidBy = d.People[0].Id;
+    Equal(true, BudgetRules.Installments(source, 3).All(e => !e.Paid && e.PaidDate is null && e.PaidBy is null)); Equal(month, BudgetRules.Installments(source, 1)[0].PaidDate);
+});
+
+// Movimentações usam a data do pagamento: a despesa aparece no mês em que foi paga, não no do vencimento.
+Test("Recent movements follow the paid date into its month", () =>
+{
+    var d = Family(0, 0);
+    Expense Paid(string title, DateOnly due, DateOnly? paidOn) { var e = Bill(d, 100); e.Title = title; e.DueDate = due; e.Paid = true; e.PaidDate = paidOn; d.Expenses.Add(e); return e; }
+    Paid("Venceu em outubro, paga em novembro", month.AddDays(27), month.AddMonths(1).AddDays(2));
+    Paid("Vence em novembro, paga adiantada", month.AddMonths(1).AddDays(9), month.AddDays(29));
+    Paid("Sem data de pagamento", month.AddDays(4), null); Paid("Paga no dia", month.AddDays(9), month.AddDays(9));
+    Equal("Vence em novembro, paga adiantada,Paga no dia,Sem data de pagamento", string.Join(",", FinanceEngine.RecentMovements(d, month).Select(m => m.Title)));
+    Equal(month.AddDays(29), FinanceEngine.RecentMovements(d, month)[0].Date); Equal(month.AddDays(4), FinanceEngine.RecentMovements(d, month)[2].Date);
+    Equal("Venceu em outubro, paga em novembro", string.Join(",", FinanceEngine.RecentMovements(d, month.AddMonths(1)).Select(m => m.Title)));
+    // O total do mês (gráfico e saldo) continua seguindo o vencimento.
+    Equal(300m, FinanceEngine.MonthlyTotals(d, month, 1)[0].Total);
+});
+
+// Extrato importado: a data da própria linha vira a data de pagamento; a planilha exportada traz a coluna "Pago em".
+Test("Statement import sets the paid date and CSV export shows it", () =>
+{
+    var d = Family(); var table = Csv.Parse("Data;Histórico;Valor\r\n02/10/2026;PADARIA;-12,50\r\n");
+    var plan = StatementImport.Plan(d, table, new ImportMapping(0, 1, 2, true, AmountSign.NegativeIsExpense), SplitMode.Individual, [d.People[0].Id]);
+    Equal(new DateOnly(2026, 10, 2), plan.Expenses.Single().PaidDate); d.Expenses.AddRange(plan.Expenses); BudgetRules.Validate(d);
+    var rows = Csv.Parse(CsvExport.Expenses(d)).Rows; Equal("Pago em", rows[0][^1]); Equal("02/10/2026", rows[1][^1]);
 });
 
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.

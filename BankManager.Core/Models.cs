@@ -89,6 +89,21 @@ public sealed record Expense
     /// (inclusive nos lançamentos antigos) e deixa a despesa fora do acerto de contas.
     /// </summary>
     public Guid? PaidBy { get; set; }
+    /// <summary>
+    /// Dia em que a despesa foi paga (esquema versão 3). Só existe em despesas pagas e é opcional: despesas pagas em versões
+    /// anteriores não têm essa informação, e as telas usam o vencimento como referência, sem inventar uma data.
+    /// </summary>
+    public DateOnly? PaidDate { get; set; }
+    /// <summary>
+    /// Identificador de origem de uma despesa recebida por um arquivo de compartilhamento (esquema versão 3): o Id que ela
+    /// tinha na base de quem a enviou. Serve para reconhecer a mesma despesa em uma nova importação e não duplicá-la.
+    /// </summary>
+    public Guid? OriginId { get; set; }
+    /// <summary>
+    /// Data usada nas listas de movimentações: a do pagamento, quando informada; caso contrário, o vencimento.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DateOnly ReferenceDate => PaidDate ?? DueDate;
     /// <summary>Recorrência que gerou este lançamento (aluguel, assinatura...); nulo para lançamentos comuns. Veja <see cref="Recurrence"/>.</summary>
     public Guid? RecurrenceId { get; set; }
     /// <summary>
@@ -157,7 +172,7 @@ public sealed record Recurrence
 public sealed record BudgetData
 {
     /// <summary>Versão do esquema atual. A 2 acrescentou as despesas recorrentes; arquivos da versão 1 são migrados ao ler.</summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
     /// <summary>Versão do esquema JSON; formatos não suportados são rejeitados antes de importar ou salvar.</summary>
     public int Version { get; set; } = CurrentVersion;
     /// <summary>Cadastro de pessoas compartilhado entre todos os meses.</summary>
