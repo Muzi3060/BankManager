@@ -1,0 +1,225 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Tokens de cor com nome ("Estilo C": verde e neutros). É o ÚNICO lugar com valores hexadecimais do aplicativo:
+    estilos e telas só referenciam estes nomes com DynamicResource (ou por classes), então trocar de tema atualiza tudo ao vivo.
+    Cores com 8 dígitos (#AARRGGBB) são semitransparentes: o cartão translúcido é branco com opacidade, sem desfoque real.
+    Os pares texto/fundo usados têm contraste de pelo menos 4,5:1 nos dois temas (verificado por script).
+    Grupos: fundo e superfícies; texto; botões (primário verde, "ink" preto); estados (positivo, alerta, negativo, cada um com
+    cor de texto, fundo suave e cor de barra); chips; cartão escuro de resumo; gráfico; avatares, menu e sombras; e, no fim,
+    os diálogos sobrepostos (camada escura, botão de fechar, painéis, avisos) e a barra flutuante do modo de seleção.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <LinearGradientBrush x:Key="CorDoFundo" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#E8F3FA" Offset="0"/>
+        <GradientStop Color="#F6F7FB" Offset="0.48"/>
+        <GradientStop Color="#F1EBFA" Offset="1"/>
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CorDaSuperficie" Color="#B8FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaBordaDaSuperficie" Color="#E6FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaSuperficieSolida" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaLinha" Color="#12141828"/>
+      <SolidColorBrush x:Key="CorDaBordaDoCampo" Color="#2E141828"/>
+      <SolidColorBrush x:Key="CorDoTexto" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorDoTextoSecundario" Color="#5F6470"/>
+      <SolidColorBrush x:Key="CorDoTextoDeApoio" Color="#333B47"/>
+      <SolidColorBrush x:Key="CorPrimaria" Color="#0B7A5A"/>
+      <SolidColorBrush x:Key="CorSobrePrimaria" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorPrimariaAoPassarOMouse" Color="#096A4E"/>
+      <SolidColorBrush x:Key="CorEscura" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorSobreEscura" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorEscuraAoPassarOMouse" Color="#2C2F37"/>
+      <SolidColorBrush x:Key="CorPositiva" Color="#0B7A5A"/>
+      <SolidColorBrush x:Key="CorPositivaSuave" Color="#E3F4EC"/>
+      <SolidColorBrush x:Key="CorDoProgressoBom" Color="#12A072"/>
+      <SolidColorBrush x:Key="CorDeAlerta" Color="#8A5A00"/>
+      <SolidColorBrush x:Key="CorDeAlertaSuave" Color="#FBF0D5"/>
+      <SolidColorBrush x:Key="CorDoProgressoAlerta" Color="#F2B90C"/>
+      <SolidColorBrush x:Key="CorNegativa" Color="#B42318"/>
+      <SolidColorBrush x:Key="CorNegativaSuave" Color="#FCE4E4"/>
+      <SolidColorBrush x:Key="CorDoProgressoAcima" Color="#E5484D"/>
+      <SolidColorBrush x:Key="CorDaEtiqueta" Color="#F3F3F2"/>
+      <SolidColorBrush x:Key="CorDoTextoDaEtiqueta" Color="#444444"/>
+      <SolidColorBrush x:Key="CorDaEtiquetaDeSituacao" Color="#F1F2F5"/>
+      <LinearGradientBrush x:Key="CorDoResumo" StartPoint="20%,0%" EndPoint="80%,100%">
+        <GradientStop Color="#4A4D55" Offset="0"/>
+        <GradientStop Color="#1B1D22" Offset="1"/>
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CorSobreResumo" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorSecundariaSobreResumo" Color="#D5D8DE"/>
+      <SolidColorBrush x:Key="CorDoTrilhoDoResumo" Color="#38FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaBarraDoGrafico" Color="#E1E5EC"/>
+      <SolidColorBrush x:Key="CorDaBarraSelecionada" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorDoBalaoDoGrafico" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorDoTextoDoBalaoDoGrafico" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaGradeDoGrafico" Color="#33141828"/>
+      <SolidColorBrush x:Key="CorDoAvatar" Color="#E1E5EC"/>
+      <SolidColorBrush x:Key="CorDoMenuAtivo" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorAoPassarOMouse" Color="#0F141828"/>
+      <SolidColorBrush x:Key="CorDoTrilho" Color="#E6E9EF"/>
+      <SolidColorBrush x:Key="CorDaCamadaEscura" Color="#6B141828"/>
+      <SolidColorBrush x:Key="CorDoBotaoFechar" Color="#F5F4F3"/>
+      <SolidColorBrush x:Key="CorDoPainel" Color="#F5F6FA"/>
+      <SolidColorBrush x:Key="CorDeAlertaForte" Color="#6B4600"/>
+      <SolidColorBrush x:Key="CorPositivaForte" Color="#0B5C44"/>
+      <SolidColorBrush x:Key="CorDaLinhaMarcada" Color="#1F12A072"/>
+      <SolidColorBrush x:Key="CorDaAcaoDaBarra" Color="#12A072"/>
+      <SolidColorBrush x:Key="CorSobreAcaoDaBarra" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorSecundariaSobreEscura" Color="#D5D8DE"/>
+      <!-- Sombras: no tema escuro quase não aparecem, então ficam curtas e discretas. -->
+      <BoxShadows x:Key="SombraDoCartao">0 1 2 0 #0A141828, 0 10 30 0 #0D141828</BoxShadows>
+      <BoxShadows x:Key="SombraDoCartaoSolido">0 1 2 0 #0A141828, 0 4 14 0 #0A141828</BoxShadows>
+      <BoxShadows x:Key="SombraDoResumo">0 16 28 0 #40141828</BoxShadows>
+      <BoxShadows x:Key="SombraDoMenu">0 1 2 0 #0F141828, 0 2 8 0 #0A141828</BoxShadows>
+      <BoxShadows x:Key="SombraDoDialogo">0 24 60 0 #59141828</BoxShadows>
+      <BoxShadows x:Key="SombraDaBarra">0 12 30 0 #40141828</BoxShadows>
+      <!-- Cor de destaque dos controles do Fluent (caixas de seleção, foco): o verde primário. -->
+      <Color x:Key="SystemAccentColor">#0B7A5A</Color>
+      <Color x:Key="SystemAccentColorLight1">#0B7A5A</Color>
+      <Color x:Key="SystemAccentColorLight2">#0B7A5A</Color>
+      <Color x:Key="SystemAccentColorDark1">#096A4E</Color>
+      <Color x:Key="SystemAccentColorDark2">#096A4E</Color>
+      <!-- Faz os controles do Fluent (campos, listas, menus, foco) usarem os mesmos tokens. -->
+      <StaticResource x:Key="TextControlBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBorderBrush" ResourceKey="CorDaBordaDoCampo"/>
+      <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="TextControlForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="CorDaBordaDoCampo"/>
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="ComboBoxForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="CorDaLinha"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundPointerOver" ResourceKey="CorAoPassarOMouse"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelected" ResourceKey="CorPositivaSuave"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelectedPointerOver" ResourceKey="CorPositivaSuave"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="CorDaLinha"/>
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="CorAoPassarOMouse"/>
+      <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="CorDoTexto"/>
+      <!-- Caixas de marcação ligadas: verde primário, no lugar do azul padrão do Fluent. -->
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="CorSobrePrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="CorSobrePrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="CorSobrePrimaria"/>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <LinearGradientBrush x:Key="CorDoFundo" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#0D1117" Offset="0"/>
+        <GradientStop Color="#12141B" Offset="0.48"/>
+        <GradientStop Color="#15121D" Offset="1"/>
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CorDaSuperficie" Color="#0FFFFFFF"/>
+      <SolidColorBrush x:Key="CorDaBordaDaSuperficie" Color="#14FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaSuperficieSolida" Color="#1C1F27"/>
+      <SolidColorBrush x:Key="CorDaLinha" Color="#17FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaBordaDoCampo" Color="#33FFFFFF"/>
+      <SolidColorBrush x:Key="CorDoTexto" Color="#F2F3F5"/>
+      <SolidColorBrush x:Key="CorDoTextoSecundario" Color="#A3A8B3"/>
+      <SolidColorBrush x:Key="CorDoTextoDeApoio" Color="#D0D4DB"/>
+      <SolidColorBrush x:Key="CorPrimaria" Color="#2BBF93"/>
+      <SolidColorBrush x:Key="CorSobrePrimaria" Color="#06251C"/>
+      <SolidColorBrush x:Key="CorPrimariaAoPassarOMouse" Color="#45CFA6"/>
+      <SolidColorBrush x:Key="CorEscura" Color="#F2F3F5"/>
+      <SolidColorBrush x:Key="CorSobreEscura" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorEscuraAoPassarOMouse" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorPositiva" Color="#34D1A0"/>
+      <SolidColorBrush x:Key="CorPositivaSuave" Color="#2634D1A0"/>
+      <SolidColorBrush x:Key="CorDoProgressoBom" Color="#34D1A0"/>
+      <SolidColorBrush x:Key="CorDeAlerta" Color="#F5C84B"/>
+      <SolidColorBrush x:Key="CorDeAlertaSuave" Color="#26F5C84B"/>
+      <SolidColorBrush x:Key="CorDoProgressoAlerta" Color="#F5C84B"/>
+      <SolidColorBrush x:Key="CorNegativa" Color="#FF7A7E"/>
+      <SolidColorBrush x:Key="CorNegativaSuave" Color="#26FF7A7E"/>
+      <SolidColorBrush x:Key="CorDoProgressoAcima" Color="#FF7A7E"/>
+      <SolidColorBrush x:Key="CorDaEtiqueta" Color="#17FFFFFF"/>
+      <SolidColorBrush x:Key="CorDoTextoDaEtiqueta" Color="#D5D8DE"/>
+      <SolidColorBrush x:Key="CorDaEtiquetaDeSituacao" Color="#24FFFFFF"/>
+      <LinearGradientBrush x:Key="CorDoResumo" StartPoint="20%,0%" EndPoint="80%,100%">
+        <GradientStop Color="#2A2D35" Offset="0"/>
+        <GradientStop Color="#14161B" Offset="1"/>
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CorSobreResumo" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorSecundariaSobreResumo" Color="#D5D8DE"/>
+      <SolidColorBrush x:Key="CorDoTrilhoDoResumo" Color="#38FFFFFF"/>
+      <SolidColorBrush x:Key="CorDaBarraDoGrafico" Color="#2B303A"/>
+      <SolidColorBrush x:Key="CorDaBarraSelecionada" Color="#F2F3F5"/>
+      <SolidColorBrush x:Key="CorDoBalaoDoGrafico" Color="#F2F3F5"/>
+      <SolidColorBrush x:Key="CorDoTextoDoBalaoDoGrafico" Color="#14161A"/>
+      <SolidColorBrush x:Key="CorDaGradeDoGrafico" Color="#33FFFFFF"/>
+      <SolidColorBrush x:Key="CorDoAvatar" Color="#2B303A"/>
+      <SolidColorBrush x:Key="CorDoMenuAtivo" Color="#1AFFFFFF"/>
+      <SolidColorBrush x:Key="CorAoPassarOMouse" Color="#14FFFFFF"/>
+      <SolidColorBrush x:Key="CorDoTrilho" Color="#2B303A"/>
+      <SolidColorBrush x:Key="CorDaCamadaEscura" Color="#A6000000"/>
+      <SolidColorBrush x:Key="CorDoBotaoFechar" Color="#24FFFFFF"/>
+      <SolidColorBrush x:Key="CorDoPainel" Color="#0FFFFFFF"/>
+      <SolidColorBrush x:Key="CorDeAlertaForte" Color="#F5C84B"/>
+      <SolidColorBrush x:Key="CorPositivaForte" Color="#34D1A0"/>
+      <SolidColorBrush x:Key="CorDaLinhaMarcada" Color="#2634D1A0"/>
+      <SolidColorBrush x:Key="CorDaAcaoDaBarra" Color="#0B7A5A"/>
+      <SolidColorBrush x:Key="CorSobreAcaoDaBarra" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="CorSecundariaSobreEscura" Color="#5F6470"/>
+      <!-- Sombras: no tema escuro quase não aparecem, então ficam curtas e discretas. -->
+      <BoxShadows x:Key="SombraDoCartao">0 1 2 0 #33000000</BoxShadows>
+      <BoxShadows x:Key="SombraDoCartaoSolido">0 1 2 0 #33000000</BoxShadows>
+      <BoxShadows x:Key="SombraDoResumo">0 16 28 0 #59000000</BoxShadows>
+      <BoxShadows x:Key="SombraDoMenu">0 1 2 0 #33000000</BoxShadows>
+      <BoxShadows x:Key="SombraDoDialogo">0 24 60 0 #80000000</BoxShadows>
+      <BoxShadows x:Key="SombraDaBarra">0 12 30 0 #66000000</BoxShadows>
+      <!-- Cor de destaque dos controles do Fluent (caixas de seleção, foco): o verde primário. -->
+      <Color x:Key="SystemAccentColor">#2BBF93</Color>
+      <Color x:Key="SystemAccentColorLight1">#2BBF93</Color>
+      <Color x:Key="SystemAccentColorLight2">#2BBF93</Color>
+      <Color x:Key="SystemAccentColorDark1">#45CFA6</Color>
+      <Color x:Key="SystemAccentColorDark2">#45CFA6</Color>
+      <!-- Faz os controles do Fluent (campos, listas, menus, foco) usarem os mesmos tokens. -->
+      <StaticResource x:Key="TextControlBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="TextControlBorderBrush" ResourceKey="CorDaBordaDoCampo"/>
+      <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="TextControlForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="CorDaBordaDoCampo"/>
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="CorDoTextoSecundario"/>
+      <StaticResource x:Key="ComboBoxForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="CorDaLinha"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundPointerOver" ResourceKey="CorAoPassarOMouse"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelected" ResourceKey="CorPositivaSuave"/>
+      <StaticResource x:Key="ComboBoxItemBackgroundSelectedPointerOver" ResourceKey="CorPositivaSuave"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="CorDaSuperficieSolida"/>
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="CorDaLinha"/>
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="CorAoPassarOMouse"/>
+      <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="CorDoTexto"/>
+      <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="CorDoTexto"/>
+      <!-- Caixas de marcação ligadas: verde primário, no lugar do azul padrão do Fluent. -->
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="CorPrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="CorPrimariaAoPassarOMouse"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="CorSobrePrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="CorSobrePrimaria"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="CorSobrePrimaria"/>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

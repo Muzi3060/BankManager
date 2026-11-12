@@ -1,12 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager", "BankManager\BankManager.csproj", "{D6E29819-3086-4D9D-A868-DCC2BE452FE6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager", "codigo\BankManager\BankManager.csproj", "{D6E29819-3086-4D9D-A868-DCC2BE452FE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.Core", "BankManager.Core\BankManager.Core.csproj", "{CFD98620-7802-4889-B741-0E6A8E6A1100}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.Nucleo", "codigo\BankManager.Nucleo\BankManager.Nucleo.csproj", "{CFD98620-7802-4889-B741-0E6A8E6A1100}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.Tests", "BankManager.Tests\BankManager.Tests.csproj", "{D85C067D-297B-4816-BD9B-33B13F86C692}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.Testes", "testes\BankManager.Testes\BankManager.Testes.csproj", "{D85C067D-297B-4816-BD9B-33B13F86C692}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.UiTests", "BankManager.UiTests\BankManager.UiTests.csproj", "{AEA546AB-CFC4-4DE8-858A-6F624A6D91C8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankManager.TestesDeInterface", "testes\BankManager.TestesDeInterface\BankManager.TestesDeInterface.csproj", "{AEA546AB-CFC4-4DE8-858A-6F624A6D91C8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

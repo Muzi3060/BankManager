@@ -1,0 +1,236 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ctl="using:BankManager.Controles">
+  <!--
+    Estilos dos controles ("Estilo C"). Nenhuma cor é escrita aqui: tudo vem dos tokens de Cores.axaml via
+    DynamicResource. As classes aplicadas por Componentes.cs e pelas páginas selecionam os estilos abaixo.
+    Lembrete: no Avalonia vale a ORDEM das regras (a última vence), não a especificidade como no CSS.
+  -->
+
+  <!-- Base: texto e fundo herdados por toda a janela. O fundo é um degradê claríssimo; os diálogos usam a superfície sólida.
+       A fonte Inter embutida é a padrão do aplicativo (Programa.cs, WithInterFont); definir FontFamily aqui a trocaria pela do sistema.
+       "+tnum" liga os algarismos tabulares (todos com a mesma largura) em todo o aplicativo, para valores alinhados. -->
+  <Style Selector="Window">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontFeatures" Value="+tnum"/>
+    <Setter Property="Background" Value="{DynamicResource CorDoFundo}"/>
+    <Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/>
+  </Style>
+  <Style Selector="Window.dialogo"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/></Style>
+
+  <!-- Hierarquia do texto. Estados semânticos: positive, negative, warn e error. -->
+  <Style Selector="TextBlock.apagado"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+  <Style Selector="TextBlock.apoio"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoDeApoio}"/></Style>
+  <Style Selector="TextBlock.marca"><Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style Selector="TextBlock.titulo"><Setter Property="FontSize" Value="24"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="TextBlock.secao"><Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="TextBlock.pequeno"><Setter Property="FontSize" Value="12"/></Style>
+  <Style Selector="TextBlock.forte"><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <!-- Valores: "hero" é o número grande da visão geral; "kpi" e "money" são valores de destaque médio. -->
+  <Style Selector="TextBlock.destaque"><Setter Property="FontSize" Value="48"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style Selector="TextBlock.indicador"><Setter Property="FontSize" Value="28"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style Selector="TextBlock.valor"><Setter Property="FontSize" Value="22"/><Setter Property="FontWeight" Value="Medium"/></Style>
+  <Style Selector="TextBlock.positivo"><Setter Property="Foreground" Value="{DynamicResource CorPositiva}"/></Style>
+  <Style Selector="TextBlock.negativo"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/></Style>
+  <Style Selector="TextBlock.erro"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/></Style>
+  <Style Selector="TextBlock.alerta"><Setter Property="Foreground" Value="{DynamicResource CorDeAlerta}"/></Style>
+
+  <!-- Botões: alvo de clique de pelo menos 40 px, canto 12. Variantes: primary (verde, 44 px), ink (pílula preta), ghost, danger, link e nav. -->
+  <Style Selector="Button">
+    <Setter Property="MinHeight" Value="40"/><Setter Property="Padding" Value="16,8"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource CorDaBordaDoCampo}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="Medium"/>
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/>
+  </Style>
+  <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Opacity" Value="0.5"/></Style>
+  <Style Selector="Button.primario"><Setter Property="MinHeight" Value="44"/><Setter Property="Background" Value="{DynamicResource CorPrimaria}"/><Setter Property="Foreground" Value="{DynamicResource CorSobrePrimaria}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.primario:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.primario:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.primario:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource CorPrimariaAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorSobrePrimaria}"/>
+  </Style>
+  <!-- Botão secundário de destaque ("Registrar acerto"): pílula preta no tema claro, clara no tema escuro. -->
+  <Style Selector="Button.escuro"><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="18,8"/><Setter Property="Background" Value="{DynamicResource CorEscura}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.escuro:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.escuro:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource CorEscuraAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/>
+  </Style>
+  <Style Selector="Button.fantasma"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
+  <Style Selector="Button.fantasma:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.fantasma:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorAoPassarOMouse}"/></Style>
+  <Style Selector="Button.redondo"><Setter Property="CornerRadius" Value="999"/></Style>
+  <Style Selector="Button.perigo"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/></Style>
+  <Style Selector="Button.perigo:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/></Style>
+  <!-- Link: botão sem borda, com texto de apoio pequeno ("Ver todas"). -->
+  <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="10,8"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="{DynamicResource CorDoTextoDeApoio}"/><Setter Property="FontWeight" Value="Medium"/></Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/></Style>
+  <!-- Nome do mês na pílula: tem cara de botão (fundo suave em repouso, borda ao passar o mouse), porque clicar volta ao mês atual. -->
+  <Style Selector="Button.mes"><Setter Property="CornerRadius" Value="999"/><Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="14,4"/><Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Background" Value="{DynamicResource CorAoPassarOMouse}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.mes:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.mes:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorDoMenuAtivo}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDoTextoSecundario}"/></Style>
+  <!-- Botão quadrado pequeno do menu "⋯" dos cartões de meta. -->
+  <Style Selector="Button.quadrado"><Setter Property="CornerRadius" Value="10"/><Setter Property="MinHeight" Value="40"/><Setter Property="MinWidth" Value="40"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Background" Value="{DynamicResource CorDaEtiqueta}"/></Style>
+  <Style Selector="Button.quadrado:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorDaEtiquetaDeSituacao}"/><Setter Property="BorderBrush" Value="Transparent"/></Style>
+  <!-- Item do menu lateral: 44 px de altura, canto 12. O ativo ganha fundo branco com sombra suave. -->
+  <Style Selector="Button.menu">
+    <Setter Property="MinHeight" Value="44"/><Setter Property="Padding" Value="12,0"/><Setter Property="FontSize" Value="13"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/>
+  </Style>
+  <Style Selector="Button.menu:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="Button.menu.rodape"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/></Style>
+  <Style Selector="Button.menu.rodape:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/></Style>
+  <Style Selector="Button.menu.ativo"><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.menu.ativo /template/ ContentPresenter#PART_ContentPresenter, Button.menu.ativo:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource CorDoMenuAtivo}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoMenu}"/>
+  </Style>
+
+  <!-- Ícones: um Path de traço dentro de um Viewbox 24x24 (veja Ui.Icon). A cor segue o controle que os contém. -->
+  <Style Selector="Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="StrokeThickness" Value="2"/><Setter Property="StrokeLineCap" Value="Round"/><Setter Property="StrokeJoin" Value="Round"/></Style>
+  <Style Selector="Button Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="Button.menu.rodape Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTextoSecundario}"/></Style>
+  <Style Selector="Button.primario Path.icone, Button.primario:pointerover Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorSobrePrimaria}"/></Style>
+  <Style Selector="Button.escuro Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorSobreEscura}"/></Style>
+  <Style Selector="Button.perigo Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorNegativa}"/></Style>
+  <Style Selector="MenuItem Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="MenuItem.perigo Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorNegativa}"/></Style>
+
+  <!-- Campos: altura mínima de 42 px, canto 12. As cores vêm dos recursos do Fluent mapeados em Cores.axaml. -->
+  <Style Selector="TextBox"><Setter Property="MinHeight" Value="42"/><Setter Property="CornerRadius" Value="12"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+  <Style Selector="ComboBox"><Setter Property="MinHeight" Value="42"/><Setter Property="CornerRadius" Value="12"/><Setter Property="HorizontalAlignment" Value="Stretch"/></Style>
+
+  <!-- Barras de progresso: verde por padrão; "warn" (âmbar) e "over" (vermelho) para metas; "neutral" e "onsummary" para os demais usos.
+       Cada cor de barra tem o seu trilho suave. -->
+  <Style Selector="ProgressBar"><Setter Property="Foreground" Value="{DynamicResource CorDoProgressoBom}"/><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="MinHeight" Value="4"/><Setter Property="Height" Value="8"/></Style>
+  <Style Selector="ProgressBar.alerta"><Setter Property="Foreground" Value="{DynamicResource CorDoProgressoAlerta}"/><Setter Property="Background" Value="{DynamicResource CorDeAlertaSuave}"/></Style>
+  <Style Selector="ProgressBar.acima"><Setter Property="Foreground" Value="{DynamicResource CorDoProgressoAcima}"/><Setter Property="Background" Value="{DynamicResource CorNegativaSuave}"/></Style>
+  <Style Selector="ProgressBar.neutro"><Setter Property="Foreground" Value="{DynamicResource CorEscura}"/><Setter Property="Background" Value="{DynamicResource CorDoTrilho}"/></Style>
+  <Style Selector="ProgressBar.sobre-resumo"><Setter Property="Foreground" Value="{DynamicResource CorSobreResumo}"/><Setter Property="Background" Value="{DynamicResource CorDoTrilhoDoResumo}"/></Style>
+
+  <!-- Superfícies. "card": cartão translúcido (branco com opacidade, sem desfoque real). "solid": cartão branco (metas).
+       "summary": cartão escuro em degradê do "Resumo da casa", com texto claro nos dois temas. -->
+  <Style Selector="Border.cartao"><Setter Property="Background" Value="{DynamicResource CorDaSuperficie}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaBordaDaSuperficie}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Padding" Value="22"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoCartao}"/></Style>
+  <Style Selector="Border.solido"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="18"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoCartaoSolido}"/></Style>
+  <Style Selector="Border.resumo"><Setter Property="Background" Value="{DynamicResource CorDoResumo}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Padding" Value="24"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoResumo}"/></Style>
+  <Style Selector="Border.resumo TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorSobreResumo}"/></Style>
+  <Style Selector="Border.resumo TextBlock.apagado"><Setter Property="Foreground" Value="{DynamicResource CorSecundariaSobreResumo}"/></Style>
+  <Style Selector="Border.aviso"><Setter Property="Background" Value="{DynamicResource CorDeAlertaSuave}"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="14,10"/></Style>
+  <Style Selector="Border.aviso.positivo"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/></Style>
+  <!-- Linha divisória fina entre linhas de listas. -->
+  <Style Selector="Border.divisoria"><Setter Property="Height" Value="1"/><Setter Property="Background" Value="{DynamicResource CorDaLinha}"/></Style>
+  <!-- Pílula translúcida da navegação de mês (‹ mês ›), com 44 px de altura. -->
+  <Style Selector="Border.pilula"><Setter Property="Background" Value="{DynamicResource CorDaSuperficie}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaBordaDaSuperficie}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Height" Value="44"/><Setter Property="Padding" Value="2,0"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoMenu}"/></Style>
+
+  <!-- Chips. Neutro por padrão; "status" (situação neutra), "warn" (prazo próximo), "positive" (pago) e "negative" (em atraso). -->
+  <Style Selector="Border.etiqueta"><Setter Property="Background" Value="{DynamicResource CorDaEtiqueta}"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="10,4"/><Setter Property="HorizontalAlignment" Value="Left"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.etiqueta > TextBlock"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="Medium"/><Setter Property="Foreground" Value="{DynamicResource CorDoTextoDaEtiqueta}"/></Style>
+  <Style Selector="Border.etiqueta.situacao"><Setter Property="Background" Value="{DynamicResource CorDaEtiquetaDeSituacao}"/></Style>
+  <Style Selector="Border.etiqueta.situacao > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="Border.etiqueta.alerta"><Setter Property="Background" Value="{DynamicResource CorDeAlertaSuave}"/></Style>
+  <Style Selector="Border.etiqueta.alerta > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorDeAlerta}"/></Style>
+  <Style Selector="Border.etiqueta.positivo"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/></Style>
+  <Style Selector="Border.etiqueta.positivo > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorPositiva}"/></Style>
+  <Style Selector="Border.etiqueta.negativo"><Setter Property="Background" Value="{DynamicResource CorNegativaSuave}"/></Style>
+  <Style Selector="Border.etiqueta.negativo > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/></Style>
+
+  <!-- Avatar com a inicial da pessoa: neutro por padrão, "strong" (preto) para destacar quem recebe. -->
+  <Style Selector="Border.avatar"><Setter Property="Background" Value="{DynamicResource CorDoAvatar}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/></Style>
+  <Style Selector="Border.avatar > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.avatar.forte"><Setter Property="Background" Value="{DynamicResource CorEscura}"/></Style>
+  <Style Selector="Border.avatar.forte > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/></Style>
+  <Style Selector="Border.avatar.grande"><Setter Property="Width" Value="44"/><Setter Property="Height" Value="44"/><Setter Property="CornerRadius" Value="22"/></Style>
+  <!-- Círculo de 36 px com o ícone da categoria; "income" (entrada de dinheiro) fica verde. -->
+  <Style Selector="Border.circulo-icone"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaLinha}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.circulo-icone Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="Border.circulo-icone.entrada"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/></Style>
+  <Style Selector="Border.circulo-icone.entrada Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorPositiva}"/></Style>
+
+  <!-- Controle segmentado (Todas / Em aberto / Pagas) e submenu das páginas: a opção ativa fica branca com sombra, como no menu. -->
+  <Style Selector="Border.segmentado"><Setter Property="Background" Value="{DynamicResource CorDaSuperficie}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaBordaDaSuperficie}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="13"/><Setter Property="Padding" Value="3"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="Button.segmento"><Setter Property="MinHeight" Value="36"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="14,4"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/></Style>
+  <Style Selector="Button.segmento:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/></Style>
+  <Style Selector="Button.segmento.ativo /template/ ContentPresenter#PART_ContentPresenter, Button.segmento.ativo:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorDoMenuAtivo}"/><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoMenu}"/></Style>
+
+  <!-- Cartão de escolha de tema; o selecionado ganha borda verde. -->
+  <Style Selector="Button.cartao-tema"><Setter Property="Padding" Value="12"/><Setter Property="CornerRadius" Value="16"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalAlignment" Value="Stretch"/></Style>
+  <Style Selector="Button.cartao-tema.selecionado /template/ ContentPresenter#PART_ContentPresenter, Button.cartao-tema.selecionado:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource CorPrimaria}"/><Setter Property="BorderThickness" Value="2"/></Style>
+  <!-- Miniaturas desenhadas dentro de um ThemeVariantScope: mostram o tema alvo, não o tema atual. -->
+  <Style Selector="Border.mini-moldura"><Setter Property="BorderBrush" Value="{DynamicResource CorDaLinha}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="10"/><Setter Property="ClipToBounds" Value="True"/></Style>
+  <Style Selector="Border.mini-fundo"><Setter Property="Background" Value="{DynamicResource CorDoFundo}"/></Style>
+  <Style Selector="Border.mini-cartao"><Setter Property="Background" Value="{DynamicResource CorDaSuperficie}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaBordaDaSuperficie}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="4"/></Style>
+  <Style Selector="Border.mini-escuro"><Setter Property="Background" Value="{DynamicResource CorDoResumo}"/><Setter Property="CornerRadius" Value="4"/></Style>
+  <Style Selector="Border.mini-texto"><Setter Property="Background" Value="{DynamicResource CorDoTexto}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="Border.mini-apagado"><Setter Property="Background" Value="{DynamicResource CorDaBarraDoGrafico}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+  <Style Selector="Border.mini-destaque"><Setter Property="Background" Value="{DynamicResource CorPrimaria}"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Height" Value="4"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+
+  <!-- ===== Diálogos sobrepostos (fluxo de compartilhar despesas) =====
+       O diálogo é um cartão branco dentro da própria janela, sobre uma camada escura ("scrim"); não é uma janela do sistema. -->
+  <Style Selector="Border.camada-escura"><Setter Property="Background" Value="{DynamicResource CorDaCamadaEscura}"/></Style>
+  <Style Selector="Border.modal"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="CornerRadius" Value="20"/><Setter Property="Padding" Value="28"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDoDialogo}"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="TextBlock.modal-titulo"><Setter Property="FontSize" Value="22"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="TextBlock.modal-subtitulo"><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+  <Style Selector="TextBlock.mono"><Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,Liberation Mono,monospace"/><Setter Property="FontSize" Value="13"/></Style>
+  <!-- Dentro do diálogo os botões têm 44 px de altura. -->
+  <Style Selector="Border.modal Button"><Setter Property="MinHeight" Value="44"/></Style>
+  <Style Selector="Border.modal Button.fechar"><Setter Property="MinHeight" Value="40"/><Setter Property="MinWidth" Value="40"/><Setter Property="CornerRadius" Value="12"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Background" Value="{DynamicResource CorDoBotaoFechar}"/><Setter Property="VerticalAlignment" Value="Top"/></Style>
+  <Style Selector="Border.modal Button.fechar:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorDaEtiquetaDeSituacao}"/><Setter Property="BorderBrush" Value="Transparent"/></Style>
+  <!-- Painel cinza-claro: faixa de indicadores, cartão do arquivo, resumo do resultado. -->
+  <Style Selector="Border.painel"><Setter Property="Background" Value="{DynamicResource CorDoPainel}"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="18,14"/></Style>
+  <Style Selector="Border.bloco"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Width" Value="44"/><Setter Property="Height" Value="44"/></Style>
+  <Style Selector="Border.bloco Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTexto}"/></Style>
+  <!-- Avisos: neutro (padrão), "warn" (âmbar), "positive" (sucesso) e "negative" (erro). -->
+  <Style Selector="Border.faixa"><Setter Property="Background" Value="{DynamicResource CorDaEtiqueta}"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="16,12"/></Style>
+  <Style Selector="Border.faixa TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoDeApoio}"/><Setter Property="FontSize" Value="13"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+  <Style Selector="Border.faixa Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDoTextoDeApoio}"/></Style>
+  <Style Selector="Border.faixa.alerta"><Setter Property="Background" Value="{DynamicResource CorDeAlertaSuave}"/></Style>
+  <Style Selector="Border.faixa.alerta TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorDeAlertaForte}"/></Style>
+  <Style Selector="Border.faixa.alerta Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorDeAlertaForte}"/></Style>
+  <Style Selector="Border.faixa.positivo"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/></Style>
+  <Style Selector="Border.faixa.positivo TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorPositivaForte}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="14"/></Style>
+  <Style Selector="Border.faixa.positivo Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorPositivaForte}"/></Style>
+  <Style Selector="Border.faixa.negativo"><Setter Property="Background" Value="{DynamicResource CorNegativaSuave}"/></Style>
+  <Style Selector="Border.faixa.negativo TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorNegativa}"/><Setter Property="FontWeight" Value="Medium"/></Style>
+  <Style Selector="Border.faixa.negativo Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorNegativa}"/></Style>
+  <!-- Indicador de passos: círculo cinza (futuro), preto com número (atual) ou verde com ✓ (concluído). -->
+  <Style Selector="Border.passo"><Setter Property="Width" Value="28"/><Setter Property="Height" Value="28"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Background" Value="{DynamicResource CorDaEtiquetaDeSituacao}"/></Style>
+  <Style Selector="Border.passo > TextBlock"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.passo.atual"><Setter Property="Background" Value="{DynamicResource CorEscura}"/></Style>
+  <Style Selector="Border.passo.atual > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/></Style>
+  <Style Selector="Border.passo.concluido"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/></Style>
+  <Style Selector="Border.passo.concluido Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorPositiva}"/></Style>
+  <Style Selector="TextBlock.rotulo-passo"><Setter Property="Foreground" Value="{DynamicResource CorDoTextoSecundario}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="TextBlock.rotulo-passo.atual"><Setter Property="Foreground" Value="{DynamicResource CorDoTexto}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="TextBlock.rotulo-passo.concluido"><Setter Property="Foreground" Value="{DynamicResource CorPositiva}"/></Style>
+  <Style Selector="Border.circulo-sucesso"><Setter Property="Width" Value="64"/><Setter Property="Height" Value="64"/><Setter Property="CornerRadius" Value="32"/><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/><Setter Property="HorizontalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.circulo-sucesso Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorPositiva}"/><Setter Property="StrokeThickness" Value="2.5"/></Style>
+  <!-- Controle segmentado em que a opção ativa é preta ("Manter proporcional | Dividir igualmente"). -->
+  <Style Selector="Border.segmentado.escuro"><Setter Property="Background" Value="{DynamicResource CorDaSuperficieSolida}"/><Setter Property="BorderBrush" Value="{DynamicResource CorDaLinha}"/></Style>
+  <Style Selector="Border.segmentado.escuro Button.segmento.ativo /template/ ContentPresenter#PART_ContentPresenter, Border.segmentado.escuro Button.segmento.ativo:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorEscura}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/></Style>
+
+  <!-- ===== Modo de seleção da página Despesas ===== -->
+  <!-- Botão "Compartilhar": comum em repouso; com o modo ligado, borda e fundo verdes. -->
+  <Style Selector="Button.alternar"><Setter Property="MinHeight" Value="42"/></Style>
+  <Style Selector="Button.alternar.ativo"><Setter Property="Foreground" Value="{DynamicResource CorPositiva}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.alternar.ativo /template/ ContentPresenter#PART_ContentPresenter, Button.alternar.ativo:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/><Setter Property="BorderBrush" Value="{DynamicResource CorPrimaria}"/><Setter Property="Foreground" Value="{DynamicResource CorPositiva}"/></Style>
+  <Style Selector="Button.alternar.ativo Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorPositiva}"/></Style>
+  <!-- Faixa verde clara com os atalhos de seleção (pílulas). -->
+  <Style Selector="Border.faixa-selecao"><Setter Property="Background" Value="{DynamicResource CorPositivaSuave}"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="16,10"/></Style>
+  <Style Selector="Border.faixa-selecao > Grid > TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorPositivaForte}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Button.botao-pilula"><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="14,6"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="{DynamicResource CorPositivaForte}"/></Style>
+  <!-- Linha da lista no modo de seleção: clicável, com fundo verde translúcido quando marcada. -->
+  <Style Selector="Border.linha-despesa"><Setter Property="Background" Value="Transparent"/></Style>
+  <Style Selector="Border.linha-despesa.selecionavel"><Setter Property="Cursor" Value="Hand"/></Style>
+  <Style Selector="Border.linha-despesa.selecionado"><Setter Property="Background" Value="{DynamicResource CorDaLinhaMarcada}"/></Style>
+  <!-- Barra flutuante escura do modo de seleção. -->
+  <Style Selector="Border.barra-selecao"><Setter Property="Background" Value="{DynamicResource CorEscura}"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Padding" Value="24,8,8,8"/><Setter Property="BoxShadow" Value="{DynamicResource SombraDaBarra}"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Bottom"/></Style>
+  <Style Selector="Border.barra-selecao TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.barra-selecao TextBlock.secundario"><Setter Property="Foreground" Value="{DynamicResource CorSecundariaSobreEscura}"/></Style>
+  <Style Selector="Button.barra-fantasma"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="CornerRadius" Value="999"/><Setter Property="MinHeight" Value="44"/><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/></Style>
+  <Style Selector="Button.barra-fantasma:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorEscuraAoPassarOMouse}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreEscura}"/></Style>
+  <Style Selector="Button.barra-acao"><Setter Property="Background" Value="{DynamicResource CorDaAcaoDaBarra}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreAcaoDaBarra}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="CornerRadius" Value="999"/><Setter Property="MinHeight" Value="44"/><Setter Property="Padding" Value="20,8"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.barra-acao:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.barra-acao:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource CorDaAcaoDaBarra}"/><Setter Property="Foreground" Value="{DynamicResource CorSobreAcaoDaBarra}"/></Style>
+  <Style Selector="Border.barra-selecao Button.barra-acao TextBlock"><Setter Property="Foreground" Value="{DynamicResource CorSobreAcaoDaBarra}"/></Style>
+  <Style Selector="Button.barra-acao Path.icone"><Setter Property="Stroke" Value="{DynamicResource CorSobreAcaoDaBarra}"/></Style>
+
+  <!-- Gráfico de barras: o controle desenha a si mesmo e recebe as cores do tema por aqui. -->
+  <Style Selector="ctl|GraficoDeBarras">
+    <Setter Property="CorDaBarra" Value="{DynamicResource CorDaBarraDoGrafico}"/><Setter Property="CorDaSelecionada" Value="{DynamicResource CorDaBarraSelecionada}"/>
+    <Setter Property="CorDaGrade" Value="{DynamicResource CorDaGradeDoGrafico}"/><Setter Property="CorDoRotulo" Value="{DynamicResource CorDoTextoSecundario}"/>
+    <Setter Property="CorDoBalao" Value="{DynamicResource CorDoBalaoDoGrafico}"/><Setter Property="CorDoTextoDoBalao" Value="{DynamicResource CorDoTextoDoBalaoDoGrafico}"/>
+  </Style>
+</Styles>

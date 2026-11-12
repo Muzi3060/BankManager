@@ -10,14 +10,14 @@ O BankManager ganhou um visual novo (temas claro, escuro e automático), sete si
 
 | O que | Como ficou |
 | --- | --- |
-| Temas | Todas as cores estão em `BankManager/Styles/Tokens.axaml`, uma versão para claro e outra para escuro. O código C# não tem nenhuma cor escrita. Trocar uma cor é editar um arquivo só. |
+| Temas | Todas as cores estão em `codigo/BankManager/Estilos/Cores.axaml`, uma versão para claro e outra para escuro. O código C# não tem nenhuma cor escrita. Trocar uma cor é editar um arquivo só. |
 | Preferência de tema | Fica em `settings.json`, separado do `financas.json`. Mudar o tema nunca mexe nos dados financeiros. Se o arquivo estiver corrompido, o app volta ao padrão (Automático). |
-| Ícones | Vetoriais, em `Styles/Icons.axaml`, iguais no Windows e no Linux (antes eram caracteres de texto). Há também um ícone do aplicativo. |
-| Código | `MainWindow.cs` foi dividido em um arquivo por página, na pasta `Pages/`. |
+| Ícones | Vetoriais, em `Estilos/Icones.axaml`, iguais no Windows e no Linux (antes eram caracteres de texto). Há também um ícone do aplicativo. |
+| Código | `JanelaPrincipal.cs` foi dividido em um arquivo por página, na pasta `Paginas/`. |
 | Fonte | A fonte Inter já estava no projeto, mas nunca era usada (um estilo a sobrescrevia). Foi corrigido. |
 | README | Um caminho pessoal de pasta saiu do repositório público. |
 
-**MVVM:** não foi adotado. Reescreveria todas as telas sem ganho visível, e as regras de cálculo já estão separadas no Core. A divisão em `Pages/` prepara o terreno se um dia for necessário.
+**MVVM:** não foi adotado. Reescreveria todas as telas sem ganho visível, e as regras de cálculo já estão separadas no Core. A divisão em `Paginas/` prepara o terreno se um dia for necessário.
 
 ## Fase 2 — Novo visual (versão 2.0; substituído na 2.1 pelo "Estilo C", veja a fase 5)
 
@@ -78,6 +78,16 @@ O visual inteiro foi trocado pela direção aprovada no protótipo: sai o roxo, 
 
 **Decisões minhas nesta fase:** os diálogos de compartilhar e de importar são cartões dentro da janela (não janelas do sistema), para ficarem iguais no Windows e no Linux; os outros diálogos do aplicativo continuam como janelas; o assistente abre o seletor de arquivo antes do passo 1; despesas recorrentes viajam como despesas comuns; na divisão proporcional, quem importa escolhe entre manter o modo (recalculado com as rendas de lá) ou dividir igualmente.
 
+## Fase 7 — Organização e nomes em português
+
+Nenhum comportamento mudou nesta fase; o objetivo foi deixar o projeto mais fácil de ler.
+
+- **Pastas:** o código foi para `codigo/` (aplicativo e núcleo), os testes para `testes/` e o instalador para `instalador/`. Dentro do aplicativo há `Paginas/`, `Dialogos/`, `Controles/`, `Estilos/` e `Recursos/`; no núcleo, `Modelos/`, `Regras/`, `Motores/` e `Arquivos/`.
+- **Nomes:** tipos, métodos, propriedades, variáveis, classes de estilo, cores e ícones passaram para o português. A troca foi feita pelo próprio compilador do C# (Roslyn), que sabe diferenciar um nome do projeto de um nome do .NET ou do Avalonia.
+- **Dados intactos:** os nomes gravados nos arquivos de dados continuam em inglês, presos por `[JsonPropertyName]`. Os testes abrem arquivos reais das versões 1 e 2 para confirmar.
+- **Conferência:** as capturas de tela de antes e de depois são idênticas pixel a pixel.
+- O `docs/GLOSSARIO.md` lista cada nome antigo e o novo.
+
 ## Como foi verificado
 
 - Build sem avisos.
@@ -108,14 +118,14 @@ O visual inteiro foi trocado pela direção aprovada no protótipo: sai o roxo, 
 
 | Assunto | Onde |
 | --- | --- |
-| Regras e cálculos (sem interface) | `BankManager.Core/` |
-| Telas | `BankManager/Pages/` |
-| Cores, ícones e estilos | `BankManager/Styles/` |
-| Componentes (chip, avatar, botões...) | `BankManager/Ui.cs` |
-| Testes | `BankManager.Tests/` (domínio) e `BankManager.UiTests/` (janela real) |
-| Gráfico da visão geral | `BankManager/Controls/BarChart.cs` |
-| Compartilhamento de despesas | `BankManager.Core/ExpenseShare.cs`, `BankManager/Pages/ShareExport.cs`, `ShareImport.cs` e `BankManager/Overlay.cs` |
-| Empacotamento | `scripts/package.py`, `scripts/installers.py`, `installer/` |
+| Regras e cálculos (sem interface) | `codigo/BankManager.Nucleo/` |
+| Telas | `codigo/BankManager/Paginas/` |
+| Cores, ícones e estilos | `codigo/BankManager/Estilos/` |
+| Componentes (chip, avatar, botões...) | `codigo/BankManager/Componentes.cs` |
+| Testes | `testes/BankManager.Testes/` (domínio) e `testes/BankManager.TestesDeInterface/` (janela real) |
+| Gráfico da visão geral | `codigo/BankManager/Controles/GraficoDeBarras.cs` |
+| Compartilhamento de despesas | `codigo/BankManager.Nucleo/Arquivos/CompartilhamentoDeDespesas.cs`, `codigo/BankManager/Dialogos/ExportarCompartilhamento.cs`, `ImportarCompartilhamento.cs` e `codigo/BankManager/Dialogos/Sobreposicao.cs` |
+| Empacotamento | `scripts/empacotar.py`, `scripts/instaladores.py`, `instalador/` |
 | Explicações mais detalhadas | `README.md` e `docs/GUIA-DO-CODIGO.md` |
 
 ## Próximos passos sugeridos
