@@ -20,7 +20,6 @@
   <StreamGeometry x:Key="Icon.Search">M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4</StreamGeometry>
   <StreamGeometry x:Key="Icon.Repeat">M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3</StreamGeometry>
   <StreamGeometry x:Key="Icon.Target">M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01</StreamGeometry>
-  <StreamGeometry x:Key="Icon.Logo">M12 3l9 9-9 9-9-9z</StreamGeometry>
   <!-- Ícones de categoria (veja Ui.CategoryIcon) e a seta das entradas de dinheiro. -->
   <StreamGeometry x:Key="Icon.Cart">M3 4h2l2.4 11h10.2L20 7H6.2M9.5 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM16.5 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Car">M5 17v-5.5L7 6h10l2 5.5V17M3 17h18M5 11.5h14M7 17v2M17 17v2M8 14.5h.01M16 14.5h.01</StreamGeometry>

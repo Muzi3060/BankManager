@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -29,7 +30,7 @@ public sealed partial class MainWindow : Window
     private readonly TextBlock notice = Text("", "warn");
     private readonly Border noticeBox = new();
     private readonly List<Button> navigation = [];
-    // Índices de página: 0 resumo, 1 pessoas, 2 despesas, 3 previsões, 4 ajustes.
+    // Índices de página: 0 resumo, 1 pessoas, 2 despesas, 3 previsões e metas, 4 ajustes.
     private int currentPage;
     // Filtros são mantidos na janela para sobreviver à reconstrução da página após um salvamento.
     private string filter = "";
@@ -48,28 +49,26 @@ public sealed partial class MainWindow : Window
         settingsDirectory = LocalStore.DefaultDirectory(dataDirectory);
         // O tema é aplicado antes de a janela aparecer, para não piscar no tema errado.
         settings = SettingsStore.Load(settingsDirectory); App.ApplyTheme(settings.Theme);
-        // Menu lateral de 232 px: logo, cinco destinos e o aviso de privacidade no rodapé.
-        var sidebar = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") }; sidebar.Classes.Add("sidebar");
-        var logo = new Border { Child = Icon("Logo", 16), VerticalAlignment = VerticalAlignment.Center }; logo.Classes.Add("logo");
-        sidebar.Children.Add(new Border { Padding = new Thickness(24, 28, 24, 16), Child = Row(logo, new TextBlock { Text = "BankManager", FontWeight = FontWeight.SemiBold, FontSize = 16, VerticalAlignment = VerticalAlignment.Center }) });
-        var menu = new StackPanel { Margin = new Thickness(14, 8), Spacing = 4 };
-        (string Label, string Icon)[] items = [("Visão geral", "Home"), ("Pessoas e rendas", "Users"), ("Despesas", "List"), ("Previsões", "Trend"), ("Ajustes", "Sliders")];
+        // Menu lateral de 188 px, direto sobre o degradê da janela: marca em texto, quatro destinos e "Ajustes" no rodapé.
+        var sidebar = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Margin = new Thickness(12, 0, 8, 0) };
+        sidebar.Children.Add(new Border { Padding = new Thickness(12, 30, 0, 22), Child = Text("BankManager", "brand") });
+        var menu = new StackPanel { Spacing = 4 };
+        (string Label, string Icon)[] items = [("Visão geral", "Home"), ("Pessoas e rendas", "Users"), ("Despesas", "List"), ("Previsões e metas", "Trend"), ("Ajustes", "Sliders")];
         for (var i = 0; i < items.Length; i++)
         {
             // Copia o índice para que cada callback navegue à página correspondente, em vez do valor final do laço.
-            var index = i; var button = Button(items[i].Label, () => GoTo(index), "nav", items[i].Icon); navigation.Add(button); menu.Children.Add(button);
+            var index = i; var button = Button(items[i].Label, () => GoTo(index), "nav", items[i].Icon); navigation.Add(button);
+            // "Ajustes" (o último) vai para o rodapé do menu, em tom secundário.
+            if (i < items.Length - 1) menu.Children.Add(button);
+            else { button.Classes.Add("footer"); button.Margin = new Thickness(0, 0, 0, 18); Grid.SetRow(button, 2); sidebar.Children.Add(button); }
         }
         Grid.SetRow(menu, 1); sidebar.Children.Add(menu);
-        var privacy = Text("Seus dados ficam só neste computador.", "muted"); privacy.FontSize = 12;
-        var footerIcon = Icon("Lock", 14); footerIcon.VerticalAlignment = VerticalAlignment.Top; footerIcon.Margin = new Thickness(0, 2, 8, 0);
-        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(24, 16, 24, 24) }; Grid.SetColumn(privacy, 1); footer.Children.Add(footerIcon); footer.Children.Add(privacy);
-        Grid.SetRow(footer, 2); sidebar.Children.Add(footer);
-        // Conteúdo: aviso global (quando há) e a página rolável, com margem de 32/40 px.
-        noticeBox.Classes.Add("notice"); noticeBox.Child = notice; noticeBox.IsVisible = false; noticeBox.Margin = new Thickness(40, 24, 40, 0);
+        // Conteúdo: aviso global (quando há) e a página rolável.
+        noticeBox.Classes.Add("notice"); noticeBox.Child = notice; noticeBox.IsVisible = false; noticeBox.Margin = new Thickness(24, 20, 32, 0);
         var body = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; body.Children.Add(noticeBox);
-        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(40, 32), Child = page }, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(24, 26, 32, 32), Child = page }, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1); body.Children.Add(scroll);
-        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("232,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
+        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("188,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
         // Atalho Ctrl+N: nova despesa de qualquer tela (diálogos modais bloqueiam a janela, então não abre dois).
         KeyDown += (_, e) => { if (e.Key == Key.N && e.KeyModifiers == KeyModifiers.Control && ready) { e.Handled = true; _ = Run(() => EditExpense()); } };
         try { store = new LocalStore(dataDirectory); data = store.Load(); ready = true; TopUpRecurrences(); }
@@ -97,21 +96,23 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void GoTo(int index) { currentPage = index; if (index != 2) allMonths = false; Render(); }
     /// <summary>
-    /// Cabeçalho comum das páginas: título e subtítulo à esquerda; à direita, navegação de mês e, se pedido, o botão de nova despesa.
+    /// Cabeçalho comum das páginas: título (e uma linha de apoio) à esquerda; à direita, a navegação de mês em uma pílula
+    /// translúcida (‹ mês ›) e o botão primário "Nova despesa". Clicar no nome do mês volta ao mês atual.
     /// </summary>
-    private Control PageHeader(string title, string subtitle, bool monthNavigation = true, bool newExpense = false)
+    private Control PageHeader(string title, string subtitle, bool monthNavigation = true)
     {
-        var titles = Stack(Text(title, "title"), Text(subtitle, "muted")); titles.Spacing = 4; titles.VerticalAlignment = VerticalAlignment.Center;
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var titles = Stack(Text(title, "title"), Text(subtitle, "muted")); titles.Spacing = 2; titles.VerticalAlignment = VerticalAlignment.Center;
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         if (monthNavigation)
         {
-            var label = new TextBlock { Text = month.ToString("MMMM 'de' yyyy", Money.Culture), FontWeight = FontWeight.SemiBold, MinWidth = 130, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            actions.Children.Add(Button("Mês anterior", () => ChangeMonth(-1), icon: "ChevronLeft", iconOnly: true)); actions.Children.Add(label);
-            actions.Children.Add(Button("Próximo mês", () => ChangeMonth(1), icon: "ChevronRight", iconOnly: true));
-            actions.Children.Add(Button("Hoje", () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }));
+            var label = Button(month.ToString("MMMM 'de' yyyy", Money.Culture), () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }, "ghost round");
+            label.MinWidth = 150; label.HorizontalContentAlignment = HorizontalAlignment.Center; label.FontWeight = FontWeight.SemiBold;
+            AutomationProperties.SetName(label, "Voltar ao mês atual"); ToolTip.SetTip(label, "Voltar ao mês atual");
+            var pill = new Border { Child = Row(Button("Mês anterior", () => ChangeMonth(-1), "ghost round", "ChevronLeft", iconOnly: true), label, Button("Próximo mês", () => ChangeMonth(1), "ghost round", "ChevronRight", iconOnly: true)) };
+            ((StackPanel)pill.Child).Spacing = 0; pill.Classes.Add("pill"); actions.Children.Add(pill);
         }
-        if (newExpense) { var add = Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"); add.Margin = new Thickness(8, 0, 0, 0); actions.Children.Add(add); }
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 0, 24) }; Grid.SetColumn(actions, 1); header.Children.Add(titles); header.Children.Add(actions);
+        actions.Children.Add(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"));
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 0, 22) }; Grid.SetColumn(actions, 1); header.Children.Add(titles); header.Children.Add(actions);
         return header;
     }
     /// <summary>
@@ -183,14 +184,6 @@ public sealed partial class MainWindow : Window
     /// Compõe título e explicação curta de uma página usando os estilos compartilhados.
     /// </summary>
     private static Control Heading(string title, string subtitle) => Stack(Text(title, "title"), Text(subtitle, "muted"));
-    /// <summary>
-    /// Compõe um indicador monetário com rótulo e contexto. O tom ("positive", "negative" ou "accent") escolhe a cor do valor no tema atual.
-    /// </summary>
-    private static Control Metric(string label, decimal amount, string hint, string? tone = null)
-    {
-        var value = Text(Money.Format(amount), "money"); if (tone is not null) value.Classes.Add(tone);
-        return Card(Stack(Text(label, "muted"), value, Text(hint, "muted")));
-    }
     /// <summary>
     /// Produz a mensagem local dos formulários sem exibir stack traces ou detalhes internos ao usuário.
     /// </summary>

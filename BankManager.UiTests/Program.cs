@@ -80,7 +80,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                 foreach (var (theme, themeName) in new[] { (ThemePreference.Light, "claro"), (ThemePreference.Dark, "escuro") })
                 {
                     App.ApplyTheme(theme);
-                    foreach (var (label, file) in new[] { ("Visão geral", "visao-geral"), ("Despesas", "despesas"), ("Pessoas e rendas", "pessoas"), ("Previsões", "previsoes"), ("Ajustes", "ajustes") })
+                    foreach (var (label, file) in new[] { ("Visão geral", "visao-geral"), ("Despesas", "despesas"), ("Pessoas e rendas", "pessoas"), ("Previsões e metas", "previsoes"), ("Ajustes", "ajustes") })
                     {
                         await Click(label, main); await Task.Delay(250);
                         using var shot = new RenderTargetBitmap(new PixelSize((int)main.Bounds.Width, (int)main.Bounds.Height), new Vector(96, 96));
@@ -158,7 +158,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             var itemExpense = LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single(e => e.Title == "Compra detalhada");
             Check(itemExpense.Amount == 51m && itemExpense.Items.Single().Quantity == 2m, "Item list calculates and persists 2 × 25.50");
             // Cenário 6: navegação renderiza as páginas de previsão e backup sem erros.
-            await Click("Previsões", main);
+            await Click("Previsões e metas", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast screen renders");
             await Click("Ajustes", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "Settings screen renders");

@@ -17,7 +17,7 @@ public sealed partial class MainWindow
     {
         var expenses = FinanceEngine.Expenses(data, month); var income = data.People.Sum(p => FinanceEngine.Income(data, p.Id, month)); var total = expenses.Sum(e => e.Amount);
         var open = expenses.Where(e => !e.Paid).Sum(e => e.Amount);
-        var result = Stack(PageHeader("Seu mês, com clareza", "O que entra, o que sai e quanto sobra.", newExpense: true));
+        var result = Stack(PageHeader("Seu mês, com clareza", "O que entra, o que sai e quanto sobra."));
         result.Spacing = 20;
         if (data.People.Count == 0)
         {

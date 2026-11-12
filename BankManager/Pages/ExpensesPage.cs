@@ -43,7 +43,7 @@ public sealed partial class MainWindow
         var scope = Segmented(["Este mês", "Todos os meses"], allMonths ? 1 : 0, i => { allMonths = i == 1; Render(); });
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; tools.Children.Add(scope); tools.Children.Add(recurring); Grid.SetColumn(tools, 1);
         var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(tools);
-        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths, newExpense: true), filters, summaryRow, table); page.Spacing = 16; return page;
+        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths), filters, summaryRow, table); page.Spacing = 16; return page;
     }
     /// <summary>
     /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
