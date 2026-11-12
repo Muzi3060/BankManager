@@ -167,6 +167,10 @@ O JSON é legível, sem criptografia. No Unix, a pasta e os arquivos novos receb
 
 ## Testes e publicação
 
+### GIFs de demonstração
+
+`scripts/gerar-midia.py` refaz os GIFs de `docs/midia/` com um comando. Ele funciona em duas partes. Primeiro, o executável de testes de interface roda em modo de mídia (`BANKMANAGER_MIDIA=<pasta>` e `BANKMANAGER_MIDIA_CENA=<cena>`): em vez de verificar o aplicativo, ele segue um roteiro curto com dados fictícios, salva um PNG por passo e escreve em `roteiro.tsv` a legenda, o tempo de exibição e a área do controle clicado. As cenas ficam no bloco "Modo de mídia" de `testes/BankManager.TestesDeInterface/TestesDeInterface.cs`; para mudar um GIF, edite o roteiro da cena. Depois, o script Python monta cada GIF com o Pillow: desenha o contorno verde no controle (os quadros não têm cursor), reduz para 900 px, escreve a legenda, cria dois quadros de transição entre os passos e grava com uma paleta única. A pasta de dados é sempre temporária, criada pelo próprio teste.
+
 `testes/BankManager.Testes/Programa.cs` registra cada cenário com `Teste`, executa todos e retorna falha se algum não passar. Há comentários em português para cada caso. `Familia` e `Conta` criam dados sintéticos; testes de arquivos usam temporários. A bateria de rateio usa semente fixa para tornar as amostras reproduzíveis.
 
 `testes/BankManager.TestesDeInterface/Programa.cs` configura a pasta temporária antes de criar o aplicativo, espera a inicialização gráfica e executa o roteiro na thread da interface. Os cliques disparam eventos dos botões, sem coordenadas do mouse. Há verificações na tela e no JSON salvo. Seletores de arquivos nativos e leitores de tela não são cobertos por esse roteiro.

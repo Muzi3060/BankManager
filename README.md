@@ -4,6 +4,8 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 **Sobre o desenvolvimento:** este projeto foi desenvolvido com **vibe coding**, usando o Codex para gerar e ajustar o código a partir de instruções em linguagem natural. A proposta, os requisitos e as decisões de produto foram definidos pelo autor do projeto.
 
+![Demonstração da visão geral: saldo planejado, gráfico dos últimos meses, metas e navegação entre os meses, com dados fictícios](docs/midia/visao-geral-leve.gif)
+
 ![Visão geral no tema claro: saldo planejado com gráfico, resumo da casa e metas do mês (dados de demonstração)](docs/visao-geral.png)
 ![Fim da visão geral: próximos pagamentos, acerto de contas e últimas movimentações (dados de demonstração)](docs/visao-geral-2.png)
 ![Metas por categoria em Previsões e metas (dados de demonstração)](docs/metas.png)
@@ -50,6 +52,8 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 
 ## Como usar
 
+![Demonstração: clicar em Nova despesa, preencher descrição, categoria e valor, conferir a divisão, salvar e ver a despesa na lista (dados fictícios)](docs/midia/criar-despesa.gif)
+
 1. Em **Pessoas e rendas**, cadastre as pessoas e a renda líquida do mês selecionado. Cada pessoa pode ter várias rendas no mês (salário, extra, 13º), uma por linha; a renda do mês é a soma. Zero é válido. Você pode copiar as rendas do mês anterior sem substituir valores já informados.
 2. Em **Despesas**, adicione descrição, categoria, vencimento, valor e responsáveis. Para uma compra detalhada, expanda **Lista de itens da compra**, preencha quantidade e preço e clique em **Adicionar item** para cada produto.
 3. Escolha divisão **individual**, **igual** ou **proporcional**. Use **Conferir divisão antes de salvar** para ver o resultado.
@@ -79,6 +83,8 @@ Em **Ajustes → Seus dados → Planilhas**:
 - **Importar extrato (CSV):** um assistente lê o arquivo (UTF-8 ou Latin-1; separador `;`, `,` ou tabulação), sugere as colunas de data, descrição e valor, e mostra ao vivo o que será importado, ignorado, repetido ou com erro (com o número da linha). Valores negativos são despesas (extrato de conta); para fatura de cartão, escolha "Positivos". Entradas, estornos e valor zero são ignorados. As despesas entram **já pagas**, na categoria **Outros** e **sem "quem pagou"**, então não entram no acerto de contas; edite cada uma para mudar a categoria. Importar o mesmo extrato duas vezes não repete nada (mesma data, valor e descrição). Limites: 5 MB e 10.000 linhas. A data de cada linha vira também a data do pagamento.
 
 ## Compartilhar despesas
+
+![Demonstração: marcar despesas, salvar o arquivo de compartilhamento e importá-lo em outra base, passando por quem é quem, prévia e resultado (dados fictícios)](docs/midia/compartilhar.gif)
 
 Serve para passar **algumas** despesas a outra pessoa que usa o BankManager (por exemplo, as contas da casa para quem divide com você). É diferente do backup: o backup leva tudo e, ao ser importado, **substitui** a base; o compartilhamento leva só o que você marcar e, ao ser importado, **adiciona**.
 
@@ -111,6 +117,8 @@ Na lista de despesas, o seletor **Este mês / Todos os meses** amplia a busca ao
 As 8 categorias padrão (Moradia, Mercado, Transporte, Saúde, Educação, Lazer, Serviços e Outros) são fixas. Em **Ajustes → Categorias** você cria as suas (até 40, nomes de até 30 caracteres, sem repetir um nome existente, ignorando maiúsculas). Renomear uma categoria atualiza todas as despesas e recorrências que a usam. Excluir só é possível quando nada a usa. Categorias próprias entram nos filtros, no editor e nas previsões.
 
 ## Visão geral
+
+![Demonstração em tamanho maior da visão geral e da navegação entre os meses (dados fictícios)](docs/midia/visao-geral.gif)
 
 De cima para baixo:
 
@@ -215,6 +223,19 @@ Para gerar capturas de todas as telas, nos temas claro e escuro, com dados de de
 ```bash
 mkdir -p /tmp/capturas && BANKMANAGER_SCREENSHOTS=/tmp/capturas dotnet run --project testes/BankManager.TestesDeInterface
 ```
+
+Para refazer os GIFs de demonstração de `docs/midia/` (todos, ou só os citados):
+
+```bash
+python3 scripts/gerar-midia.py
+python3 scripts/gerar-midia.py temas compartilhar
+```
+
+O script abre a janela real com dados fictícios em uma pasta temporária, salva um quadro por passo do roteiro e monta os GIFs (900 px de largura, legenda no rodapé, controle clicado em destaque, até 3 MB cada). Precisa de uma sessão gráfica e do Pillow (`python3 -m pip install pillow`). Os quadros temporários são apagados ao final.
+
+**Temas claro, escuro e automático:**
+
+![Demonstração: troca entre os temas claro, escuro e automático em Ajustes (dados fictícios)](docs/midia/temas.gif)
 
 ## Referências de projeto
 
