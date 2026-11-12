@@ -17,9 +17,22 @@ Environment.SetEnvironmentVariable("BANKMANAGER_DATA_DIR", diretorio);
 // Modo de capturas para a documentação: BANKMANAGER_SCREENSHOTS=<pasta> semeia dados de demonstração (sintéticos),
 // fotografa cada página nos temas claro e escuro e encerra, sem executar o roteiro de verificação.
 var pastaDeCapturas = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOTS");
-if (!string.IsNullOrEmpty(pastaDeCapturas))
+// Modo de mídia para os GIFs do README (veja scripts/gerar-midia.py): BANKMANAGER_MIDIA=<pasta> e BANKMANAGER_MIDIA_CENA=<cena>
+// executam um roteiro curto e salvam um quadro por passo, com a legenda e a área do controle em destaque.
+var pastaDeMidia = Environment.GetEnvironmentVariable("BANKMANAGER_MIDIA"); var cena = Environment.GetEnvironmentVariable("BANKMANAGER_MIDIA_CENA") ?? "";
+if (!string.IsNullOrEmpty(pastaDeCapturas) || !string.IsNullOrEmpty(pastaDeMidia))
 {
-    using var semente = new ArmazenamentoLocal(diretorio); semente.Salvar(DadosDeDemonstracao());
+    // A cena "compartilhar-receber" acontece no computador de outra pessoa: uma base diferente, só com o Bruno.
+    using var semente = new ArmazenamentoLocal(diretorio); semente.Salvar(cena == "compartilhar-receber" ? DadosDeQuemRecebe() : DadosDeDemonstracao());
+}
+// Base fictícia de quem recebe um arquivo compartilhado: uma pessoa, uma renda e duas despesas próprias.
+static DadosDoOrcamento DadosDeQuemRecebe()
+{
+    var primeiro = Datas.Mes(DateOnly.FromDateTime(DateTime.Today)); var bruno = new Pessoa { Nome = "Bruno" };
+    var dados = new DadosDoOrcamento { Pessoas = [bruno], Rendas = [new() { IdDaPessoa = bruno.Id, Mes = primeiro, Valor = 2800 }] };
+    dados.Despesas.Add(new Despesa { Titulo = "Academia", Categoria = "Saúde", Vencimento = primeiro.AddDays(9), Valor = 99.90m, Divisao = ModoDeDivisao.Individual, Participantes = [bruno.Id] });
+    dados.Despesas.Add(new Despesa { Titulo = "Celular", Categoria = "Serviços", Vencimento = primeiro.AddDays(19), Valor = 59.90m, Divisao = ModoDeDivisao.Individual, Participantes = [bruno.Id] });
+    return dados;
 }
 // Dados fictícios que reproduzem o desenho do aplicativo: duas pessoas, dez despesas no mês atual e cinco meses de histórico para o gráfico.
 static DadosDoOrcamento DadosDeDemonstracao()
@@ -97,6 +110,93 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             {
                 using var captura = new RenderTargetBitmap(new PixelSize((int)janela.Bounds.Width, (int)janela.Bounds.Height), new Vector(96, 96));
                 captura.Render(janela); captura.Save(Path.Combine(pastaDeCapturas!, nome + ".png"), PngBitmapEncoderOptions.Default); Console.WriteLine("Captura: " + nome);
+            }
+            if (!string.IsNullOrEmpty(pastaDeMidia))
+            {
+                // ----- Modo de mídia: um quadro por passo, com legenda e destaque, para o script montar os GIFs. -----
+                var janelaDeMidia = (JanelaPrincipal)principal; var pastaDaCena = Path.Combine(pastaDeMidia, cena); Directory.CreateDirectory(pastaDaCena); var numero = 0;
+                var arquivoCompartilhado = Environment.GetEnvironmentVariable("BANKMANAGER_MIDIA_ARQUIVO") ?? Path.Combine(pastaDeMidia, "despesas" + ArquivoDeCompartilhamento.Extensao);
+                // Salva o quadro da janela indicada e uma linha no roteiro: arquivo, legenda, tempo de exibição e a área do controle destacado.
+                void Quadro(string legenda, Control? destaque = null, int pausa = 1500, Window? janela = null)
+                {
+                    janela ??= principal; var nome = $"{++numero:00}.png";
+                    using (var imagem = new RenderTargetBitmap(new PixelSize((int)janela.Bounds.Width, (int)janela.Bounds.Height), new Vector(96, 96))) { imagem.Render(janela); imagem.Save(Path.Combine(pastaDaCena, nome), PngBitmapEncoderOptions.Default); }
+                    var area = destaque?.TranslatePoint(new Point(0, 0), janela) is { } canto ? FormattableString.Invariant($"{canto.X:0},{canto.Y:0},{destaque.Bounds.Width:0},{destaque.Bounds.Height:0}") : "";
+                    File.AppendAllText(Path.Combine(pastaDaCena, "roteiro.tsv"), $"{nome}\t{legenda}\t{pausa}\t{area}\n");
+                }
+                Border? CartaoModal() => principal.GetVisualDescendants().OfType<Border>().FirstOrDefault(x => x.Classes.Contains("modal"));
+                Button BotaoDoModal(string rotulo) => AcharBotaoEm(CartaoModal()!, rotulo);
+                async Task ClicarNo(Button botao, int espera = 350) { botao.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(espera); }
+                // Mostra o controle em destaque em um quadro e, no seguinte, o resultado do clique.
+                async Task DestacarEClicar(string legenda, Button botao, int pausa = 1100) { botao.BringIntoView(); await Task.Delay(150); Quadro(legenda, botao, pausa); await ClicarNo(botao); }
+                var rolagemDaPagina = principal.GetVisualDescendants().OfType<ScrollViewer>().First();
+                Aplicativo.AplicarTema(PreferenciaDeTema.Claro); await Task.Delay(300);
+                if (cena == "criar-despesa")
+                {
+                    Quadro("A Visão geral mostra o saldo e as despesas do mês", pausa: 1800);
+                    await DestacarEClicar("Clique em Nova despesa", AcharBotao(principal, "Nova despesa"));
+                    var editor = Ativa(); var campos = editor.GetVisualDescendants().OfType<TextBox>().ToArray();
+                    Quadro("O formulário abre com o vencimento de hoje", janela: editor);
+                    var descricao = campos.First(c => c.PlaceholderText == "Ex.: Compra do mercado"); descricao.Text = "Farmácia"; await Task.Delay(150); Quadro("Escreva a descrição", descricao, 1100, editor);
+                    var categoria = editor.GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Categoria"); categoria.SelectedIndex = Array.IndexOf(RegrasDoOrcamento.Categorias, "Saúde"); await Task.Delay(150); Quadro("Escolha a categoria", categoria, 1100, editor);
+                    var valor = campos.First(c => c.PlaceholderText == "Ex.: 1000,00"); valor.Text = "86,40"; await Task.Delay(150); Quadro("Informe o valor", valor, 1100, editor);
+                    var conferir = AcharBotao(editor, "Conferir divisão antes de salvar"); await ClicarNo(conferir);
+                    var rolagemDoEditor = editor.GetVisualDescendants().OfType<ScrollViewer>().First(); rolagemDoEditor.Offset = new Vector(0, rolagemDoEditor.Extent.Height); await Task.Delay(250);
+                    Quadro("Confira quanto cabe a cada pessoa", conferir, 1700, editor);
+                    Quadro("Salve a despesa", AcharBotao(editor, "Salvar despesa"), 1100, editor); await ClicarNo(AcharBotao(editor, "Salvar despesa"), 450);
+                    Quadro("O saldo e os totais já contam a nova despesa", pausa: 1900);
+                    await ClicarNo(AcharBotao(principal, "Despesas"));
+                    var linha = principal.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == "Farmácia").FindAncestorOfType<Border>(); linha?.BringIntoView(); await Task.Delay(200);
+                    Quadro("Ela aparece na lista de despesas, com a divisão por pessoa", linha, 2200);
+                }
+                else if (cena == "temas")
+                {
+                    await ClicarNo(AcharBotao(principal, "Ajustes")); Quadro("Em Ajustes, escolha a aparência", pausa: 1600);
+                    await DestacarEClicar("Tema escuro", AcharBotao(principal, "Tema escuro")); await Task.Delay(300); Quadro("O tema muda na hora", pausa: 1500);
+                    await ClicarNo(AcharBotao(principal, "Visão geral")); Quadro("Todas as telas acompanham o tema escuro", pausa: 1900);
+                    await ClicarNo(AcharBotao(principal, "Ajustes")); await DestacarEClicar("Tema claro", AcharBotao(principal, "Tema claro")); await Task.Delay(300); Quadro("De volta ao tema claro", pausa: 1400);
+                    Quadro("Automático acompanha o tema do computador", AcharBotao(principal, "Tema automático"), 2000);
+                }
+                else if (cena == "visao-geral")
+                {
+                    Quadro("Saldo planejado, resumo da casa e metas do mês", pausa: 2000);
+                    rolagemDaPagina.Offset = new Vector(0, rolagemDaPagina.Extent.Height - rolagemDaPagina.Viewport.Height); await Task.Delay(300);
+                    Quadro("Próximos pagamentos, acerto de contas e últimas movimentações", pausa: 2200); rolagemDaPagina.Offset = default; await Task.Delay(250);
+                    await DestacarEClicar("Volte um mês pela seta", AcharBotao(principal, "Mês anterior")); Quadro("O gráfico destaca o mês escolhido", pausa: 1500);
+                    await DestacarEClicar("Volte mais um mês", AcharBotao(principal, "Mês anterior"), 900); Quadro("Cada mês guarda suas rendas e despesas", pausa: 1500);
+                    await DestacarEClicar("Clique no nome do mês para voltar ao mês atual", AcharBotao(principal, "Voltar ao mês atual")); Quadro("De volta ao mês atual", pausa: 1800);
+                }
+                else if (cena == "compartilhar-enviar")
+                {
+                    await ClicarNo(AcharBotao(principal, "Despesas")); await DestacarEClicar("Em Despesas, clique em Compartilhar", AcharBotao(principal, "Compartilhar"));
+                    Quadro("A lista ganha caixas de marcação", pausa: 1300);
+                    // Rola até o fim: as linhas que serão marcadas ficam acima da barra flutuante.
+                    rolagemDaPagina.Offset = new Vector(0, rolagemDaPagina.Extent.Height - rolagemDaPagina.Viewport.Height); await Task.Delay(300);
+                    foreach (var titulo in new[] { "Notebook", "Transporte", "Streaming" })
+                    {
+                        var caixa = principal.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == "Selecionar " + titulo); caixa.IsChecked = true; await Task.Delay(250);
+                        Quadro("Marque as despesas que quer enviar", caixa.FindAncestorOfType<Border>(), 900);
+                    }
+                    await DestacarEClicar("Clique em Compartilhar… na barra", AcharBotao(principal, "Compartilhar…")); Quadro("Confira o que vai no arquivo: só as despesas marcadas", pausa: 2200);
+                    janelaDeMidia.CaminhoDeTesteParaSalvar = arquivoCompartilhado; await DestacarEClicar("Salve o arquivo e envie para a outra pessoa", BotaoDoModal("Salvar arquivo"));
+                    Quadro("Arquivo salvo. Rendas, metas e acertos não vão nele", pausa: 2200);
+                }
+                else if (cena == "compartilhar-receber")
+                {
+                    await ClicarNo(AcharBotao(principal, "Despesas")); Quadro("No computador do Bruno, ele já tem as despesas dele", pausa: 1900);
+                    await ClicarNo(AcharBotao(principal, "Ajustes")); janelaDeMidia.CaminhoDeTesteParaAbrir = arquivoCompartilhado;
+                    await DestacarEClicar("Em Ajustes, clique em Importar despesas compartilhadas", AcharBotao(principal, "Importar despesas compartilhadas"));
+                    Quadro("O arquivo é conferido antes de qualquer mudança", pausa: 2000); await DestacarEClicar("Continuar", BotaoDoModal("Continuar"), 800);
+                    Quadro("Diga quem é cada pessoa e o que fazer com a categoria nova", pausa: 2400); await DestacarEClicar("Continuar", BotaoDoModal("Continuar"), 800);
+                    Quadro("Confira a prévia: nada foi salvo ainda", pausa: 2400);
+                    // A divisão proporcional depende da renda de cada pessoa nesta base; aqui o Bruno prefere dividir igualmente.
+                    await DestacarEClicar("A divisão pode continuar proporcional ou passar a ser igual", BotaoDoModal("Dividir igualmente"), 1700);
+                    var adicionar = CartaoModal()!.GetVisualDescendants().OfType<Button>().First(b => AutomationProperties.GetName(b)?.StartsWith("Adicionar ") == true); await DestacarEClicar("Adicione as despesas", adicionar);
+                    Quadro("Pronto: as despesas foram adicionadas, nada foi substituído", pausa: 2400); await DestacarEClicar("Ver despesas", BotaoDoModal("Ver despesas"), 900);
+                    Quadro("As despesas do Bruno continuam lá, junto com as recebidas", pausa: 2600);
+                }
+                else throw new Exception("Cena de mídia desconhecida: " + cena);
+                Console.WriteLine($"Mídia: {cena}, {numero} quadros"); codigoDeSaida = 0; return;
             }
             if (!string.IsNullOrEmpty(pastaDeCapturas))
             {
