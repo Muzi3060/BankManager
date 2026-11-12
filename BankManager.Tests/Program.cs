@@ -687,6 +687,36 @@ Test("Data folders with spaces and accents work", () =>
     finally { Directory.Delete(path, true); }
 });
 
+// Gráfico da visão geral: seis meses terminando no selecionado, do mais antigo ao mais recente, com zero nos meses vazios.
+Test("Monthly totals cover the last N months including empty ones", () =>
+{
+    var d = Family(); var paid = Bill(d, 300); paid.Paid = true; d.Expenses.Add(paid); d.Expenses.Add(Bill(d, 200.50m));
+    var old = Bill(d, 90); old.DueDate = month.AddMonths(-2).AddDays(14); d.Expenses.Add(old);
+    var outside = Bill(d, 999); outside.DueDate = month.AddMonths(-6); d.Expenses.Add(outside); var future = Bill(d, 50); future.DueDate = month.AddMonths(1); d.Expenses.Add(future);
+    var totals = FinanceEngine.MonthlyTotals(d, month.AddDays(20), 6);
+    Equal(6, totals.Count); Equal(month.AddMonths(-5), totals[0].Month); Equal(month, totals[5].Month);
+    Equal(500.50m, totals[5].Total); Equal(90m, totals[3].Total); Equal(0m, totals[0].Total); Equal(590.50m, totals.Sum(t => t.Total));
+    Equal(1, FinanceEngine.MonthlyTotals(new BudgetData(), month, 1).Count);
+    try { FinanceEngine.MonthlyTotals(d, month, 0); throw new Exception("Expected rejection"); } catch (ArgumentOutOfRangeException) { }
+});
+
+// Últimas movimentações: rendas do mês (dia 1) e despesas pagas do mês, mais recentes primeiro, com limite.
+Test("Recent movements list incomes and paid expenses, newest first", () =>
+{
+    var d = Family(3000, 0); d.Incomes.Add(new() { PersonId = d.People[0].Id, Month = month, Amount = 500, Label = "Extra" });
+    d.Incomes.Add(new() { PersonId = d.People[0].Id, Month = month.AddMonths(1), Amount = 7000 });
+    Expense Paid(string title, int day, decimal amount, bool paid = true) { var e = Bill(d, amount); e.Title = title; e.DueDate = month.AddDays(day - 1); e.Paid = paid; d.Expenses.Add(e); return e; }
+    Paid("Aluguel", 5, 1800); Paid("Energia", 12, 214.90m, paid: false); Paid("Internet", 12, 119.90m); Paid("Água", 12, 80); Paid("Dia um", 1, 10);
+    var other = Paid("Outro mês", 3, 40); other.DueDate = month.AddMonths(-1);
+    var all = FinanceEngine.RecentMovements(d, month, 10);
+    // Dia 12 (Água antes de Internet, pela descrição), dia 5 e, no dia 1, a despesa antes das rendas na ordem de cadastro.
+    Equal("Água,Internet,Aluguel,Dia um,Renda,Extra", string.Join(",", all.Select(m => m.Title)));
+    Equal(true, all[4].IsIncome && all[4].Date == month && all[4].Category == "Renda de Ana" && all[4].Amount == 3000m); Equal(false, all[0].IsIncome);
+    Equal(2, FinanceEngine.RecentMovements(d, month, 2).Count); Equal(0, FinanceEngine.RecentMovements(new BudgetData(), month).Count);
+    // Mesma entrada, mesma saída: a ordem não muda entre chamadas.
+    Equal(true, all.SequenceEqual(FinanceEngine.RecentMovements(d, month, 10)));
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)

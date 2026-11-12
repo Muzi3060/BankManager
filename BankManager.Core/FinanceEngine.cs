@@ -30,6 +30,21 @@ public sealed record PersonBalance(Person Person, decimal Income, decimal Assign
 /// <param name="Months">Tamanho da janela histórica em meses, entre zero e três, incluindo meses sem lançamentos.</param>
 public sealed record Forecast(string Category, decimal Historical, decimal Scheduled, decimal Estimate, int Months);
 /// <summary>
+/// Total de despesas de um mês, usado pelo gráfico da visão geral.
+/// </summary>
+/// <param name="Month">Primeiro dia do mês.</param>
+/// <param name="Total">Soma de todas as despesas com vencimento no mês, pagas ou em aberto; zero quando não há nenhuma.</param>
+public sealed record MonthTotal(DateOnly Month, decimal Total);
+/// <summary>
+/// Uma entrada ou saída de dinheiro mostrada em "Últimas movimentações".
+/// </summary>
+/// <param name="Date">Data da movimentação: o vencimento da despesa paga ou o dia 1 do mês para rendas (a renda só tem mês).</param>
+/// <param name="Title">Descrição da despesa ou nome da linha de renda (por exemplo "Salário").</param>
+/// <param name="Category">Categoria da despesa ou, nas rendas, "Renda de" seguido do nome da pessoa.</param>
+/// <param name="Amount">Valor sempre positivo; <paramref name="IsIncome"/> indica o sentido.</param>
+/// <param name="IsIncome">Verdadeiro para entradas (rendas), falso para saídas (despesas pagas).</param>
+public sealed record Movement(DateOnly Date, string Title, string Category, decimal Amount, bool IsIncome);
+/// <summary>
 /// Consultas e cálculos financeiros sem acesso a disco ou controles da interface. Não modifica os dados recebidos.
 /// </summary>
 public static class FinanceEngine
@@ -112,5 +127,34 @@ public static class FinanceEngine
             // O máximo evita somar novamente uma compra à vista já prevista na média. Parcelas são compromissos adicionais.
             return new Forecast(category, average, installments + other, installments + Math.Max(average, other), months);
         }).Where(f => f.Estimate > 0 || f.Historical > 0).ToList();
+    }
+    /// <summary>
+    /// Totais de despesas dos últimos <paramref name="count"/> meses, terminando no mês informado (inclusive), do mais antigo ao mais recente.
+    /// </summary>
+    /// <remarks>Meses sem despesas aparecem com total zero, para o gráfico manter sempre o mesmo número de barras.</remarks>
+    public static List<MonthTotal> MonthlyTotals(BudgetData data, DateOnly month, int count)
+    {
+        if (count is < 1 or > 120) throw new ArgumentOutOfRangeException(nameof(count));
+        var last = Dates.Month(month);
+        var totals = data.Expenses.GroupBy(e => Dates.Month(e.DueDate)).ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
+        return Enumerable.Range(0, count).Select(i => last.AddMonths(i - count + 1)).Select(m => new MonthTotal(m, totals.GetValueOrDefault(m))).ToList();
+    }
+    /// <summary>
+    /// Movimentações do mês, das mais recentes para as mais antigas, limitadas a <paramref name="limit"/> itens.
+    /// </summary>
+    /// <remarks>
+    /// Entram as rendas do mês (com data no dia 1; linhas de valor zero ficam de fora) e as despesas já marcadas como pagas.
+    /// Como a despesa não guarda a data do pagamento, vale o vencimento. Em datas iguais a ordem é estável: primeiro as
+    /// despesas (por descrição), depois as rendas (na ordem de cadastro).
+    /// </remarks>
+    public static List<Movement> RecentMovements(BudgetData data, DateOnly month, int limit = 6)
+    {
+        if (limit < 1) throw new ArgumentOutOfRangeException(nameof(limit));
+        var first = Dates.Month(month);
+        var paid = Expenses(data, first).Where(e => e.Paid).Select(e => new Movement(e.DueDate, e.Title, e.Category, e.Amount, false));
+        var incomes = data.Incomes.Where(i => i.Month == first && i.Amount > 0)
+            .Select(i => new Movement(first, i.Label, "Renda de " + (data.People.FirstOrDefault(p => p.Id == i.PersonId)?.Name ?? "—"), i.Amount, true));
+        // OrderByDescending é estável: itens da mesma data mantêm a ordem em que foram concatenados.
+        return paid.Concat(incomes).OrderByDescending(m => m.Date).Take(limit).ToList();
     }
 }
