@@ -5,7 +5,8 @@
     Cores com 8 dígitos (#AARRGGBB) são semitransparentes: o cartão translúcido é branco com opacidade, sem desfoque real.
     Os pares texto/fundo usados têm contraste de pelo menos 4,5:1 nos dois temas (verificado por script).
     Grupos: fundo e superfícies; texto; botões (primário verde, "ink" preto); estados (positivo, alerta, negativo, cada um com
-    cor de texto, fundo suave e cor de barra); chips; cartão escuro de resumo; gráfico; avatares, menu e sombras.
+    cor de texto, fundo suave e cor de barra); chips; cartão escuro de resumo; gráfico; avatares, menu e sombras; e, no fim,
+    os diálogos sobrepostos (camada escura, botão de fechar, painéis, avisos) e a barra flutuante do modo de seleção.
   -->
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
@@ -56,11 +57,22 @@
       <SolidColorBrush x:Key="NavActiveBrush" Color="#FFFFFF"/>
       <SolidColorBrush x:Key="HoverBrush" Color="#0F141828"/>
       <SolidColorBrush x:Key="TrackBrush" Color="#E6E9EF"/>
+      <SolidColorBrush x:Key="ScrimBrush" Color="#6B141828"/>
+      <SolidColorBrush x:Key="CloseBrush" Color="#F5F4F3"/>
+      <SolidColorBrush x:Key="PanelBrush" Color="#F5F6FA"/>
+      <SolidColorBrush x:Key="WarnStrongBrush" Color="#6B4600"/>
+      <SolidColorBrush x:Key="PositiveStrongBrush" Color="#0B5C44"/>
+      <SolidColorBrush x:Key="SelectedRowBrush" Color="#1F12A072"/>
+      <SolidColorBrush x:Key="BarActionBrush" Color="#12A072"/>
+      <SolidColorBrush x:Key="OnBarActionBrush" Color="#14161A"/>
+      <SolidColorBrush x:Key="OnInkSecondaryBrush" Color="#D5D8DE"/>
       <!-- Sombras: no tema escuro quase não aparecem, então ficam curtas e discretas. -->
       <BoxShadows x:Key="CardShadow">0 1 2 0 #0A141828, 0 10 30 0 #0D141828</BoxShadows>
       <BoxShadows x:Key="SolidShadow">0 1 2 0 #0A141828, 0 4 14 0 #0A141828</BoxShadows>
       <BoxShadows x:Key="SummaryShadow">0 16 28 0 #40141828</BoxShadows>
       <BoxShadows x:Key="NavShadow">0 1 2 0 #0F141828, 0 2 8 0 #0A141828</BoxShadows>
+      <BoxShadows x:Key="ModalShadow">0 24 60 0 #59141828</BoxShadows>
+      <BoxShadows x:Key="BarShadow">0 12 30 0 #40141828</BoxShadows>
       <!-- Cor de destaque dos controles do Fluent (caixas de seleção, foco): o verde primário. -->
       <Color x:Key="SystemAccentColor">#0B7A5A</Color>
       <Color x:Key="SystemAccentColorLight1">#0B7A5A</Color>
@@ -92,6 +104,16 @@
       <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
       <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="TextBrush"/>
       <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="TextBrush"/>
+      <!-- Caixas de marcação ligadas: verde primário, no lugar do azul padrão do Fluent. -->
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="PrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="PrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="OnPrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="OnPrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="OnPrimaryBrush"/>
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <LinearGradientBrush x:Key="BgBrush" StartPoint="0%,0%" EndPoint="100%,100%">
@@ -141,11 +163,22 @@
       <SolidColorBrush x:Key="NavActiveBrush" Color="#1AFFFFFF"/>
       <SolidColorBrush x:Key="HoverBrush" Color="#14FFFFFF"/>
       <SolidColorBrush x:Key="TrackBrush" Color="#2B303A"/>
+      <SolidColorBrush x:Key="ScrimBrush" Color="#A6000000"/>
+      <SolidColorBrush x:Key="CloseBrush" Color="#24FFFFFF"/>
+      <SolidColorBrush x:Key="PanelBrush" Color="#0FFFFFFF"/>
+      <SolidColorBrush x:Key="WarnStrongBrush" Color="#F5C84B"/>
+      <SolidColorBrush x:Key="PositiveStrongBrush" Color="#34D1A0"/>
+      <SolidColorBrush x:Key="SelectedRowBrush" Color="#2634D1A0"/>
+      <SolidColorBrush x:Key="BarActionBrush" Color="#0B7A5A"/>
+      <SolidColorBrush x:Key="OnBarActionBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="OnInkSecondaryBrush" Color="#5F6470"/>
       <!-- Sombras: no tema escuro quase não aparecem, então ficam curtas e discretas. -->
       <BoxShadows x:Key="CardShadow">0 1 2 0 #33000000</BoxShadows>
       <BoxShadows x:Key="SolidShadow">0 1 2 0 #33000000</BoxShadows>
       <BoxShadows x:Key="SummaryShadow">0 16 28 0 #59000000</BoxShadows>
       <BoxShadows x:Key="NavShadow">0 1 2 0 #33000000</BoxShadows>
+      <BoxShadows x:Key="ModalShadow">0 24 60 0 #80000000</BoxShadows>
+      <BoxShadows x:Key="BarShadow">0 12 30 0 #66000000</BoxShadows>
       <!-- Cor de destaque dos controles do Fluent (caixas de seleção, foco): o verde primário. -->
       <Color x:Key="SystemAccentColor">#2BBF93</Color>
       <Color x:Key="SystemAccentColorLight1">#2BBF93</Color>
@@ -177,6 +210,16 @@
       <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="HoverBrush"/>
       <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="TextBrush"/>
       <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="TextBrush"/>
+      <!-- Caixas de marcação ligadas: verde primário, no lugar do azul padrão do Fluent. -->
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="PrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="PrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="PrimaryHoverBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="OnPrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="OnPrimaryBrush"/>
+      <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="OnPrimaryBrush"/>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

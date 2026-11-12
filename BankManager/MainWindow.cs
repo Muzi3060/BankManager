@@ -38,6 +38,22 @@ public sealed partial class MainWindow : Window
     private int categoryFilter;
     // Na página de despesas: falso mostra o mês selecionado, verdadeiro busca em todos os meses.
     private bool allMonths;
+    // Modo de seleção da página Despesas: a lista ganha caixas de marcação e uma barra flutuante para compartilhar as marcadas.
+    private bool selecting;
+    private readonly HashSet<Guid> selectedIds = [];
+    private readonly Border selectionBar = new() { IsVisible = false };
+    private readonly TextBlock selectionCount = new() { FontWeight = FontWeight.SemiBold };
+    private readonly TextBlock selectionTotal = new();
+    private Button? selectionGo;
+    /// <summary>
+    /// Só para os testes de interface, que não conseguem operar o seletor de arquivos do sistema: quando preenchido, "Salvar arquivo"
+    /// grava direto neste caminho, sem abrir o seletor.
+    /// </summary>
+    public string? TestSavePath { get; set; }
+    /// <summary>
+    /// Só para os testes de interface: quando preenchido, "Importar despesas compartilhadas" e "Trocar arquivo" abrem este caminho.
+    /// </summary>
+    public string? TestOpenPath { get; set; }
     // Aba aberta em "Previsões e metas": 0 metas, 1 previsão, 2 recorrentes, 3 acerto de contas.
     private int forecastTab;
     /// <summary>
@@ -70,9 +86,24 @@ public sealed partial class MainWindow : Window
         var body = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; body.Children.Add(noticeBox);
         var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(24, 26, 32, 32), Child = page }, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1); body.Children.Add(scroll);
-        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("188,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body); Content = root;
+        // Barra flutuante do modo de seleção: fica sobre a página (fora da área rolável), então continua visível com a lista rolando.
+        selectionTotal.Classes.Add("sub"); selectionTotal.Margin = new Thickness(0, 0, 10, 0);
+        selectionGo = Button("Compartilhar…", OpenShareExport, "bargo", "Share");
+        var cancelSelection = Button("Cancelar", StopSelecting, "barghost"); AutomationProperties.SetName(cancelSelection, "Cancelar seleção");
+        selectionBar.Child = Row(selectionCount, selectionTotal, cancelSelection, selectionGo); ((StackPanel)selectionBar.Child).Spacing = 14;
+        selectionBar.Classes.Add("selectbar"); selectionBar.Margin = new Thickness(0, 0, 0, 22); Grid.SetRow(selectionBar, 1); body.Children.Add(selectionBar);
+        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("188,*") }; root.Children.Add(sidebar); Grid.SetColumn(body, 1); root.Children.Add(body);
+        // A camada dos diálogos sobrepostos cobre a janela inteira, por cima do menu e da página.
+        overlayHost.SizeChanged += (_, _) => FitOverlay();
+        Content = new Panel { Children = { root, overlayHost } };
         // Atalho Ctrl+N: nova despesa de qualquer tela (diálogos modais bloqueiam a janela, então não abre dois).
-        KeyDown += (_, e) => { if (e.Key == Key.N && e.KeyModifiers == KeyModifiers.Control && ready) { e.Handled = true; _ = Run(() => EditExpense()); } };
+        // Com um diálogo sobreposto aberto, o atalho não age e a tecla Esc pertence ao diálogo; sem diálogo, Esc sai do modo de seleção.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && OverlayOpen) { e.Handled = true; overlayEscape?.Invoke(); }
+            else if (e.Key == Key.Escape && selecting) { e.Handled = true; StopSelecting(); }
+            else if (e.Key == Key.N && e.KeyModifiers == KeyModifiers.Control && ready && !OverlayOpen) { e.Handled = true; _ = Run(() => EditExpense()); }
+        };
         try { store = new LocalStore(dataDirectory); data = store.Load(); ready = true; TopUpRecurrences(); }
         catch (Exception ex) { ShowError(ex); }
         // Libera o bloqueio de armazenamento mesmo quando a base falhou ao carregar.
@@ -96,7 +127,7 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Troca de página e reconstrói a tela.
     /// </summary>
-    private void GoTo(int index) { currentPage = index; if (index != 2) allMonths = false; Render(); }
+    private void GoTo(int index) { currentPage = index; if (index != 2) { allMonths = false; selecting = false; selectedIds.Clear(); } Render(); }
     /// <summary>
     /// Cabeçalho comum das páginas: título (e uma linha de apoio) à esquerda; à direita, a navegação de mês em uma pílula
     /// translúcida (‹ mês ›) e o botão primário "Nova despesa". Clicar no nome do mês volta ao mês atual.
@@ -172,6 +203,7 @@ public sealed partial class MainWindow : Window
     private void Render()
     {
         for (var i = 0; i < navigation.Count; i++) navigation[i].Classes.Set("active", i == currentPage);
+        UpdateSelectionBar();
         // Falha ao abrir não significa uma base nova: a edição comum fica bloqueada até recuperação válida.
         if (!ready)
         {

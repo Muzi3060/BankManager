@@ -34,7 +34,10 @@ static BudgetData DemoData()
         InstallmentGroup = installment > 1 ? group : null, InstallmentNumber = installment, InstallmentCount = installment > 1 ? 10 : 1
     });
     Add("Aluguel", "Moradia", 5, 1800, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
-    Add("Notebook", "Educação", 15, 389, installment: 3); Add("Transporte", "Transporte", 18, 380); Add("Streaming", "Lazer", 22, 55.90m); Add("Mercado do mês", "Mercado", 30, 920.40m);
+    // Notebook em 10 parcelas (a do mês atual é a terceira); "Assinaturas" é uma categoria criada pelo usuário.
+    for (var part = 1; part <= 10; part++) Add("Notebook", "Educação", 15, 389, part < 3, installment: part, monthsAgo: 3 - part);
+    data.CustomCategories.Add("Assinaturas");
+    Add("Transporte", "Transporte", 18, 380); Add("Streaming", "Assinaturas", 22, 55.90m); Add("Mercado do mês", "Mercado", 30, 920.40m);
     Add("Padaria", "Mercado", 3, 38.50m, true); Add("Corrida de aplicativo", "Transporte", 6, 42.30m, true);
     // Histórico dos cinco meses anteriores (já pago e acertado), para o gráfico e a previsão terem o que mostrar.
     decimal[] market = [870, 990, 850, 1120, 780], energy = [198.40m, 231.70m, 188.20m, 240.10m, 176.90m];
@@ -47,8 +50,8 @@ static BudgetData DemoData()
     // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
     data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
     RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true; data.Expenses.First(e => e.RecurrenceMonth == first).PaidDate = first.AddDays(7);
-    // Metas: Mercado perto do limite (87%), Saúde acima (106%) e Lazer dentro (55%).
-    GoalEngine.Set(data, "Mercado", 1100); GoalEngine.Set(data, "Saúde", 600); GoalEngine.Set(data, "Lazer", 100);
+    // Metas: Mercado perto do limite (87%), Saúde acima (106%) e Assinaturas dentro (55%).
+    GoalEngine.Set(data, "Mercado", 1100); GoalEngine.Set(data, "Saúde", 600); GoalEngine.Set(data, "Assinaturas", 100);
     // Quem pagou as contas já quitadas: o cartão de acerto mostra o saldo entre Ana e Bruno.
     data.Expenses.First(e => e.RecurrenceMonth == first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Aluguel" && e.DueDate >= first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Plano de saúde" && e.DueDate >= first).PaidBy = bruno.Id;
     foreach (var e in data.Expenses.Where(e => e.DueDate >= first && e.Paid && e.PaidBy is null)) e.PaidBy = ana.Id;
@@ -73,6 +76,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             // Procura o botão no conteúdo visual renderizado pelo rótulo que o usuário lê. Botões com ícone guardam o
             // rótulo no nome de automação (o mesmo que um leitor de tela anuncia), então um único critério serve aos dois tipos.
             Button FindButton(Window window, string label) => window.GetVisualDescendants().OfType<Button>().First(b => AutomationProperties.GetName(b) == label);
+            Button FindButtonIn(Visual scope, string label) => scope.GetVisualDescendants().OfType<Button>().First(b => AutomationProperties.GetName(b) == label);
             // Dispara o evento do botão e dá tempo para atualizar layout e abrir/fechar diálogos.
             // Não simula coordenadas do mouse, seletores nativos de arquivos ou tecnologias assistivas.
             async Task Click(string label, Window? window = null)
@@ -118,15 +122,12 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                 await Click("Despesas", main); await Click("Recorrentes", main); await Task.Delay(250);
                 Shot(Active(), "recorrentes");
                 await Click("Fechar");
-                // Assistentes de compartilhamento: exportar (com o mês marcado) e importar um arquivo vindo de "outra pessoa".
-                // Fora da pasta de dados: o aplicativo recusa gravar arquivos do usuário na pasta interna.
-                var demoDir = Path.Combine(Path.GetTempPath(), "bankmanager-share-" + Guid.NewGuid()); Directory.CreateDirectory(demoDir);
-                var demoShare = Path.Combine(demoDir, "demo" + ShareFile.Extension);
-                _ = ((MainWindow)main).ShareExpenses(demoShare); await Task.Delay(400); await Click("Todas deste mês"); await Task.Delay(200); Shot(Active(), "compartilhar"); await Click("Salvar arquivo");
-                var incoming = Path.Combine(demoDir, "recebido" + ShareFile.Extension);
-                File.WriteAllText(incoming, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(demoShare), "\"OriginId\": \"[0-9a-f-]+\"", _ => $"\"OriginId\": \"{Guid.NewGuid()}\"").Replace("\"Bruno\"", "\"Carla\""));
-                _ = ((MainWindow)main).ImportSharedFromFile(incoming); await Task.Delay(500); Shot(Active(), "importar-compartilhadas"); await Click("Cancelar");
-                try { Directory.Delete(demoDir, true); } catch (IOException) { }
+                // Fluxo de compartilhar: modo de seleção com três despesas marcadas e o diálogo de exportar.
+                App.ApplyTheme(ThemePreference.Light); await Click("Despesas", main); await Click("Compartilhar", main);
+                foreach (var name in new[] { "Notebook", "Transporte", "Streaming" }) main.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == "Selecionar " + name).IsChecked = true;
+                await Task.Delay(250); Shot(main, "compartilhar-selecionar");
+                await Click("Compartilhar…", main); await Task.Delay(300); Shot(main, "compartilhar-exportar");
+                main.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Escape }); await Task.Delay(200); main.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Escape }); await Task.Delay(200);
                 // Assistente de importação de extrato, com um arquivo de demonstração (entradas, saídas e uma linha com erro).
                 var demo = Path.Combine(directory, "extrato-demo.csv");
                 File.WriteAllText(demo, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA SAO JORGE;-12,50\r\n03/11/2026;SALARIO EMPRESA LTDA;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-87,30\r\n05/11/2026;POSTO IPIRANGA;-210,00\r\n06/11/2026;AMAZON MARKETPLACE;-1.234,56\r\nontem;LINHA RUIM;-1,00\r\n", new System.Text.UTF8Encoding(true));
@@ -285,43 +286,49 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             await Click("Previsões e metas", main); await Click("Metas por categoria", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Acima da meta") && main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Mercado · meta " + Money.Format(500m)), "Goals tab lists the goal card");
             await Click("Visão geral", main);
-            // Cenário 12: compartilhar despesas → importar. O arquivo leva só as despesas marcadas; importar ADICIONA, nunca substitui.
-            var dataFile = Path.Combine(directory, "financas.json"); var shareDir = Path.Combine(Path.GetTempPath(), "bankmanager-share-" + Guid.NewGuid()); Directory.CreateDirectory(shareDir);
-            var sharePath = Path.Combine(shareDir, "despesas" + ShareFile.Extension);
-            var beforeShare = LocalStore.Read(dataFile); var monthNow = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); var inMonth = beforeShare.Expenses.Count(e => Dates.Month(e.DueDate) == monthNow);
-            await Click("Despesas", main); _ = ((MainWindow)main).ShareExpenses(sharePath); await Task.Delay(400);
-            Check(!FindButton(Active(), "Salvar arquivo").IsEnabled, "Share wizard starts with nothing selected");
-            await Click("Todas deste mês");
-            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith($"{inMonth} despesas") == true && t.Text.Contains("Pessoas citadas")), "Share wizard previews the selection");
-            await Click("Salvar arquivo");
+            // Cenário 12: modo de seleção da página Despesas e diálogo de exportar. O arquivo leva só as despesas marcadas.
+            var win = (MainWindow)main; var dataFile = Path.Combine(directory, "financas.json");
+            var shareDir = Path.Combine(Path.GetTempPath(), "bankmanager-share-" + Guid.NewGuid()); Directory.CreateDirectory(shareDir); var sharePath = Path.Combine(shareDir, "despesas" + ShareFile.Extension);
+            var beforeShare = LocalStore.Read(dataFile); var bytesBeforeShare = File.ReadAllBytes(dataFile); var monthNow = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); var inMonth = beforeShare.Expenses.Count(e => Dates.Month(e.DueDate) == monthNow);
+            // O diálogo sobreposto é um cartão dentro da janela principal; os controles dele são procurados só dentro do cartão.
+            Border? Modal() => main.GetVisualDescendants().OfType<Border>().FirstOrDefault(x => x.Classes.Contains("modal"));
+            async Task ClickIn(string label) { FindButtonIn(Modal()!, label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(220); }
+            async Task Escape() { main.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Escape }); await Task.Delay(220); }
+            bool HasText(Visual scope, Func<string, bool> test) => scope.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text is { } text && test(text));
+            List<CheckBox> RowChecks() => main.GetVisualDescendants().OfType<CheckBox>().Where(c => AutomationProperties.GetName(c)?.StartsWith("Selecionar ") == true).ToList();
+            var bar = main.GetVisualDescendants().OfType<Border>().First(x => x.Classes.Contains("selectbar"));
+            await Click("Despesas", main);
+            Check(!bar.IsVisible && RowChecks().Count == 0, "Selection mode is off by default");
+            await Click("Compartilhar", main);
+            Check(bar.IsVisible && RowChecks().Count == inMonth && !FindButton(main, "Compartilhar…").IsEnabled && HasText(main, t => t == "Escolha as despesas que quer enviar.")
+                && !main.GetVisualDescendants().OfType<Button>().Any(x => AutomationProperties.GetName(x) == "Mais ações"), "Share button enters selection mode with checkboxes and no row menus");
+            await Click("Todas deste mês", main);
+            Check(HasText(bar, t => t == $"{inMonth} selecionadas") && main.GetVisualDescendants().OfType<Border>().Count(x => x.Classes.Contains("exrow") && x.Classes.Contains("selected")) == inMonth && FindButton(main, "Compartilhar…").IsEnabled, "All of this month marks every visible row");
+            await Click("Limpar seleção", main); Check(HasText(bar, t => t == "0 selecionadas"), "Clear selection unmarks everything");
+            // "Uma categoria…" marca só a categoria escolhida entre as visíveis.
+            ((MenuFlyout)FindButton(main, "Uma categoria…").Flyout!).Items.OfType<MenuItem>().First(m => AutomationProperties.GetName(m) == "Mercado").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); await Task.Delay(200);
+            Check(HasText(bar, t => t == $"{beforeShare.Expenses.Count(e => Dates.Month(e.DueDate) == monthNow && e.Category == "Mercado")} selecionada" || t.EndsWith(" selecionadas") && !t.StartsWith("0 ")), "A category shortcut marks that category");
+            // Esc sai do modo e esquece a seleção.
+            await Escape(); Check(!bar.IsVisible && RowChecks().Count == 0, "Escape leaves selection mode");
+            // Duas despesas marcadas pela caixa; a busca filtra a lista sem perder a seleção.
+            await Click("Compartilhar", main); var boxes = RowChecks(); boxes[0].IsChecked = true; boxes[1].IsChecked = true; await Task.Delay(150);
+            Check(HasText(bar, t => t == "2 selecionadas") && HasText(bar, t => t.StartsWith("Total ")), "Row checkboxes update the floating bar");
+            var searchBox = main.GetVisualDescendants().OfType<TextBox>().First(t => AutomationProperties.GetName(t) == "Buscar despesas"); searchBox.Text = "texto que não existe"; await Task.Delay(200);
+            Check(HasText(bar, t => t == "2 selecionadas") && RowChecks().Count == 0, "Filtering keeps the selection"); searchBox.Text = ""; await Task.Delay(200);
+            Check(RowChecks().Count(c => c.IsChecked == true) == 2, "Selection survives clearing the filter");
+            // O diálogo de exportar abre sobre a janela, com o foco no título; Cancelar e Esc fecham e mantêm a seleção.
+            await Click("Compartilhar…", main); await Task.Delay(250);
+            Check(Modal() is { } card && AutomationProperties.GetName(card) == "Compartilhar despesas" && lifetime.Windows.Count == 1 && FindButtonIn(card, "Fechar").IsVisible, "Export dialog opens as an overlay with a close button");
+            Check(main.FocusManager?.GetFocusedElement() is TextBlock focused && focused.Text == "Compartilhar despesas", "Export dialog moves focus to its title");
+            Check(HasText(Modal()!, t => t == "2") && HasText(Modal()!, t => t.Contains("Envie só para quem deve receber")) && HasText(Modal()!, t => t.EndsWith(ShareFile.Extension)), "Export dialog shows the indicators, the warning and the file name");
+            await ClickIn("Cancelar"); Check(Modal() is null && HasText(bar, t => t == "2 selecionadas") && !File.Exists(sharePath), "Cancel closes the export dialog and keeps the selection");
+            await Click("Compartilhar…", main); await Escape(); Check(Modal() is null && bar.IsVisible, "Escape closes the export dialog");
+            await Click("Compartilhar…", main); await ClickIn("Fechar"); Check(Modal() is null, "The X button closes the export dialog");
+            // Salvar: o arquivo tem só as duas despesas, em aberto; o modo de seleção termina e o aviso mostra onde o arquivo ficou.
+            win.TestSavePath = sharePath; await Click("Compartilhar…", main); await ClickIn("Salvar arquivo");
             var shared = ExpenseShare.Read(sharePath); var shareText = File.ReadAllText(sharePath);
-            Check(lifetime.Windows.Count == 1 && shared.Expenses.Count == inMonth && shared.Expenses.All(e => !e.Paid) && !shareText.Contains("Incomes") && !shareText.Contains("Goals") && !shareText.Contains("Settlements"), "Share file has only the selected expenses, as open");
-            Check(File.ReadAllBytes(dataFile).SequenceEqual(File.ReadAllBytes(dataFile)) && LocalStore.Read(dataFile).Expenses.Count == beforeShare.Expenses.Count, "Sharing does not change the data");
-            // Importar o próprio arquivo: tudo já existe aqui, nada a adicionar.
-            _ = ((MainWindow)main).ImportSharedFromFile(sharePath); await Task.Delay(500);
-            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("Nenhuma despesa será adicionada") == true && t.Text.Contains("aqui")) && !FindButton(Active(), "Adicionar despesas").IsEnabled, "Importing the same file finds only duplicates");
-            await Click("Cancelar");
-            // O mesmo arquivo vindo de outra pessoa: outras origens e "Carla" no lugar de "Bruno". Carla é sugerida como cadastro novo.
-            var otherPath = Path.Combine(shareDir, "de-outra-pessoa" + ShareFile.Extension);
-            File.WriteAllText(otherPath, System.Text.RegularExpressions.Regex.Replace(shareText, "\"OriginId\": \"[0-9a-f-]+\"", _ => $"\"OriginId\": \"{Guid.NewGuid()}\"").Replace("\"Bruno\"", "\"Carla\""));
-            var bytesBefore = File.ReadAllBytes(dataFile);
-            _ = ((MainWindow)main).ImportSharedFromFile(otherPath); await Task.Delay(500);
-            var carla = Active().GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Pessoa: Carla");
-            Check(carla.SelectedIndex == beforeShare.People.Count && Active().GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Pessoa: Ana").SelectedIndex == 0, "Import wizard suggests the people mapping");
-            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith($"{inMonth} despesas serão adicionadas") == true && t.Text.Contains("Carla")), "Import wizard previews what will be added");
-            // Nada é gravado até confirmar.
-            Check(bytesBefore.SequenceEqual(File.ReadAllBytes(dataFile)), "Import preview does not save anything");
-            await Click("Adicionar despesas");
-            var afterShare = LocalStore.Read(dataFile);
-            Check(lifetime.Windows.Count == 1 && afterShare.Expenses.Count == beforeShare.Expenses.Count + inMonth && afterShare.People.Select(x => x.Name).SequenceEqual(beforeShare.People.Select(x => x.Name).Append("Carla")), "Import adds the expenses and the new person");
-            Check(afterShare.Incomes.SequenceEqual(beforeShare.Incomes) && afterShare.Goals.SequenceEqual(beforeShare.Goals) && afterShare.Settlements.SequenceEqual(beforeShare.Settlements)
-                && beforeShare.Expenses.All(old => afterShare.Expenses.Any(e => e.Id == old.Id && e.Amount == old.Amount && e.Paid == old.Paid && e.Title == old.Title)), "Import leaves existing incomes, goals, settlements and expenses untouched");
-            Check(afterShare.Expenses.Count(e => e.OriginId is not null) == inMonth && bytesBefore.SequenceEqual(File.ReadAllBytes(Path.Combine(directory, "financas.backup.json"))), "Imported expenses record their origin and the previous file becomes the backup");
-            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == $"{inMonth} despesas adicionadas, 0 puladas."), "Import reports how many were added and skipped");
-            // Um backup escolhido no lugar do compartilhamento é recusado com mensagem clara e nada muda.
-            var backupPath = Path.Combine(shareDir, "backup.json"); LocalStore.Export(backupPath, afterShare); var bytesAfter = File.ReadAllBytes(dataFile); var refused = "";
-            try { await ((MainWindow)main).ImportSharedFromFile(backupPath); } catch (BudgetException ex) { refused = ex.Message; }
-            Check(refused.Contains("backup") && lifetime.Windows.Count == 1 && bytesAfter.SequenceEqual(File.ReadAllBytes(dataFile)), "A backup is refused as a share file and nothing changes");
+            Check(shared.Expenses.Count == 2 && shared.Expenses.All(e => !e.Paid) && shared.AppVersion.Length > 0 && !shareText.Contains("Incomes") && !shareText.Contains("Goals") && !shareText.Contains("Settlements"), "Share file has only the selected expenses, as open");
+            Check(Modal() is null && !bar.IsVisible && HasText(main, t => t.Contains(sharePath)) && bytesBeforeShare.SequenceEqual(File.ReadAllBytes(dataFile)), "Saving confirms the location, leaves selection mode and does not change the data");
             try { Directory.Delete(shareDir, true); } catch (IOException) { }
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.

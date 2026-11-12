@@ -29,7 +29,7 @@ public static class ExpenseSearch
     /// <summary>
     /// Normaliza para comparação: minúsculas e sem acentos.
     /// </summary>
-    internal static string Fold(string text)
+    public static string Fold(string text)
     {
         var builder = new StringBuilder(text.Length);
         foreach (var c in text.Normalize(NormalizationForm.FormD)) if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) builder.Append(char.ToLowerInvariant(c));

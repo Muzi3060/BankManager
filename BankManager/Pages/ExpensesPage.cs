@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using BankManager.Core;
 using static BankManager.Ui;
 
@@ -13,39 +14,85 @@ public sealed partial class MainWindow
 {
     // Larguras das colunas da lista: descrição (flexível), vencimento, divisão, situação, valor e menu "⋯".
     private const string ExpenseColumns = "*,84,170,140,120,48";
+    // No modo de seleção, a primeira coluna é a caixa de marcação e o menu "⋯" some.
+    private const string SelectColumns = "40,*,84,170,140,120";
     // Máximo de linhas desenhadas ao buscar em todos os meses; o resumo continua contando todas as encontradas.
     private const int MaxRows = 200;
     /// <summary>
     /// Monta o cabeçalho, a busca e os filtros; ao mudar um filtro, só as linhas são reconstruídas (o campo de busca mantém o foco).
+    /// O botão "Compartilhar" liga o modo de seleção: caixas de marcação na lista, faixa de atalhos e barra flutuante.
     /// </summary>
     private Control ExpensesPage()
     {
         var search = Input(filter, "Buscar uma despesa…"); search.InnerLeftContent = Icon("Search", 16); search.Padding = new Thickness(12, 10, 12, 10);
         AutomationProperties.SetName(search, "Buscar despesas");
-        var categories = BudgetRules.AllCategories(data); var category = Combo(new[] { "Todas as categorias" }.Concat(categories), categoryFilter); category.MinWidth = 210; category.VerticalAlignment = VerticalAlignment.Center;
+        var categories = BudgetRules.AllCategories(data); var category = Combo(new[] { "Todas as categorias" }.Concat(categories), categoryFilter); category.MinWidth = 190; category.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetName(category, "Categoria");
-        var summary = Text("", "muted"); var table = new Border(); table.Classes.Add("card"); table.Padding = new Thickness(0);
+        var summary = Text("", "muted"); var table = new Border(); table.Classes.Add("card"); table.Padding = new Thickness(0); table.ClipToBounds = true;
+        // Despesas visíveis com os filtros atuais; os atalhos de seleção agem só sobre elas.
+        List<Expense> visible = [];
         // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
         void Refresh()
         {
             var entries = ExpenseSearch.Run(data, allMonths ? null : month, filter, statusFilter == 0 ? null : statusFilter == 2, categoryFilter == 0 ? null : categories[categoryFilter - 1]);
+            visible = entries.Take(MaxRows).ToList();
             summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}" + (entries.Count > MaxRows ? $" · mostrando as {MaxRows} mais recentes" : "");
-            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(entries.Take(MaxRows).ToList());
+            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(visible);
         }
         search.TextChanged += (_, _) => { filter = search.Text ?? ""; Refresh(); };
         category.SelectionChanged += (_, _) => { categoryFilter = category.SelectedIndex; Refresh(); };
         var status = Segmented(["Todas", "Em aberto", "Pagas"], statusFilter, i => { statusFilter = i; Refresh(); });
-        var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category);
+        var share = Button("Compartilhar", () => { if (selecting) StopSelecting(); else StartSelecting(); }, selecting ? "toggle active" : "toggle", "Share");
+        ToolTip.SetTip(share, selecting ? "Sair do modo de seleção" : "Escolher despesas para enviar a outra pessoa");
+        var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); Grid.SetColumn(share, 6);
+        filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category); filters.Children.Add(share);
         Refresh();
         // Resumo à esquerda e acesso às despesas que se repetem todo mês à direita.
         var recurring = Button("Recorrentes", () => _ = Run(ManageRecurrences), "link", "Repeat"); summary.VerticalAlignment = VerticalAlignment.Center;
         // Escopo da busca: o mês selecionado ou todos os meses (a navegação de mês some no modo geral).
         var scope = Segmented(["Este mês", "Todos os meses"], allMonths ? 1 : 0, i => { allMonths = i == 1; Render(); });
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; tools.Children.Add(scope); tools.Children.Add(recurring);
-        // Compartilhar: gerar um arquivo com despesas escolhidas ou adicionar as de um arquivo recebido (nunca substitui a base).
-        tools.Children.Add(Button("Compartilhar", () => _ = Run(() => ShareExpenses()), "link", "Share")); tools.Children.Add(Button("Importar", () => _ = Run(ImportShared), "link", "Download")); Grid.SetColumn(tools, 1);
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; tools.Children.Add(scope); tools.Children.Add(recurring); Grid.SetColumn(tools, 1);
         var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(tools);
-        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths), filters, summaryRow, table); page.Spacing = 16; return page;
+        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths), filters); page.Spacing = 16;
+        if (selecting)
+        {
+            // Faixa de atalhos. Eles marcam só o que está visível com a busca e os filtros atuais.
+            var all = Button("Todas deste mês", () => { foreach (var e in visible.Where(e => Dates.Month(e.DueDate) == month)) selectedIds.Add(e.Id); Refresh(); UpdateSelectionBar(); }, "pillbtn");
+            ToolTip.SetTip(all, "Marca as despesas de " + month.ToString("MMMM 'de' yyyy", Money.Culture) + " que estão na lista");
+            var byCategory = Button("Uma categoria…", () => { }, "pillbtn"); var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+            foreach (var name in categories)
+            {
+                var item = new MenuItem { Header = name, Icon = Icon(CategoryIconName(name), 16) }; AutomationProperties.SetName(item, name);
+                item.Click += (_, _) => { foreach (var e in visible.Where(e => e.Category == name)) selectedIds.Add(e.Id); Refresh(); UpdateSelectionBar(); }; menu.Items.Add(item);
+            }
+            byCategory.Flyout = menu; ToolTip.SetTip(byCategory, "Marca as despesas de uma categoria que estão na lista");
+            var clear = Button("Limpar seleção", () => { selectedIds.Clear(); Refresh(); UpdateSelectionBar(); }, "pillbtn");
+            var shortcuts = Row(all, byCategory, clear); Grid.SetColumn(shortcuts, 1);
+            page.Children.Add(new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Text("Escolha as despesas que quer enviar."), shortcuts } } }.WithClass("selectbanner"));
+        }
+        page.Children.Add(summaryRow); page.Children.Add(table);
+        // Espaço no fim da página para a barra flutuante não cobrir a última linha.
+        if (selecting) page.Children.Add(new Border { Height = 64 });
+        return page;
+    }
+    /// <summary>
+    /// Liga o modo de seleção, começando sem nada marcado.
+    /// </summary>
+    private void StartSelecting() { selecting = true; selectedIds.Clear(); Render(); }
+    /// <summary>
+    /// Sai do modo de seleção e esquece o que estava marcado.
+    /// </summary>
+    private void StopSelecting() { if (!selecting) return; selecting = false; selectedIds.Clear(); Render(); }
+    /// <summary>
+    /// Atualiza a barra flutuante: quantas despesas estão marcadas e o total delas. Sem nenhuma, "Compartilhar…" fica desligado.
+    /// </summary>
+    private void UpdateSelectionBar()
+    {
+        selectionBar.IsVisible = selecting && ready && currentPage == 2;
+        // Despesas excluídas depois de marcadas saem da conta.
+        var chosen = data.Expenses.Where(e => selectedIds.Contains(e.Id)).ToList();
+        selectionCount.Text = chosen.Count == 1 ? "1 selecionada" : $"{chosen.Count} selecionadas"; selectionTotal.Text = "Total " + Money.Format(chosen.Sum(e => e.Amount));
+        if (selectionGo is not null) selectionGo.IsEnabled = chosen.Count > 0;
     }
     /// <summary>
     /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
@@ -53,7 +100,7 @@ public sealed partial class MainWindow
     private Control EmptyExpenses()
     {
         var any = allMonths ? data.Expenses.Count > 0 : FinanceEngine.Expenses(data, month).Count > 0;
-        var panel = Stack(Text(any ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Text(any ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar.", "muted"));
+        var panel = Stack(Text(any ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Text(any ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar. Se alguém enviou despesas para você, importe o arquivo.", "muted"));
         panel.Spacing = 8; panel.HorizontalAlignment = HorizontalAlignment.Center; panel.Margin = new Thickness(24, 40);
         foreach (var child in panel.Children.OfType<TextBlock>()) child.TextAlignment = TextAlignment.Center;
         if (any)
@@ -62,28 +109,34 @@ public sealed partial class MainWindow
             // Quem não achou no mês talvez procure em outro: oferece ampliar a busca em um clique.
             if (!allMonths && filter.Length > 0) { var everywhere = Button("Buscar em todos os meses", () => { allMonths = true; Render(); }, "link"); everywhere.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(everywhere); }
         }
-        else { var add = Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"); add.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(add); }
+        else
+        {
+            // Quem recebeu um arquivo de outra pessoa pode começar por ele: as despesas são adicionadas, nada é substituído.
+            var actions = Row(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus")); actions.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(actions);
+        }
         return panel;
     }
     /// <summary>
-    /// Tabela de despesas em linhas: descrição, vencimento, divisão por pessoa, situação, valor e menu de ações.
+    /// Tabela de despesas em linhas: descrição, vencimento, divisão por pessoa, situação, valor e menu de ações
+    /// (no modo de seleção, uma caixa de marcação no lugar do menu).
     /// </summary>
     private Control ExpenseTable(IReadOnlyList<Expense> entries)
     {
         var rows = new StackPanel();
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(22, 14, 14, 12) };
-        string[] titles = ["Descrição", "Vence", "Divisão", "Situação", "Valor", ""];
-        for (var i = 0; i < titles.Length; i++) { var label = Text(titles[i], "muted"); label.FontSize = 12; label.FontWeight = FontWeight.Medium; if (i == 4) label.TextAlignment = TextAlignment.Right; Grid.SetColumn(label, i); header.Children.Add(label); }
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(selecting ? SelectColumns : ExpenseColumns), Margin = new Thickness(22, 14, 14, 12) };
+        string[] titles = ["Descrição", "Vence", "Divisão", "Situação", "Valor"];
+        for (var i = 0; i < titles.Length; i++) { var label = Text(titles[i], "muted"); label.FontSize = 12; label.FontWeight = FontWeight.Medium; if (i == 4) label.TextAlignment = TextAlignment.Right; Grid.SetColumn(label, selecting ? i + 1 : i); header.Children.Add(label); }
         rows.Children.Add(header);
         foreach (var e in entries) { rows.Children.Add(Divider()); rows.Children.Add(ExpenseRow(e)); }
         return rows;
     }
     /// <summary>
-    /// Uma linha da lista. As ações ficam no menu "⋯" para manter a linha limpa.
+    /// Uma linha da lista. As ações ficam no menu "⋯" para manter a linha limpa. No modo de seleção, o menu dá lugar a uma caixa de
+    /// marcação: clicar em qualquer ponto da linha (ou a barra de espaço, com o foco na caixa) alterna a marcação.
     /// </summary>
     private Control ExpenseRow(Expense expense)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ExpenseColumns), Margin = new Thickness(22, 10, 14, 10) };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(selecting ? SelectColumns : ExpenseColumns), Margin = new Thickness(22, 10, 14, 10) };
         var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted").WithClass("small")); title.Spacing = 1; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
         var due = Text(allMonths ? $"{expense.DueDate:dd/MM/yy}" : $"{expense.DueDate:dd/MM}", "support"); due.VerticalAlignment = VerticalAlignment.Center;
         // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
@@ -91,10 +144,28 @@ public sealed partial class MainWindow
         foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; shares.Children.Add(line); }
         var chip = StatusChip(expense);
         var amount = Text(Money.Format(expense.Amount), "strong"); amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center;
-        var more = Button("Mais ações", () => { }, "ghost round", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
-        Control[] cells = [title, due, shares, chip, amount, more];
+        var row = new Border { Child = grid }.WithClass("exrow");
+        Control[] cells;
+        if (selecting)
+        {
+            var check = new CheckBox { IsChecked = selectedIds.Contains(expense.Id), VerticalAlignment = VerticalAlignment.Center, MinWidth = 0 }; AutomationProperties.SetName(check, "Selecionar " + expense.Title);
+            row.Classes.Add("selectable"); row.Classes.Set("selected", check.IsChecked == true);
+            check.IsCheckedChanged += (_, _) =>
+            {
+                if (check.IsChecked == true) selectedIds.Add(expense.Id); else selectedIds.Remove(expense.Id);
+                row.Classes.Set("selected", check.IsChecked == true); UpdateSelectionBar();
+            };
+            // Clique fora da caixa também alterna; o clique na própria caixa já é tratado por ela.
+            row.PointerPressed += (_, e) => { if (e.Source is Visual source && source.FindAncestorOfType<CheckBox>(true) is null) { check.IsChecked = check.IsChecked != true; e.Handled = true; } };
+            amount.Margin = new Thickness(0, 0, 8, 0); cells = [check, title, due, shares, chip, amount];
+        }
+        else
+        {
+            var more = Button("Mais ações", () => { }, "ghost round", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
+            cells = [title, due, shares, chip, amount, more];
+        }
         for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); grid.Children.Add(cells[i]); }
-        return grid;
+        return row;
     }
     /// <summary>
     /// Menu "⋯" de uma despesa: marcar como paga (ou em aberto), editar e excluir.
@@ -145,7 +216,7 @@ public sealed partial class MainWindow
     /// </summary>
     private static string ExpenseSubtitle(Expense expense, bool withDue) => withDue
         ? (expense.InstallmentCount > 1 ? $"Parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.Category) + $" · {expense.DueDate:dd/MM}"
-        : expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · mensal" : "");
+        : expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · recorrente" : "");
     /// <summary>
     /// Chip de situação da lista: "Pago em dd/MM" (ou só "Pago", quando a data do pagamento não foi informada), Em aberto,
     /// Vence em N dias ou Em atraso.

@@ -30,6 +30,11 @@
   <StreamGeometry x:Key="Icon.Tag">M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01</StreamGeometry>
   <StreamGeometry x:Key="Icon.Share">M12 15V4M8 8l4-4 4 4M5 13v6h14v-6</StreamGeometry>
   <StreamGeometry x:Key="Icon.Download">M12 4v11M8 11l4 4 4-4M5 15v4h14v-4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Close">M6 6l12 12M18 6L6 18</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Info">M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Alert">M12 4l9 16H3zM12 10v5M12 17.5h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.File">M7 3h7l4 4v14H7zM14 3v4h4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Shield">M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6zM9 12l2 2 4-4</StreamGeometry>
   <StreamGeometry x:Key="Icon.ArrowRight">M5 12h14M13 6l6 6-6 6</StreamGeometry>
   <StreamGeometry x:Key="Icon.ArrowDown">M12 5v14M6 13l6 6 6-6</StreamGeometry>
 </ResourceDictionary>
