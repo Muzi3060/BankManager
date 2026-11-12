@@ -21,27 +21,40 @@ if (!string.IsNullOrEmpty(shotsDirectory))
 {
     using var seed = new LocalStore(directory); seed.Save(DemoData());
 }
-// Dados fictícios que reproduzem o desenho do aplicativo: duas pessoas, oito despesas no mês atual (total R$ 4.520,10).
+// Dados fictícios que reproduzem o desenho do aplicativo: duas pessoas, dez despesas no mês atual e cinco meses de histórico para o gráfico.
 static BudgetData DemoData()
 {
     var first = Dates.Month(DateOnly.FromDateTime(DateTime.Today));
     var ana = new Person { Name = "Ana" }; var bruno = new Person { Name = "Bruno" };
     var data = new BudgetData { People = [ana, bruno], Incomes = [new() { PersonId = ana.Id, Month = first, Amount = 4200 }, new() { PersonId = bruno.Id, Month = first, Amount = 2800 }] };
     var group = Guid.NewGuid();
-    void Add(string title, string category, int day, decimal amount, bool paid = false, int installment = 1) => data.Expenses.Add(new Expense
+    void Add(string title, string category, int day, decimal amount, bool paid = false, int installment = 1, int monthsAgo = 0) => data.Expenses.Add(new Expense
     {
-        Title = title, Category = category, DueDate = new DateOnly(first.Year, first.Month, day), Amount = amount, Paid = paid, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
+        Title = title, Category = category, DueDate = first.AddMonths(-monthsAgo).AddDays(day - 1), Amount = amount, Paid = paid, PaidBy = monthsAgo > 0 ? ana.Id : null, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id],
         InstallmentGroup = installment > 1 ? group : null, InstallmentNumber = installment, InstallmentCount = installment > 1 ? 10 : 1
     });
     Add("Aluguel", "Moradia", 5, 1800, true); Add("Plano de saúde", "Saúde", 10, 640, true); Add("Energia elétrica", "Moradia", 12, 214.90m);
     Add("Notebook", "Educação", 15, 389, installment: 3); Add("Transporte", "Transporte", 18, 380); Add("Streaming", "Lazer", 22, 55.90m); Add("Mercado do mês", "Mercado", 30, 920.40m);
+    Add("Padaria", "Mercado", 3, 38.50m, true); Add("Corrida de aplicativo", "Transporte", 6, 42.30m, true);
+    // Histórico dos cinco meses anteriores (já pago e acertado), para o gráfico e a previsão terem o que mostrar.
+    decimal[] market = [870, 990, 850, 1120, 780], energy = [198.40m, 231.70m, 188.20m, 240.10m, 176.90m];
+    for (var ago = 1; ago <= 5; ago++)
+    {
+        Add("Aluguel", "Moradia", 5, 1800, true, monthsAgo: ago); Add("Plano de saúde", "Saúde", 10, 640, true, monthsAgo: ago); Add("Energia elétrica", "Moradia", 12, energy[ago - 1], true, monthsAgo: ago);
+        Add("Mercado do mês", "Mercado", 28, market[ago - 1], true, monthsAgo: ago); Add("Transporte", "Transporte", 18, 300 + 20 * ago, true, monthsAgo: ago);
+        data.Incomes.Add(new() { PersonId = ana.Id, Month = first.AddMonths(-ago), Amount = 4200 }); data.Incomes.Add(new() { PersonId = bruno.Id, Month = first.AddMonths(-ago), Amount = 2800 });
+    }
     // A internet é uma despesa mensal desde dois meses atrás; a do mês atual já está paga.
     data.Recurrences.Add(new Recurrence { Title = "Internet", Category = "Serviços", Amount = 119.90m, DayOfMonth = 8, Split = SplitMode.AvailableIncome, Participants = [ana.Id, bruno.Id], StartMonth = first.AddMonths(-2) });
     RecurrenceEngine.Generate(data, DateOnly.FromDateTime(DateTime.Today)); data.Expenses.First(e => e.RecurrenceMonth == first).Paid = true;
-    // Metas: Mercado perto do limite (84%), Saúde acima (107%) e Lazer dentro (56%).
+    // Metas: Mercado perto do limite (87%), Saúde acima (106%) e Lazer dentro (55%).
     GoalEngine.Set(data, "Mercado", 1100); GoalEngine.Set(data, "Saúde", 600); GoalEngine.Set(data, "Lazer", 100);
     // Quem pagou as contas já quitadas: o cartão de acerto mostra o saldo entre Ana e Bruno.
-    data.Expenses.First(e => e.RecurrenceMonth == first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Aluguel").PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Plano de saúde").PaidBy = bruno.Id;
+    data.Expenses.First(e => e.RecurrenceMonth == first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Aluguel" && e.DueDate >= first).PaidBy = ana.Id; data.Expenses.First(e => e.Title == "Plano de saúde" && e.DueDate >= first).PaidBy = bruno.Id;
+    foreach (var e in data.Expenses.Where(e => e.DueDate >= first && e.Paid && e.PaidBy is null)) e.PaidBy = ana.Id;
+    // O histórico pago por Ana já foi acertado: um acerto no valor exato zera a dívida dos meses anteriores.
+    var past = LocalStore.Clone(data); past.Expenses.RemoveAll(e => e.DueDate >= first);
+    foreach (var debt in SettlementEngine.Debts(past)) data.Settlements.Add(new Settlement { PayerId = debt.DebtorId, ReceiverId = debt.CreditorId, Amount = debt.Amount, Date = first.AddDays(-1) });
     return data;
 }
 // Assume falha até completar todo o roteiro; o CI reconhece o sucesso pelo código de saída.
@@ -75,6 +88,12 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             // Uma condição falsa interrompe o roteiro e mantém o resultado como falha.
             void Check(bool ok, string description) { if (!ok) throw new Exception(description); Console.WriteLine("PASS " + description); }
             Check(main.IsVisible, "Main window opens");
+            // Fotografa uma janela no tamanho em que ela está na tela e salva na pasta de capturas.
+            void Shot(Window window, string name)
+            {
+                using var shot = new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height), new Vector(96, 96));
+                shot.Render(window); shot.Save(Path.Combine(shotsDirectory!, name + ".png"), PngBitmapEncoderOptions.Default); Console.WriteLine("Screenshot: " + name);
+            }
             if (!string.IsNullOrEmpty(shotsDirectory))
             {
                 foreach (var (theme, themeName) in new[] { (ThemePreference.Light, "claro"), (ThemePreference.Dark, "escuro") })
@@ -82,22 +101,24 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                     App.ApplyTheme(theme);
                     foreach (var (label, file) in new[] { ("Visão geral", "visao-geral"), ("Despesas", "despesas"), ("Pessoas e rendas", "pessoas"), ("Previsões e metas", "previsoes"), ("Ajustes", "ajustes") })
                     {
-                        await Click(label, main); await Task.Delay(250);
-                        using var shot = new RenderTargetBitmap(new PixelSize((int)main.Bounds.Width, (int)main.Bounds.Height), new Vector(96, 96));
-                        shot.Render(main); shot.Save(Path.Combine(shotsDirectory, $"{file}-{themeName}.png"), PngBitmapEncoderOptions.Default); Console.WriteLine($"Screenshot: {file}-{themeName}");
+                        await Click(label, main); await Task.Delay(300);
+                        Shot(main, $"{file}-{themeName}");
+                        // A visão geral é mais longa que a janela: uma segunda captura mostra o fim da página (acerto e movimentações).
+                        if (file != "visao-geral") continue;
+                        var scroller = main.GetVisualDescendants().OfType<ScrollViewer>().First();
+                        scroller.Offset = new Vector(0, scroller.Extent.Height - scroller.Viewport.Height); await Task.Delay(300);
+                        Shot(main, $"{file}-2-{themeName}"); scroller.Offset = default;
                     }
                 }
                 // Diálogo de recorrentes, que mostra o estado com a internet mensal.
                 await Click("Despesas", main); await Click("Recorrentes", main); await Task.Delay(250);
-                var dlg = Active(); using var dshot = new RenderTargetBitmap(new PixelSize((int)dlg.Bounds.Width, (int)dlg.Bounds.Height), new Vector(96, 96));
-                dshot.Render(dlg); dshot.Save(Path.Combine(shotsDirectory, "recorrentes.png"), PngBitmapEncoderOptions.Default);
+                Shot(Active(), "recorrentes");
                 await Click("Fechar");
                 // Assistente de importação de extrato, com um arquivo de demonstração (entradas, saídas e uma linha com erro).
                 var demo = Path.Combine(directory, "extrato-demo.csv");
                 File.WriteAllText(demo, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA SAO JORGE;-12,50\r\n03/11/2026;SALARIO EMPRESA LTDA;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-87,30\r\n05/11/2026;POSTO IPIRANGA;-210,00\r\n06/11/2026;AMAZON MARKETPLACE;-1.234,56\r\nontem;LINHA RUIM;-1,00\r\n", new System.Text.UTF8Encoding(true));
                 _ = ((MainWindow)main).ImportStatementFromFile(demo); await Task.Delay(400);
-                var wiz = Active(); using var wshot = new RenderTargetBitmap(new PixelSize((int)wiz.Bounds.Width, (int)wiz.Bounds.Height), new Vector(96, 96));
-                wshot.Render(wiz); wshot.Save(Path.Combine(shotsDirectory, "importar-extrato.png"), PngBitmapEncoderOptions.Default);
+                Shot(Active(), "importar-extrato");
                 await Click("Cancelar");
                 exitCode = 0; return;
             }
@@ -123,11 +144,16 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             await Click("Salvar despesa");
             Check(LocalStore.Read(Path.Combine(directory, "financas.json")).Expenses.Single().Amount == 800m, "Expense persists from UI");
             // Cenário 3: mudança de situação precisa chegar ao armazenamento, não apenas à tela.
-            // Pela visão geral, o botão "Marcar como pago" dos próximos pagamentos.
+            // Pela visão geral, o item "Marcar como pago" do menu "⋯" dos próximos pagamentos.
             // Marcar como pago pergunta quem pagou: aqui, Ana.
-            await Click("Visão geral", main); await Click("Marcar como pago", main); await Click("Ana");
+            await Click("Visão geral", main); await Menu("Marcar como pago"); await Click("Ana");
             var paidData = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(paidData.Expenses.Single().Paid && paidData.Expenses.Single().PaidBy == paidData.People[0].Id, "Payment action persists with who paid");
+            // A visão geral nova: o gráfico tem texto alternativo com os valores e a despesa paga entra nas últimas movimentações, depois das rendas.
+            var chart = main.GetVisualDescendants().OfType<BankManager.Controls.BarChart>().Single();
+            Check(AutomationProperties.GetName(chart)!.StartsWith("Despesas dos últimos 6 meses") && AutomationProperties.GetName(chart)!.Contains(Money.Format(800m)), "Chart exposes its values as alternative text");
+            var texts = main.GetVisualDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
+            Check(texts.Contains("− " + Money.Format(800m)) && texts.Contains("+ " + Money.Format(3000m)) && texts.Contains("+ " + Money.Format(1000m)) && texts.IndexOf("− " + Money.Format(800m)) < texts.IndexOf("+ " + Money.Format(3000m)), "Recent movements list paid expenses and incomes, newest first");
             // Ana pagou 800 (600/200): o cartão de acerto mostra que Bruno deve 200 a Ana.
             var debtText = $"Bruno deve {Money.Format(200m)} a Ana";
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => AutomationProperties.GetName(x) == debtText), "Settlement card shows who owes whom");
@@ -214,7 +240,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !FindButton(Active(), "Importar").IsEnabled, "Re-importing the same statement finds only duplicates");
             await Click("Cancelar");
             // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
-            await Click("Visão geral", main); await Click("Metas", main);
+            await Click("Visão geral", main); await Click("Gerenciar metas", main);
             Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Click("Salvar metas");
             var goalSaved = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(goalSaved.Goals.Count == 1 && goalSaved.Goals[0].Category == "Mercado" && goalSaved.Goals[0].Amount == 500m, "Goal is saved from the dialog");

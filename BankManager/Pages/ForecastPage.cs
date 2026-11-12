@@ -16,8 +16,6 @@ public sealed partial class MainWindow
     {
         var target = month.AddMonths(1); var predictions = FinanceEngine.Forecasts(data, target);
         var panel = Stack(PageHeader("Previsões", $"Estimativa para {target.ToString("MMMM 'de' yyyy", Money.Culture)}, a partir do histórico até o mês selecionado.")); panel.Spacing = 20;
-        panel.Children.Add(IndicatorStrip(Indicator("Estimativa total", Money.Format(predictions.Sum(f => f.Estimate)), "Histórico + compromissos conhecidos"),
-            Indicator("Já lançado no próximo mês", Money.Format(FinanceEngine.Expenses(data, target).Sum(e => e.Amount)), "Inclui parcelas com vencimento no mês")));
         var rows = new StackPanel { Spacing = 0 };
         if (predictions.Count == 0)
         {

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -110,6 +111,16 @@ public sealed class BarChart : Control
         var left = Math.Clamp(anchor.Center.X - box.Width / 2, 0, Math.Max(0, Bounds.Width - box.Width)); var top = Math.Max(0, anchor.Y - box.Height - 6);
         context.DrawRectangle(BalloonBrush, null, new RoundedRect(new Rect(left, top, box.Width, box.Height), 8));
         context.DrawText(caption, new Point(left + 10, top + 5));
+    }
+    /// <summary>
+    /// Apresenta o gráfico às tecnologias assistivas como uma imagem; o texto alternativo (AutomationProperties.Name) traz os valores.
+    /// </summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new ChartPeer(this);
+    private sealed class ChartPeer(Control owner) : ControlAutomationPeer(owner)
+    {
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Image;
+        protected override bool IsContentElementCore() => true;
+        protected override bool IsControlElementCore() => true;
     }
     /// <summary>
     /// Passar o mouse sobre a faixa de uma barra mostra o valor dela no balão.

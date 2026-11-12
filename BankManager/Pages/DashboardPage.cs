@@ -1,66 +1,101 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
+using BankManager.Controls;
 using BankManager.Core;
 using static BankManager.Ui;
 
 namespace BankManager;
-// Página "Visão geral": indicadores do mês, para onde vai o dinheiro, divisão por pessoa e próximos pagamentos.
+// Página "Visão geral": saldo planejado com gráfico, resumo da casa, metas do mês, próximos pagamentos, acerto de contas e últimas movimentações.
 public sealed partial class MainWindow
 {
     /// <summary>
-    /// Monta a visão geral. Sem pessoas cadastradas, mostra um convite com os primeiros passos.
+    /// Monta a visão geral, de cima para baixo. Sem pessoas cadastradas, mostra um convite com os primeiros passos.
     /// </summary>
     private Control Dashboard()
     {
         var expenses = FinanceEngine.Expenses(data, month); var income = data.People.Sum(p => FinanceEngine.Income(data, p.Id, month)); var total = expenses.Sum(e => e.Amount);
         var open = expenses.Where(e => !e.Paid).Sum(e => e.Amount);
-        var result = Stack(PageHeader("Seu mês, com clareza", "O que entra, o que sai e quanto sobra."));
-        result.Spacing = 20;
+        var result = Stack(PageHeader("Visão geral", "O que entra, o que sai e quanto sobra neste mês.")); result.Spacing = 18;
         if (data.People.Count == 0)
         {
             result.Children.Add(Card(Stack(Text("Vamos organizar suas finanças?", "section"), Text("1. Cadastre quem faz parte da casa e a renda deste mês.\n2. Adicione despesas individuais ou compartilhadas.\n3. Veja a divisão e acompanhe o pagamento.", "muted"), Button("Cadastrar primeira pessoa", () => _ = Run(() => EditPerson()), "primary", "Plus"))));
             return result;
         }
-        // Faixa única com três indicadores separados por linhas finas; o saldo muda de cor conforme o sinal.
-        var people = data.People.Count == 1 ? "1 pessoa na casa" : $"{data.People.Count} pessoas na casa";
-        result.Children.Add(IndicatorStrip(Indicator("Renda da casa", Money.Format(income), people), Indicator("Despesas do mês", Money.Format(total), $"{Money.Format(open)} em aberto"),
-            Indicator("Saldo planejado", Money.Format(income - total), "Renda menos todas as despesas", income >= total ? "positive" : "negative")));
+        // 1. Saldo planejado com o gráfico (1,7) e o cartão escuro de resumo (1).
+        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("1.7*,16,*"), MinHeight = 330 };
+        var summary = Card(SummaryPanel(income, total, open), "summary"); Grid.SetColumn(summary, 2); top.Children.Add(Card(BalancePanel(income, total))); top.Children.Add(summary);
+        result.Children.Add(top);
         // Registro ausente é diferente de renda explicitamente zero; ambos entram como zero no cálculo.
         var missing = data.People.Where(p => !data.Incomes.Any(i => i.PersonId == p.Id && i.Month == month)).ToList();
         if (missing.Count > 0) result.Children.Add(InlineNotice("Renda ainda não informada neste mês: " + string.Join(", ", missing.Select(p => p.Name)) + ". Informe em Pessoas e rendas; até lá, ela será considerada zero."));
-        var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*") };
-        var left = Card(CategoriesPanel(expenses, total)); var right = Card(PeoplePanel()); Grid.SetColumn(right, 2); columns.Children.Add(left); columns.Children.Add(right);
-        result.Children.Add(columns);
-        // Acerto de contas só faz sentido quando há mais de uma pessoa.
-        if (data.People.Count >= 2) result.Children.Add(SettlementCard());
-        result.Children.Add(UpcomingCard(expenses));
+        // 2. Metas do mês.
+        result.Children.Add(GoalsSection(expenses));
+        // 3. Próximos pagamentos (1,5) e acerto de contas (1). O acerto só faz sentido com mais de uma pessoa.
+        var upcoming = UpcomingCard(expenses);
+        if (data.People.Count >= 2)
+        {
+            var middle = new Grid { ColumnDefinitions = new ColumnDefinitions("1.5*,16,*") }; var settlement = SettlementCard(); Grid.SetColumn(settlement, 2);
+            middle.Children.Add(upcoming); middle.Children.Add(settlement); result.Children.Add(middle);
+        }
+        else result.Children.Add(upcoming);
+        // 4. Últimas movimentações.
+        result.Children.Add(MovementsCard());
         return result;
     }
     /// <summary>
-    /// Um indicador da faixa superior: rótulo, valor grande (com tom opcional) e contexto.
+    /// Valor grande em reais: o "R$" (e o sinal de menos, se houver) em tamanho menor, e o número em destaque.
     /// </summary>
-    private static Control Indicator(string label, string value, string hint, string? tone = null)
+    private static TextBlock BigMoney(decimal amount, string style)
     {
-        var number = Text(value, "kpi"); if (tone is not null) number.Classes.Add(tone);
-        var panel = Stack(Text(label, "muted"), number, Text(hint, "muted")); panel.Spacing = 4; panel.Margin = new Thickness(24, 20); return panel;
+        var block = new TextBlock(); block.Classes.Add(style);
+        var small = style == "hero" ? 24 : 16;
+        block.Inlines!.Add(new Run((amount < 0 ? "− " : "") + "R$ ") { FontSize = small, FontWeight = FontWeight.SemiBold });
+        block.Inlines.Add(new Run(Math.Abs(amount).ToString("N2", Money.Culture)));
+        AutomationProperties.SetName(block, Money.Format(amount)); return block;
     }
     /// <summary>
-    /// Reúne indicadores em um único cartão, com uma linha vertical fina entre eles.
+    /// "Saldo planejado": o número em destaque, a conta que leva a ele e o gráfico das despesas dos últimos seis meses.
     /// </summary>
-    private static Control IndicatorStrip(params Control[] items)
+    private Control BalancePanel(decimal income, decimal total)
     {
-        // Colunas: indicador, e para cada indicador seguinte uma coluna fina de divisória + uma coluna de conteúdo.
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*" + string.Concat(Enumerable.Repeat(",Auto,*", items.Length - 1))) };
-        var column = 0;
-        for (var i = 0; i < items.Length; i++)
-        {
-            if (i > 0) { var line = new Border { Width = 1 }; line.Classes.Add("divider"); line.Height = double.NaN; Grid.SetColumn(line, column++); grid.Children.Add(line); }
-            Grid.SetColumn(items[i], column++); grid.Children.Add(items[i]);
-        }
-        var card = Card(grid); card.Padding = new Thickness(0); return card;
+        var balance = BigMoney(income - total, "hero"); if (income < total) balance.Classes.Add("negative");
+        var totals = FinanceEngine.MonthlyTotals(data, month, 6);
+        // Rótulo curto do mês ("nov"); o .NET devolve "nov." em português, então o ponto final é removido.
+        var points = totals.Select(t => new BarPoint(t.Month.ToString("MMM", Money.Culture).TrimEnd('.'), t.Total, Money.Format(t.Total))).ToList();
+        var chart = new BarChart(points, points.Count - 1) { Margin = new Thickness(0, 6, 0, 0) };
+        // Texto alternativo: quem usa leitor de tela recebe os mesmos valores que o gráfico mostra.
+        AutomationProperties.SetName(chart, "Despesas dos últimos 6 meses: " + string.Join("; ", totals.Select(t => $"{t.Month.ToString("MMMM 'de' yyyy", Money.Culture)}, {Money.Format(t.Total)}")) + ".");
+        var caption = Text("Despesas dos últimos 6 meses", "muted"); caption.Classes.Add("small"); caption.Margin = new Thickness(0, 14, 0, 0);
+        var head = Stack(Text("Saldo planejado", "muted"), balance, Text($"Renda de {Money.Format(income)} menos despesas de {Money.Format(total)}", "muted"), caption); head.Spacing = 2;
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; Grid.SetRow(chart, 1); grid.Children.Add(head); grid.Children.Add(chart); return grid;
+    }
+    /// <summary>
+    /// Cartão escuro "Resumo da casa": despesas do mês, quanto da renda elas comprometem e, embaixo, renda e valor em aberto.
+    /// </summary>
+    private static Control SummaryPanel(decimal income, decimal total, decimal open)
+    {
+        var committed = income > 0 ? Math.Round(total / income * 100, MidpointRounding.AwayFromZero) : 0;
+        var bar = new ProgressBar { Value = (double)Math.Min(100, committed), Maximum = 100 }; bar.Classes.Add("onsummary");
+        var label = Text(income > 0 ? $"{committed:0}% da renda comprometida" : "Renda do mês ainda não informada", "muted"); label.Classes.Add("small");
+        var topPart = Stack(Text("Resumo da casa", "section"), Text("Despesas do mês", "muted"), BigMoney(total, "kpi"), bar, label); topPart.Spacing = 6;
+        ((TextBlock)topPart.Children[1]).Margin = new Thickness(0, 14, 0, 0); bar.Margin = new Thickness(0, 10, 0, 0);
+        // Rodapé com dois valores lado a lado.
+        Control Pair(string name, decimal value) { var number = Text(Money.Format(value), "strong"); number.FontSize = 16; var pair = Stack(Text(name, "muted").WithClass("small"), number); pair.Spacing = 2; return pair; }
+        var footer = Columns(Pair("Renda", income), Pair("Em aberto", open)); Grid.SetRow(footer, 1); footer.VerticalAlignment = VerticalAlignment.Bottom;
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; grid.Children.Add(topPart); grid.Children.Add(footer); return grid;
+    }
+    /// <summary>
+    /// Cabeçalho de seção: título à esquerda e, opcionalmente, um link de ação à direita.
+    /// </summary>
+    private static Grid SectionHeading(string title, Button? action = null)
+    {
+        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; var label = Text(title, "section"); label.VerticalAlignment = VerticalAlignment.Center; heading.Children.Add(label);
+        if (action is not null) { Grid.SetColumn(action, 1); heading.Children.Add(action); }
+        return heading;
     }
     /// <summary>
     /// Aviso discreto dentro da página, para situações que pedem atenção sem bloquear nada.
@@ -70,112 +105,77 @@ public sealed partial class MainWindow
         var box = new Border { Child = Text(text, "warn") }; box.Classes.Add("notice"); return box;
     }
     /// <summary>
-    /// "Para onde vai o dinheiro": categorias com barra fina. Categorias com meta mostram "R$ gasto de R$ meta" e a barra acompanha a meta
-    /// (alerta a partir de 80%, vermelha acima de 100%); as demais mostram o percentual do total. Muitas categorias pequenas viram "Outras (n)".
+    /// "Metas do mês": até três cartões lado a lado, começando pelas metas mais próximas (ou acima) do limite.
+    /// Sem metas, um convite para criar a primeira.
     /// </summary>
-    private Control CategoriesPanel(IReadOnlyList<Expense> expenses, decimal total)
+    private Control GoalsSection(IReadOnlyList<Expense> expenses)
     {
-        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var goalsButton = Button("Metas", () => _ = Run(ManageGoals), "link", "Target"); Grid.SetColumn(goalsButton, 1); heading.Children.Add(Text("Para onde vai o dinheiro", "section")); heading.Children.Add(goalsButton);
-        var panel = Stack(heading); panel.Spacing = 12;
-        var goals = GoalEngine.Progress(data, month).ToDictionary(g => g.Category);
-        if (expenses.Count == 0 && goals.Count == 0) { panel.Children.Add(Text("Nenhuma despesa neste mês. Use “Nova despesa” para começar. Em “Metas” você define um limite por categoria.", "muted")); return panel; }
-        var spent = expenses.GroupBy(e => e.Category).Select(g => (Name: g.Key, Amount: g.Sum(e => e.Amount))).ToList();
-        // Categorias com meta aparecem sempre (mesmo sem gasto no mês); as outras entram pelo gasto e podem ser agrupadas.
-        var rows = goals.Values.Select(g => (Name: g.Category, Amount: g.Spent)).ToList();
-        var others = spent.Where(c => !goals.ContainsKey(c.Name)).OrderByDescending(c => c.Amount).ToList();
-        var keep = Math.Max(2, 6 - rows.Count);
-        if (others.Count > keep + 1) { var rest = others.Skip(keep).ToList(); others = [.. others.Take(keep), ($"Outras ({rest.Count})", rest.Sum(c => c.Amount))]; }
-        rows.AddRange(others);
-        foreach (var (name, amount) in rows.OrderByDescending(r => !r.Name.StartsWith("Outras (") ? 1 : 0).ThenByDescending(r => r.Amount))
+        var goals = GoalEngine.Progress(data, month).OrderByDescending(g => g.Ratio).ToList();
+        var section = Stack(SectionHeading("Metas do mês", Button("Gerenciar metas", () => _ = Run(ManageGoals), "link", "Target"))); section.Spacing = 8;
+        if (goals.Count == 0)
         {
-            goals.TryGetValue(name, out var goal);
-            var values = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 }; double share; string[] barClass = [];
-            if (goal is null)
-            {
-                share = total == 0 ? 0 : (double)(amount / total * 100); values.Children.Add(Text($"{share:0}% ·", "muted"));
-                values.Children.Add(new TextBlock { Text = Money.Format(amount), FontWeight = FontWeight.Medium, Classes = { "num" } });
-            }
-            else
-            {
-                share = (double)Math.Min(100m, goal.Ratio * 100); barClass = goal.Level switch { GoalLevel.Over => ["over"], GoalLevel.Near => ["warn"], _ => [] };
-                var used = new TextBlock { Text = Money.Format(amount), FontWeight = FontWeight.Medium, Classes = { "num" } }; if (goal.Level == GoalLevel.Over) used.Classes.Add("negative");
-                values.Children.Add(used); values.Children.Add(Text($"de {Money.Format(goal.Goal)}", "muted"));
-            }
-            var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; Grid.SetColumn(values, 1); line.Children.Add(new TextBlock { Text = name }); line.Children.Add(values);
-            // A cor da barra vem do estilo ProgressBar (token de destaque) e das classes de alerta; fina e sem rótulo.
-            var bar = new ProgressBar { Value = share, Maximum = 100, Height = 5 }; foreach (var c in barClass) bar.Classes.Add(c);
-            var item = Stack(line, bar); item.Spacing = 6; panel.Children.Add(item);
+            var create = Button("Criar primeira meta", () => _ = Run(ManageGoals), "ink"); create.HorizontalAlignment = HorizontalAlignment.Left;
+            var empty = Stack(Text("Nenhuma meta ainda", "strong"), Text("Defina quanto quer gastar por mês em uma categoria, como Mercado ou Lazer. O BankManager avisa quando você chegar perto do limite.", "muted"), create); empty.Spacing = 8;
+            section.Children.Add(Card(empty)); return section;
         }
-        return panel;
+        // Sempre três colunas: com uma ou duas metas, os cartões mantêm a mesma largura.
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*,16,*") };
+        for (var i = 0; i < Math.Min(3, goals.Count); i++) { var card = GoalCard(goals[i], expenses); Grid.SetColumn(card, i * 2); row.Children.Add(card); }
+        section.Children.Add(row);
+        if (goals.Count > 3) { var all = Button($"Ver as {goals.Count} metas", () => { forecastTab = 0; GoTo(3); }, "link"); all.HorizontalAlignment = HorizontalAlignment.Left; section.Children.Add(all); }
+        return section;
     }
     /// <summary>
-    /// Diálogo de metas: um campo por categoria; vazio significa "sem meta". A meta vale para todos os meses.
-    /// </summary>
-    private async Task ManageGoals()
-    {
-        var inputs = BudgetRules.AllCategories(data).Select(c => (Name: c, Box: Input(data.Goals.FirstOrDefault(g => g.Category == c)?.Amount.ToString("0.00", Money.Culture), "Sem meta", 12))).ToList();
-        var rows = new StackPanel { Spacing = 8 };
-        foreach (var (name, box) in inputs)
-        {
-            AutomationProperties.SetName(box, "Meta de " + name);
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,190") }; var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center }; Grid.SetColumn(box, 1); row.Children.Add(label); row.Children.Add(box); rows.Children.Add(row);
-        }
-        var error = Text("", "error");
-        var panel = Stack(Heading("Metas por categoria", "Defina quanto quer gastar por mês em cada categoria. A meta vale para todos os meses; deixe em branco para não ter meta."), rows, error);
-        var dialog = Dialog("Metas por categoria", panel, 620); dialog.Height = 700;
-        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar metas", () =>
-        {
-            try
-            {
-                // Lê e valida tudo antes de gravar: uma meta com erro não deixa salvar as outras pela metade.
-                var parsed = inputs.Select(i => (i.Name, Amount: string.IsNullOrWhiteSpace(i.Box.Text) ? (decimal?)null : Money.Parse(i.Box.Text, "Meta de " + i.Name, true))).ToList();
-                Commit(d => { foreach (var (name, amount) in parsed) { if (amount is { } value) GoalEngine.Set(d, name, value); else GoalEngine.Clear(d, name); } }); dialog.Close();
-            }
-            catch (Exception ex) { error.Text = FriendlyError(ex); }
-        }, "primary")));
-        await dialog.ShowDialog(this);
-    }
-    /// <summary>
-    /// "Divisão por pessoa": avatar, renda, sobra e quanto da renda está comprometido com as despesas do mês.
-    /// </summary>
-    private Control PeoplePanel()
-    {
-        var panel = Stack(Text("Divisão por pessoa", "section")); panel.Spacing = 16;
-        foreach (var b in FinanceEngine.Balances(data, month))
-        {
-            var committed = b.Income > 0 ? (double)Math.Min(100, b.Assigned / b.Income * 100) : 0;
-            var remaining = Text(Money.Format(b.Remaining), "num"); remaining.FontWeight = FontWeight.SemiBold; remaining.Classes.Add(b.Remaining < 0 ? "negative" : "positive");
-            var label = Text("Sobra", "muted"); label.FontSize = 12;
-            var right = Stack(label, remaining); right.Spacing = 0; right.HorizontalAlignment = HorizontalAlignment.Right;
-            var who = Stack(new TextBlock { Text = b.Person.Name, FontWeight = FontWeight.Medium }, Text($"Renda {Money.Format(b.Income)}", "muted")); who.Spacing = 0; who.VerticalAlignment = VerticalAlignment.Center;
-            var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") }; var avatar = Avatar(b.Person.Name); avatar.Margin = new Thickness(0, 0, 12, 0);
-            Grid.SetColumn(who, 1); Grid.SetColumn(right, 2); head.Children.Add(avatar); head.Children.Add(who); head.Children.Add(right);
-            var detail = b.Income > 0 ? $"Responsável por {Money.Format(b.Assigned)} · {committed:0}% da renda" : $"Responsável por {Money.Format(b.Assigned)} · renda não informada";
-            var person = Stack(head, new ProgressBar { Value = committed, Maximum = 100, Height = 5 }, Text(detail, "muted")); person.Spacing = 8; panel.Children.Add(person);
-        }
-        panel.Children.Add(Text("Divisão proporcional à renda disponível de cada pessoa.", "muted"));
-        foreach (var warning in FinanceEngine.Expenses(data, month).Select(e => FinanceEngine.Allocate(data, e).Warning).Where(w => w is not null).Distinct()) panel.Children.Add(Text(warning!, "warn"));
-        return panel;
-    }
-    /// <summary>
-    /// "Próximos pagamentos": as cinco contas em aberto mais próximas, com prazo e ação de marcar como paga.
+    /// "Próximos pagamentos": as três contas em aberto mais próximas, com ícone da categoria, prazo, valor e menu de ações.
     /// </summary>
     private Control UpcomingCard(IReadOnlyList<Expense> expenses)
     {
-        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 0, 8) };
-        var all = Button("Ver todas as despesas", () => GoTo(2), "link"); Grid.SetColumn(all, 1); heading.Children.Add(Text("Próximos pagamentos", "section")); heading.Children.Add(all);
-        var panel = Stack(heading); panel.Spacing = 0;
-        var upcoming = expenses.Where(e => !e.Paid).Take(5).ToList();
-        if (upcoming.Count == 0) panel.Children.Add(Text(expenses.Count == 0 ? "Nenhuma despesa neste mês ainda. Use “Nova despesa” para começar." : "Tudo em dia! Nenhum pagamento em aberto neste mês.", "muted"));
+        var panel = Stack(SectionHeading("Próximos pagamentos", Button("Ver todas", () => GoTo(2), "link"))); panel.Spacing = 0;
+        var upcoming = expenses.Where(e => !e.Paid).Take(3).ToList();
+        if (upcoming.Count == 0)
+        {
+            var empty = Stack(Text(expenses.Count == 0 ? "Nenhuma despesa neste mês ainda" : "Tudo em dia!", "strong"), Text(expenses.Count == 0 ? "Use “Nova despesa” para registrar a primeira conta." : "Nenhum pagamento em aberto neste mês.", "muted")); empty.Spacing = 4; empty.Margin = new Thickness(0, 12, 0, 0);
+            panel.Children.Add(empty);
+        }
         foreach (var e in upcoming)
         {
-            panel.Children.Add(Divider());
-            var title = Stack(new TextBlock { Text = e.Title, FontWeight = FontWeight.Medium }, Text(ExpenseSubtitle(e, true), "muted")); title.Spacing = 0; title.VerticalAlignment = VerticalAlignment.Center;
-            var chip = UpcomingChip(e); var amount = Text(Money.Format(e.Amount), "num"); amount.FontWeight = FontWeight.SemiBold; amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center; amount.MinWidth = 110; amount.Margin = new Thickness(16, 0);
-            var pay = Button("Marcar como pago", () => _ = Run(() => TogglePaid(e)));
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto"), Margin = new Thickness(0, 10) };
-            Grid.SetColumn(chip, 1); Grid.SetColumn(amount, 2); Grid.SetColumn(pay, 3); row.Children.Add(title); row.Children.Add(chip); row.Children.Add(amount); row.Children.Add(pay);
+            if (e != upcoming[0]) panel.Children.Add(Divider());
+            var title = Stack(new TextBlock { Text = e.Title, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(e, true), "muted").WithClass("small")); title.Spacing = 1; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(12, 0);
+            var chip = UpcomingChip(e); var amount = Text(Money.Format(e.Amount), "strong"); amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center; amount.MinWidth = 100; amount.Margin = new Thickness(12, 0, 4, 0);
+            var more = Button("Mais ações", () => { }, "ghost round", "More", iconOnly: true); more.Flyout = ExpenseMenu(e);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"), Margin = new Thickness(0, 10) };
+            Control[] cells = [IconCircle(CategoryIconName(e.Category)), title, chip, amount, more];
+            for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); row.Children.Add(cells[i]); }
+            panel.Children.Add(row);
+        }
+        return Card(panel);
+    }
+    // Quantas movimentações a visão geral mostra.
+    private const int MovementRows = 6;
+    /// <summary>
+    /// "Últimas movimentações": rendas do mês e despesas já pagas, das mais recentes para as mais antigas. Quando há mais
+    /// itens do que cabem, a última linha fica esmaecida, sugerindo que a lista continua em "Ver tudo".
+    /// </summary>
+    private Control MovementsCard()
+    {
+        var panel = Stack(SectionHeading("Últimas movimentações", Button("Ver tudo", () => GoTo(2), "link"))); panel.Spacing = 0;
+        // Pede um item a mais só para saber se a lista continua.
+        var movements = FinanceEngine.RecentMovements(data, month, MovementRows + 1); var more = movements.Count > MovementRows;
+        if (movements.Count == 0)
+        {
+            var empty = Stack(Text("Nada por aqui ainda", "strong"), Text("As rendas do mês e as despesas marcadas como pagas aparecem nesta lista.", "muted")); empty.Spacing = 4; empty.Margin = new Thickness(0, 12, 0, 0);
+            panel.Children.Add(empty);
+        }
+        var shown = movements.Take(MovementRows).ToList();
+        for (var i = 0; i < shown.Count; i++)
+        {
+            var m = shown[i]; if (i > 0) panel.Children.Add(Divider());
+            var title = Stack(new TextBlock { Text = m.Title, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Text($"{m.Category} · {m.Date:dd/MM}", "muted").WithClass("small")); title.Spacing = 1; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(12, 0);
+            // Entradas em verde com "+", saídas em texto normal com "−" (o sinal de menos tipográfico).
+            var amount = Text((m.IsIncome ? "+ " : "− ") + Money.Format(m.Amount), "strong"); if (m.IsIncome) amount.Classes.Add("positive"); amount.VerticalAlignment = VerticalAlignment.Center;
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 10) };
+            Grid.SetColumn(title, 1); Grid.SetColumn(amount, 2); row.Children.Add(IconCircle(m.IsIncome ? "ArrowDown" : CategoryIconName(m.Category), m.IsIncome)); row.Children.Add(title); row.Children.Add(amount);
+            if (more && i == shown.Count - 1) row.Opacity = 0.45;
             panel.Children.Add(row);
         }
         return Card(panel);
