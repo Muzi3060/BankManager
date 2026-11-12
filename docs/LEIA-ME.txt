@@ -1,4 +1,4 @@
-BankManager 2.1 — Finanças em equilíbrio
+BankManager 2.2 — Finanças em equilíbrio
 
 Todos os pacotes incluem o .NET. Não é necessário instalar SDK, Rider ou Visual Studio.
 O aplicativo funciona sem internet e não envia nenhum dado para fora do seu computador.
@@ -6,7 +6,7 @@ O aplicativo funciona sem internet e não envia nenhum dado para fora do seu com
 COMO INSTALAR
 
 WINDOWS (PC Intel/AMD de 64 bits) — recomendado: o instalador
-1. Baixe BankManager-2.1.0-win-x64-setup.exe e dê dois cliques.
+1. Baixe BankManager-2.2.0-win-x64-setup.exe e dê dois cliques.
 2. Siga o assistente. Ele instala só para o seu usuário, sem pedir administrador,
    e cria o atalho no menu Iniciar (o da área de trabalho é opcional).
 3. Para atualizar, rode o instalador da versão nova: ele atualiza por cima.
@@ -16,18 +16,18 @@ não identificado ("Mais informações" > "Executar assim mesmo"). Confira se o 
 veio de github.com/Muzi3060/BankManager.
 
 WINDOWS — versão portátil (sem instalar)
-1. Extraia TODO o arquivo BankManager-2.1.0-win-x64.zip para uma pasta, por exemplo
+1. Extraia TODO o arquivo BankManager-2.2.0-win-x64.zip para uma pasta, por exemplo
    Documentos\BankManager, e abra BankManager.exe.
 2. Não execute de dentro do ZIP e não mova apenas o EXE: mantenha os outros arquivos.
 
 LINUX (desktop Intel/AMD de 64 bits) — recomendado: o AppImage
-1. Baixe BankManager-2.1.0-x86_64.AppImage.
+1. Baixe BankManager-2.2.0-x86_64.AppImage.
 2. Torne-o executável e abra:
-   chmod +x BankManager-2.1.0-x86_64.AppImage
-   ./BankManager-2.1.0-x86_64.AppImage
+   chmod +x BankManager-2.2.0-x86_64.AppImage
+   ./BankManager-2.2.0-x86_64.AppImage
    (ou dê dois cliques no gerenciador de arquivos, se ele permitir executar arquivos).
 3. Se aparecer erro de FUSE, use:
-   ./BankManager-2.1.0-x86_64.AppImage --appimage-extract-and-run
+   ./BankManager-2.2.0-x86_64.AppImage --appimage-extract-and-run
 4. Para atualizar, baixe o AppImage novo; a ferramenta AppImageUpdate também atualiza
    o arquivo antigo, baixando só a diferença.
 Para ter o ícone no menu de aplicativos, use um integrador como o AppImageLauncher.
@@ -53,7 +53,7 @@ PRIMEIROS PASSOS
    como salário e extra).
 2. Adicione suas despesas e escolha como dividir. Contas fixas (aluguel, internet)
    podem se repetir todo mês: marque "Repetir todo mês".
-3. Ao marcar uma despesa como paga, informe quem pagou: a Visão geral mostra quem deve a quem
+3. Ao marcar uma despesa como paga, informe quem pagou e a data: a Visão geral mostra quem deve a quem
    e lista as últimas movimentações do mês.
 4. Use as setas do mês para consultar o histórico, ou busque em todos os meses.
 5. Em Previsões e metas, defina metas por categoria e veja a estimativa do próximo mês.
@@ -67,8 +67,16 @@ normalmente ~/.local/share/BankManager. Atualizar ou desinstalar o programa não
 essa pasta. Os dados e backups são legíveis, sem criptografia. Não envie backups pessoais
 junto com o aplicativo. Cada pessoa começa com a sua própria base vazia.
 
-Antes de atualizar, exporte um backup. A versão 2 lê os dados das versões anteriores e os
-atualiza sem perda, mas o BankManager 1.x não abre dados salvos pela versão 2.
+Antes de atualizar, exporte um backup. A versão 2.2 lê os dados das versões anteriores
+(1.x, 2.0 e 2.1) e os atualiza sem perda, mas as versões anteriores NÃO abrem dados já
+salvos pela 2.2.
+
+COMPARTILHAR DESPESAS
+Em Despesas, "Compartilhar" gera um arquivo (.bmshare.json) só com as despesas que você
+marcar. Quem recebe usa "Importar": as despesas são ADICIONADAS às dela, sem substituir
+nem apagar nada. O arquivo nunca leva rendas, metas ou acertos, mas é um texto legível
+com informações financeiras: envie só para quem deve recebê-lo. Isso é diferente do
+backup, que leva tudo e substitui a base ao ser importado.
 
 SUPORTE E CÓDIGO
 Repositório: https://github.com/Muzi3060/BankManager

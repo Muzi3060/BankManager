@@ -37,6 +37,7 @@ core.*
 financas.json
 financas.backup.json
 bankmanager-*.json
+*.bmshare.json
 .lock
 
 # Ferramentas de empacotamento

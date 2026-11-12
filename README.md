@@ -8,6 +8,8 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 ![Fim da visão geral: próximos pagamentos, acerto de contas e últimas movimentações (dados de demonstração)](docs/visao-geral-2.png)
 ![Metas por categoria em Previsões e metas (dados de demonstração)](docs/metas.png)
 ![Lista de despesas no tema escuro (dados de demonstração)](docs/despesas-escuro.png)
+![Assistente Compartilhar despesas (dados de demonstração)](docs/compartilhar.png)
+![Assistente Importar despesas compartilhadas (dados de demonstração)](docs/importar-compartilhadas.png)
 
 ## Baixar pronto e compartilhar
 
@@ -15,14 +17,16 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 | Computador | Arquivo | Como usar |
 | --- | --- | --- |
-| Windows 64 bits (Intel/AMD) | `BankManager-2.1.0-win-x64-setup.exe` | **Instalador (recomendado).** Dê dois cliques; instala só para você, sem administrador, com atalho no menu Iniciar |
-| Windows 64 bits (Intel/AMD) | `BankManager-2.1.0-win-x64.zip` | Portátil: extrair **tudo** e abrir `BankManager.exe` |
-| Linux 64 bits (Intel/AMD) | `BankManager-2.1.0-x86_64.AppImage` | **Um arquivo só (recomendado).** `chmod +x` e dois cliques, ou `./BankManager-2.1.0-x86_64.AppImage` |
-| Linux 64 bits (Intel/AMD) | `BankManager-2.1.0-linux-x64.tar.gz` | Portátil: extrair **tudo**, `./Iniciar.sh`; `./Instalar-atalho.sh` cria o atalho e o ícone no menu |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.2.0-win-x64-setup.exe` | **Instalador (recomendado).** Dê dois cliques; instala só para você, sem administrador, com atalho no menu Iniciar |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.2.0-win-x64.zip` | Portátil: extrair **tudo** e abrir `BankManager.exe` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.2.0-x86_64.AppImage` | **Um arquivo só (recomendado).** `chmod +x` e dois cliques, ou `./BankManager-2.2.0-x86_64.AppImage` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.2.0-linux-x64.tar.gz` | Portátil: extrair **tudo**, `./Iniciar.sh`; `./Instalar-atalho.sh` cria o atalho e o ícone no menu |
 
 Todos incluem o .NET: não é preciso instalar SDK, Rider ou Visual Studio. Para compartilhar, envie o **link da release** ou o arquivo **completo**. Não envie só o executável, nem seus backups financeiros. Veja [as instruções incluídas no pacote](docs/LEIA-ME.txt).
 
 **Sem assinatura digital.** O Windows pode avisar "editor não identificado"; confira que o download veio deste repositório e, se quiser, o checksum (`.sha256`, mais abaixo). No Linux, é necessário desktop com X11/XWayland e bibliotecas do sistema; ARM e Alpine/musl não têm pacote. O AppImage usa FUSE; sem ele, rode com `--appimage-extract-and-run`.
+
+**Antes de atualizar, exporte um backup** (Ajustes → Exportar backup). A versão 2.2 grava os dados em um formato novo (esquema 3, com a data de pagamento). Ela abre e atualiza sem perda os dados das versões 1.x, 2.0 e 2.1, mas **as versões 2.0 e 2.1 (e a 1.x) não abrem dados já salvos pela 2.2**.
 
 **Atualizar.** O aplicativo **nunca acessa a internet**, então não tem atualizador próprio. No Windows, rode o instalador novo: ele atualiza por cima da versão instalada. No Linux, baixe o AppImage novo (ou use a ferramenta [AppImageUpdate](https://github.com/AppImage/AppImageUpdate) sobre o arquivo antigo, que lê a informação de atualização embutida e baixa só a diferença). No pacote portátil, extraia a versão nova em outra pasta. Em todos os casos seus dados ficam na pasta local da sua conta, separados do programa: atualizar ou desinstalar **não os apaga**. Mesmo assim, exporte um backup antes de atualizar. A versão 2 grava os dados no esquema 2, que o BankManager 1.x não abre; as versões antigas dos dados são lidas e atualizadas sem perda.
 
@@ -50,7 +54,9 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 4. Para dívidas parceladas, informe o **valor total**, incluindo juros já negociados, e até 120 parcelas. Cada vencimento é criado no mês correspondente. Listas de itens são lançadas à vista.
 5. Para contas fixas (aluguel, internet, assinaturas), marque **Repetir todo mês** ao criar a despesa. Em **Despesas → Recorrentes** (ou em **Previsões e metas → Despesas recorrentes**) você encerra ou remove cada uma. Na lista de despesas, use o menu **⋯** de cada linha para marcar como paga, editar ou excluir; filtre por busca, situação e categoria e navegue entre meses. **Ctrl+N** abre uma nova despesa em qualquer tela.
 6. Em **Previsões e metas**, um submenu reúne as metas por categoria, a previsão do mês seguinte ao selecionado, as despesas recorrentes e o acerto de contas.
-7. Em **Ajustes**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
+7. Ao marcar uma despesa como paga, o aplicativo guarda **quem pagou** e a **data do pagamento** (hoje, ou a que você informar). A lista mostra "Pago em dd/MM".
+8. Para mandar algumas despesas a outra pessoa, use **Despesas → Compartilhar**; quem recebe usa **Importar** e as despesas são adicionadas às dela, sem substituir nada (veja [Compartilhar despesas](#compartilhar-despesas)).
+9. Em **Ajustes**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
 
 ## Regras financeiras
 
@@ -61,14 +67,36 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 - Os centavos restantes do rateio seguem os maiores restos fracionários, com desempate estável por identificador. A soma sempre coincide com a despesa.
 - Parcelas distribuem exatamente o total, incluindo centavos, preservando o dia de referência quando possível: 31/jan → 28 ou 29/fev → 31/mar.
 - Editar uma renda ou despesa individual recalcula o rateio daquele mês. O histórico não é um livro contábil imutável. Uma edição/exclusão de parcela afeta apenas o lançamento selecionado.
-- **Saldo planejado = renda − todas as despesas do mês**, pagas ou em aberto. Marcar pago quita o lançamento inteiro para todos os responsáveis; não há pagamento parcial ou conciliação bancária.
+- **Saldo planejado = renda − todas as despesas do mês**, pagas ou em aberto. Marcar pago quita o lançamento inteiro para todos os responsáveis e guarda a data do pagamento; reabrir apaga a data e quem pagou. Não há pagamento parcial ou conciliação bancária. O saldo e o gráfico seguem o **vencimento**; só a lista de últimas movimentações segue a data do pagamento.
 
 ## Planilhas (CSV)
 
 Em **Ajustes → Seus dados → Planilhas**:
 
-- **Exportar despesas (CSV):** todas as despesas, com data, descrição, categoria, valor, situação, quem pagou, responsáveis, divisão, parcela e se é recorrente. O arquivo usa ponto e vírgula, vírgula decimal e UTF-8 com BOM, então abre direto no Excel em português. Textos que começam com `=`, `+`, `-` ou `@` recebem um apóstrofo, para a planilha não executá-los como fórmula.
-- **Importar extrato (CSV):** um assistente lê o arquivo (UTF-8 ou Latin-1; separador `;`, `,` ou tabulação), sugere as colunas de data, descrição e valor, e mostra ao vivo o que será importado, ignorado, repetido ou com erro (com o número da linha). Valores negativos são despesas (extrato de conta); para fatura de cartão, escolha "Positivos". Entradas, estornos e valor zero são ignorados. As despesas entram **já pagas**, na categoria **Outros** e **sem "quem pagou"**, então não entram no acerto de contas; edite cada uma para mudar a categoria. Importar o mesmo extrato duas vezes não repete nada (mesma data, valor e descrição). Limites: 5 MB e 10.000 linhas.
+- **Exportar despesas (CSV):** todas as despesas, com data, descrição, categoria, valor, situação, quem pagou, responsáveis, divisão, parcela, se é recorrente e a data do pagamento. O arquivo usa ponto e vírgula, vírgula decimal e UTF-8 com BOM, então abre direto no Excel em português. Textos que começam com `=`, `+`, `-` ou `@` recebem um apóstrofo, para a planilha não executá-los como fórmula.
+- **Importar extrato (CSV):** um assistente lê o arquivo (UTF-8 ou Latin-1; separador `;`, `,` ou tabulação), sugere as colunas de data, descrição e valor, e mostra ao vivo o que será importado, ignorado, repetido ou com erro (com o número da linha). Valores negativos são despesas (extrato de conta); para fatura de cartão, escolha "Positivos". Entradas, estornos e valor zero são ignorados. As despesas entram **já pagas**, na categoria **Outros** e **sem "quem pagou"**, então não entram no acerto de contas; edite cada uma para mudar a categoria. Importar o mesmo extrato duas vezes não repete nada (mesma data, valor e descrição). Limites: 5 MB e 10.000 linhas. A data de cada linha vira também a data do pagamento.
+
+## Compartilhar despesas
+
+Serve para passar **algumas** despesas a outra pessoa que usa o BankManager (por exemplo, as contas da casa para quem divide com você). É diferente do backup: o backup leva tudo e, ao ser importado, **substitui** a base; o compartilhamento leva só o que você marcar e, ao ser importado, **adiciona**.
+
+**Enviar (Despesas → Compartilhar, ou Ajustes → Compartilhar despesas):**
+
+- Marque as despesas nas caixas de seleção ou use os atalhos: **Todas deste mês**, **Marcar uma categoria** e **Completar parcelas** (marca as outras parcelas das compras parceladas já marcadas).
+- A prévia mostra quantas despesas vão, o total e as pessoas citadas. O arquivo tem extensão própria, `.bmshare.json`.
+- Vão no arquivo: descrição, categoria, vencimento, valor, itens da lista de compra, dados de parcela, modo de divisão, os responsáveis **pelo nome** e as categorias próprias usadas. **Nunca vão:** rendas, metas, acertos de contas e despesas não marcadas.
+- Por padrão, todas vão "em aberto". Marque **Incluir a situação de pagamento** para levar também pago/em aberto, a data do pagamento e quem pagou.
+- O arquivo é um texto legível, sem senha, com informações financeiras: envie só para quem deve recebê-lo.
+
+**Receber (Despesas → Importar, ou Ajustes → Importar despesas compartilhadas):**
+
+1. O arquivo é validado (tamanho de até 5 MB, até 5.000 despesas, campos desconhecidos e versões mais novas recusados) e resumido.
+2. **Pessoas:** para cada nome do arquivo, escolha uma pessoa já cadastrada, criar um cadastro novo ou ignorar. O aplicativo sugere pelo nome (sem diferenciar maiúsculas e acentos), mas a escolha é sua. Se todas as pessoas de uma despesa forem ignoradas, é preciso escolher quem assume.
+3. **Categorias** próprias que não existem na sua base: criar (até o limite de 40) ou usar "Outros".
+4. **Prévia ao vivo:** o que será adicionado, o que já existe e o que tem erro. Cada despesa carrega um identificador de origem; importar o mesmo arquivo duas vezes **não duplica** nada (as repetidas são puladas, a menos que você marque para importar mesmo assim).
+5. Ao confirmar, tudo é gravado de uma vez (ou nada, se algo falhar), e a versão anterior da base vira a cópia automática. No fim aparece "N despesas adicionadas, M puladas".
+
+Atenção à **divisão proporcional**: ela depende da renda de cada pessoa na base de quem importa, então o rateio é recalculado com as rendas de lá e pode ser diferente do seu. Quem importa pode manter o modo ou trocar por divisão igual. Despesas recorrentes viajam como despesas comuns (o modelo "todo mês" não é enviado). Um backup escolhido no lugar de um compartilhamento (ou o contrário) é recusado com uma mensagem clara, sem alterar nada.
 
 ## Buscar em todos os meses
 
@@ -85,7 +113,7 @@ De cima para baixo:
 - **Saldo planejado:** renda do mês menos todas as despesas do mês (pagas ou em aberto), com um gráfico das despesas dos últimos 6 meses até o mês selecionado. O eixo do gráfico sempre começa em zero, para não exagerar diferenças; passe o mouse em uma barra para ver o valor. Meses sem despesas aparecem com uma barra mínima.
 - **Resumo da casa:** despesas do mês, quanto da renda elas comprometem, renda e valor em aberto.
 - **Metas do mês**, **Próximos pagamentos** (as três contas em aberto mais próximas, com o menu **⋯**) e **Acerto de contas**.
-- **Últimas movimentações:** as rendas do mês e as despesas já marcadas como pagas, das mais recentes para as mais antigas (até 6; "Ver tudo" abre Despesas). Como a renda só tem mês, ela entra com a data do dia 1; a despesa entra pela data de vencimento, porque o aplicativo não guarda o dia do pagamento. Quando há mais itens do que cabem, a última linha fica esmaecida.
+- **Últimas movimentações:** as rendas do mês e as despesas pagas, das mais recentes para as mais antigas (até 6; "Ver tudo" abre Despesas). Como a renda só tem mês, ela entra com a data do dia 1. A despesa entra pela **data do pagamento** e aparece no mês em que foi paga; as que foram pagas em versões anteriores, sem essa data, usam o vencimento.
 
 ## Metas por categoria
 
@@ -127,7 +155,7 @@ Parcelas ficam fora da média para não continuarem sendo previstas após o tér
 
 Os arquivos ficam em `Environment.SpecialFolder.LocalApplicationData/BankManager` (o caminho efetivo aparece na interface). Para desenvolvimento/testes, `BANKMANAGER_DATA_DIR` permite escolher uma pasta isolada.
 
-- `financas.json`: base atual, JSON versionado (esquema 2, que acrescentou as despesas recorrentes). Arquivos e backups da versão 1 continuam sendo lidos e são atualizados sem perda; o arquivo antigo vira a cópia anterior no primeiro salvamento. Um arquivo de versão mais nova que a do aplicativo é recusado.
+- `financas.json`: base atual, JSON versionado (esquema 3: o 2 acrescentou recorrências, quem pagou, metas e categorias; o 3, a data de pagamento e a origem de despesas importadas). Arquivos e backups das versões 1 e 2 continuam sendo lidos e são atualizados sem perda; o arquivo antigo vira a cópia anterior no primeiro salvamento. Um arquivo de versão mais nova que a do aplicativo é recusado.
 - `settings.json`: preferências do aplicativo (tema). Fica separado das finanças: trocar a aparência nunca altera o `financas.json`, e um arquivo de preferências inválido apenas volta ao padrão.
 - `financas.backup.json`: versão anterior ao último salvamento, não um histórico ilimitado de backups.
 - `.lock`: bloqueio de acesso concorrente por outra instância cooperante do aplicativo.
@@ -189,10 +217,10 @@ No Windows, use `python` no lugar de `python3`. O script escolhe o SDK em `~/.do
 Para conferir o download no Linux, no diretório dos arquivos:
 
 ```bash
-sha256sum -c BankManager-2.1.0-linux-x64.tar.gz.sha256
+sha256sum -c BankManager-2.2.0-linux-x64.tar.gz.sha256
 ```
 
-No PowerShell, execute `Get-FileHash .\BankManager-2.1.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
+No PowerShell, execute `Get-FileHash .\BankManager-2.2.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
 
 ### Instalador do Windows e AppImage
 
@@ -211,7 +239,7 @@ O workflow [Build and release](.github/workflows/release.yml) compila, testa e e
 
 1. Atualize `Version` em `BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
 2. Faça commit e push dessas mudanças.
-3. Crie e envie uma tag correspondente, por exemplo `git tag v2.1.1` e `git push origin v2.1.1`.
+3. Crie e envie uma tag correspondente, por exemplo `git tag v2.2.0` e `git push origin v2.2.0`.
 4. O workflow publica instaladores e pacotes na página Releases somente após todos os jobs passarem.
 
 Referências: [publicação desktop do Avalonia no Linux](https://docs.avaloniaui.net/docs/deployment/linux) e [modelos de distribuição do .NET](https://learn.microsoft.com/en-us/dotnet/core/deploying/).

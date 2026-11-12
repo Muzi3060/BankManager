@@ -20,7 +20,8 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 14. `BankManager.Core/GoalEngine.cs`: metas mensais por categoria e seu progresso.
 15. `BankManager.Core/ExpenseSearch.cs`: busca e filtros da lista (um mês ou todos).
 16. `BankManager.Core/Csv.cs`, `CsvExport.cs` e `StatementImport.cs`: leitura/escrita de CSV, exportação e importação de extratos.
-17. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
+17. `BankManager.Core/ExpenseShare.cs`: arquivo de compartilhamento de despesas (exportar as escolhidas, importar adicionando); as telas ficam em `BankManager/Pages/ShareDialogs.cs`.
+18. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
 
@@ -86,7 +87,7 @@ Dinheiro usa `decimal`. `ExpenseItem.Total` arredonda quantidade × preço para 
 
 `RecurrenceEngine.Generate` é idempotente: para cada modelo, cria só os meses que faltam entre o mês inicial e o horizonte (12 meses à frente), pulando os que o usuário excluiu (`SkippedMonths`). Por isso a interface sempre exclui lançamentos com `RemoveExpense`, que registra o mês ignorado. `End` e `Remove` mantêm o histórico pago. A data de referência entra por parâmetro, o que torna tudo testável.
 
-`BudgetData.Version` é a versão do esquema (hoje 2). `BudgetMigrations.ToCurrent` leva dados antigos à versão atual em memória, passo a passo, e `LocalStore.Read` o chama antes de validar; assim importações, recuperação e a base normal se beneficiam. Para criar a versão 3, acrescente um passo ali, suba `CurrentVersion` e escreva o teste "arquivo v2 migra para v3". Regra do projeto: a Fase 3 inteira usa o esquema 2, e novos campos desta fase entram nele com valores padrão que equivalem a "não usado".
+`BudgetData.Version` é a versão do esquema (hoje 3: a 2 trouxe recorrências, quem pagou, metas e categorias; a 3, `Expense.PaidDate` e `Expense.OriginId`). A migração é em cadeia (1 → 2 → 3) e os testes a exercitam com arquivos reais das versões 1 e 2, guardados em `BankManager.Tests/Fixtures/`. `BudgetMigrations.ToCurrent` leva dados antigos à versão atual em memória, passo a passo, e `LocalStore.Read` o chama antes de validar; assim importações, recuperação e a base normal se beneficiam. Para criar a versão 3, acrescente um passo ali, suba `CurrentVersion` e escreva o teste "arquivo v2 migra para v3". Regra do projeto: a Fase 3 inteira usa o esquema 2, e novos campos desta fase entram nele com valores padrão que equivalem a "não usado".
 
 ### Acerto de contas
 
@@ -131,6 +132,10 @@ O visual é o "Estilo C": o fundo da janela é um degradê (`BgBrush`, um `Linea
 A preferência (Automático, Claro ou Escuro) fica em `settings.json`, lida por `SettingsStore` antes de a janela aparecer. `App.ApplyTheme` ajusta `RequestedThemeVariant`; no modo Automático ele volta ao padrão, que acompanha o sistema.
 
 Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os desenha com a cor do botão que os contém, igual em Windows e Linux. O ícone do aplicativo vem de `Assets/icon.svg`; `scripts/make-icons.sh` gera o `icon.png` (janela) e o `icon.ico` (executável do Windows).
+
+### Compartilhar despesas
+
+`ExpenseShare` (Core) cuida de tudo sem tocar na interface. `Build` monta um `ShareFile` com as despesas escolhidas; as pessoas vão pelo nome, porque os Ids de quem envia não existem na base de quem recebe. `Read` e `Validate` aplicam as proteções do backup (tamanho, profundidade, campos desconhecidos, versão) e conferem o campo `Kind`, que distingue o compartilhamento do backup; `LocalStore.Read` faz a conferência inversa. `Suggest` propõe o mapeamento de pessoas e categorias, e `Import` calcula o resultado em uma cópia profunda e valida o orçamento inteiro: serve de prévia e não altera nada. Para gravar, a tela chama `Commit(d => ExpenseShare.Apply(d, ...))`, o mesmo caminho seguro de qualquer edição (cópia, validação, gravação atômica, cópia anterior). Cada despesa importada guarda em `OriginId` o Id que tinha na origem; é por ele que uma segunda importação reconhece as duplicadas.
 
 ### Componentes de interface
 
