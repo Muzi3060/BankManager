@@ -54,11 +54,12 @@ internal static class Ui
         var panel = Stack(children); panel.Orientation = Orientation.Horizontal; panel.Spacing = 10; return panel;
     }
     /// <summary>
-    /// Envolve um conteúdo com a borda, o fundo e o espaçamento do estilo card.
+    /// Envolve um conteúdo em um cartão. Estilos: "card" (translúcido, o padrão), "solid" (branco, usado nas metas)
+    /// e "summary" (escuro, do resumo da casa).
     /// </summary>
-    public static Border Card(Control content)
+    public static Border Card(Control content, string style = "card")
     {
-        var border = new Border { Child = content }; border.Classes.Add("card"); return border;
+        var border = new Border { Child = content }; border.Classes.Add(style); return border;
     }
     /// <summary>
     /// Cria um botão e liga seu clique à ação recebida. Ações assíncronas da janela usam o tratamento de erros de Run.
@@ -113,6 +114,8 @@ internal static class Ui
     {
         Title = title, Width = width, Height = 720, MinWidth = 480, MinHeight = 400, Icon = AppIcon,
         WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        // A classe "dialog" troca o degradê da janela pela superfície sólida.
+        Classes = { "dialog" },
         Content = new ScrollViewer { Content = new Border { Padding = new Thickness(28), Child = content } }
     };
     /// <summary>
@@ -148,12 +151,26 @@ internal static class Ui
         var chip = new Border { Child = new TextBlock { Text = text } }; chip.Classes.Add("chip"); if (tone is not null) chip.Classes.Add(tone); return chip;
     }
     /// <summary>
-    /// Círculo com a inicial do nome, usado para identificar pessoas.
+    /// Círculo com a inicial do nome, usado para identificar pessoas. O forte (preto) destaca uma pessoa ao lado de outra.
     /// </summary>
-    public static Border Avatar(string name)
+    public static Border Avatar(string name, bool strong = false)
     {
         var initial = name.Trim().Length > 0 ? name.Trim()[..1].ToUpper(Money.Culture) : "?";
-        var avatar = new Border { Child = new TextBlock { Text = initial }, VerticalAlignment = VerticalAlignment.Center }; avatar.Classes.Add("avatar"); return avatar;
+        var avatar = new Border { Child = new TextBlock { Text = initial }, VerticalAlignment = VerticalAlignment.Center }; avatar.Classes.Add("avatar"); avatar.Classes.Set("strong", strong); return avatar;
+    }
+    /// <summary>
+    /// Nome do ícone de uma categoria. As oito categorias padrão têm ícone próprio; as criadas pelo usuário usam a etiqueta.
+    /// </summary>
+    public static string CategoryIconName(string category) => category switch
+    {
+        "Moradia" => "Home", "Mercado" => "Cart", "Transporte" => "Car", "Saúde" => "Heart", "Educação" => "Book", "Lazer" => "Smile", "Serviços" => "Zap", _ => "Tag"
+    };
+    /// <summary>
+    /// Círculo de 36 px com um ícone. Com "income", fica verde (entrada de dinheiro).
+    /// </summary>
+    public static Border IconCircle(string icon, bool income = false)
+    {
+        var circle = new Border { Child = Icon(icon, 17) }; circle.Classes.Add("iconcircle"); circle.Classes.Set("income", income); return circle;
     }
     /// <summary>
     /// Controle de opções lado a lado (apenas uma ativa). Atualiza o destaque sozinho e avisa a opção escolhida.

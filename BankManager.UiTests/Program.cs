@@ -169,10 +169,10 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             var financeBefore = File.ReadAllBytes(Path.Combine(directory, "financas.json"));
             await Click("Tema escuro", main);
             Check(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark, "Dark theme applies immediately");
-            // O fundo da janela é um DynamicResource: confirma que ele realmente mudou de cor com o tema.
-            var darkBg = ((ISolidColorBrush)main.Background!).Color;
+            // O fundo da janela é um degradê vindo de um DynamicResource: confirma que ele realmente mudou de cor com o tema.
+            var darkBg = ((IGradientBrush)main.Background!).GradientStops[0].Color;
             await Click("Tema claro", main);
-            var lightBg = ((ISolidColorBrush)main.Background!).Color;
+            var lightBg = ((IGradientBrush)main.Background!).GradientStops[0].Color;
             Check(Application.Current.RequestedThemeVariant == ThemeVariant.Light && darkBg != lightBg && lightBg.R > darkBg.R, "Window background follows the theme");
             Check(SettingsStore.Load(directory).Theme == ThemePreference.Light, "Theme preference persists in settings.json");
             Check(financeBefore.SequenceEqual(File.ReadAllBytes(Path.Combine(directory, "financas.json"))), "Theme change leaves financas.json untouched");
