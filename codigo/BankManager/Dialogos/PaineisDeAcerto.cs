@@ -26,7 +26,7 @@ public sealed partial class JanelaPrincipal
         var hoje = DateOnly.FromDateTime(DateTime.Today);
         if (dados.Pessoas.Count == 1) return (true, dados.Pessoas[0].Id, hoje);
         var resultado = (Escolheu: false, Pagador: (Guid?)null, DataDoPagamento: hoje);
-        Window? dialogo = null; var erro = Texto("", "error");
+        Window? dialogo = null; var erro = Texto("", "erro");
         var data = CampoDeTexto(hoje.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
         // Só fecha com uma data válida; caso contrário, mostra o erro e deixa corrigir.
         void Escolher(Guid? pagador)
@@ -38,11 +38,11 @@ public sealed partial class JanelaPrincipal
         var painel = Pilha(Cabecalho("Quem pagou?", $"{despesa.Titulo} · {Dinheiro.Formatar(despesa.Valor)}"), Campo("Data do pagamento (dd/mm/aaaa)", data), erro);
         foreach (var pessoa in dados.Pessoas)
         {
-            var id = pessoa.Id; var botao = Botao(pessoa.Nome, () => Escolher(id), id == sugerido ? "primary" : null); botao.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(botao);
+            var id = pessoa.Id; var botao = Botao(pessoa.Nome, () => Escolher(id), id == sugerido ? "primario" : null); botao.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(botao);
         }
-        var nenhum = Botao("Não informar", () => Escolher(null), "ghost"); nenhum.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(nenhum);
-        painel.Children.Add(Texto("Quem pagou entra no acerto de contas: quem não pagou deve a sua parte a quem pagou. Sem informar, a despesa fica fora do acerto.", "muted"));
-        painel.Children.Add(Botao("Cancelar", () => dialogo!.Close(), "ghost"));
+        var nenhum = Botao("Não informar", () => Escolher(null), "fantasma"); nenhum.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(nenhum);
+        painel.Children.Add(Texto("Quem pagou entra no acerto de contas: quem não pagou deve a sua parte a quem pagou. Sem informar, a despesa fica fora do acerto.", "apagado"));
+        painel.Children.Add(Botao("Cancelar", () => dialogo!.Close(), "fantasma"));
         dialogo = Dialogo("Quem pagou?", painel, 460); dialogo.Height = Math.Min(760, 440 + 50 * dados.Pessoas.Count);
         await dialogo.ShowDialog(this);
         return resultado;
@@ -59,7 +59,7 @@ public sealed partial class JanelaPrincipal
         if (dividas.Count == 0)
         {
             var algumPagador = dados.Acertos.Count > 0 || dados.Despesas.Any(e => e.Paga && e.PagaPor is not null);
-            var vazio = Pilha(Texto("Tudo certo por aqui", "strong"), Texto(algumPagador ? "Ninguém deve nada a ninguém." : "Ao marcar uma despesa como paga, informe quem pagou. O BankManager mostra aqui quem deve a quem.", "muted")); vazio.Spacing = 4;
+            var vazio = Pilha(Texto("Tudo certo por aqui", "forte"), Texto(algumPagador ? "Ninguém deve nada a ninguém." : "Ao marcar uma despesa como paga, informe quem pagou. O BankManager mostra aqui quem deve a quem.", "apagado")); vazio.Spacing = 4;
             painel.Children.Add(vazio);
         }
         foreach (var divida in dividas)
@@ -67,16 +67,16 @@ public sealed partial class JanelaPrincipal
             if (divida != dividas[0]) painel.Children.Add(Divisoria());
             var (devedor, credor) = (NomeDe(divida.IdDoDevedor), NomeDe(divida.IdDoCredor));
             // Avatares com uma seta entre eles: quem deve (neutro) paga a quem recebe (em destaque).
-            var seta = Icone("ArrowRight", 18); seta.Margin = new Thickness(12, 0);
-            var avatares = new StackPanel { Orientation = Orientation.Horizontal }; avatares.Children.Add(Avatar(devedor).ComClasse("large")); avatares.Children.Add(seta); avatares.Children.Add(Avatar(credor, forte: true).ComClasse("large"));
+            var seta = Icone("SetaParaDireita", 18); seta.Margin = new Thickness(12, 0);
+            var avatares = new StackPanel { Orientation = Orientation.Horizontal }; avatares.Children.Add(Avatar(devedor).ComClasse("grande")); avatares.Children.Add(seta); avatares.Children.Add(Avatar(credor, forte: true).ComClasse("grande"));
             // Só o valor em negrito; o nome de automação traz a frase completa (leitores de tela e testes).
             var frase = new TextBlock { TextWrapping = TextWrapping.Wrap };
             frase.Inlines!.Add(new Run(devedor + " deve ")); frase.Inlines.Add(new Run(Dinheiro.Formatar(divida.Valor)) { FontWeight = FontWeight.SemiBold }); frase.Inlines.Add(new Run(" a " + credor));
             AutomationProperties.SetName(frase, $"{devedor} deve {Dinheiro.Formatar(divida.Valor)} a {credor}");
-            var acertar = Botao("Registrar acerto", () => _ = Executar(() => RegistrarAcerto(divida)), "ink"); acertar.HorizontalAlignment = HorizontalAlignment.Left;
+            var acertar = Botao("Registrar acerto", () => _ = Executar(() => RegistrarAcerto(divida)), "escuro"); acertar.HorizontalAlignment = HorizontalAlignment.Left;
             var bloco = Pilha(avatares, frase, acertar); bloco.Spacing = 12; acertar.Margin = new Thickness(0, 6, 0, 0); painel.Children.Add(bloco);
         }
-        if (dividas.Count > 0) painel.Children.Add(Texto("Saldo acumulado de todos os meses, já descontados os acertos registrados.", "muted").ComClasse("small"));
+        if (dividas.Count > 0) painel.Children.Add(Texto("Saldo acumulado de todos os meses, já descontados os acertos registrados.", "apagado").ComClasse("pequeno"));
         return Cartao(painel);
     }
     /// <summary>
@@ -89,7 +89,7 @@ public sealed partial class JanelaPrincipal
         var para = ListaDeOpcoes(nomes, sugestao is null ? Math.Min(1, nomes.Count - 1) : dados.Pessoas.FindIndex(p => p.Id == sugestao.IdDoCredor));
         var valor = CampoDeTexto(sugestao?.Valor.ToString("0.00", Dinheiro.Cultura), "Ex.: 200,00", 12);
         var data = CampoDeTexto(DateTime.Today.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
-        var erro = Texto("", "error");
+        var erro = Texto("", "erro");
         var painel = Pilha(Cabecalho("Registrar acerto", "Um pagamento entre duas pessoas para quitar o que uma deve à outra."),
             Colunas(Campo("Quem pagou", de), Campo("Quem recebeu", para)), Colunas(Campo("Valor (R$)", valor, "Pode ser menor que o devido."), Campo("Data (dd/mm/aaaa)", data)), erro);
         var dialogo = Dialogo("Registrar acerto", painel, 600); dialogo.Height = 480;
@@ -103,7 +103,7 @@ public sealed partial class JanelaPrincipal
                 Gravar(d => d.Acertos.Add(acerto)); dialogo.Close();
             }
             catch (Exception ex) { erro.Text = ErroAmigavel(ex); }
-        }, "primary")));
+        }, "primario")));
         await dialogo.ShowDialog(this);
     }
     /// <summary>
@@ -120,16 +120,16 @@ public sealed partial class JanelaPrincipal
             if (fileiras.Children.Count > 0) fileiras.Children.Add(Divisoria());
             var id = s.Id;
             var texto = Texto($"{s.Data:dd/MM/yyyy} · {NomeDe(s.IdDoPagador)} pagou a {NomeDe(s.IdDoRecebedor)}"); texto.VerticalAlignment = VerticalAlignment.Center;
-            var valor = Texto(Dinheiro.Formatar(s.Valor), "strong"); valor.VerticalAlignment = VerticalAlignment.Center; valor.Margin = new Thickness(16, 0);
+            var valor = Texto(Dinheiro.Formatar(s.Valor), "forte"); valor.VerticalAlignment = VerticalAlignment.Center; valor.Margin = new Thickness(16, 0);
             var excluir = Botao("Excluir acerto", () => _ = Executar(async () =>
             {
                 if (await Confirmar(dono(), "Excluir acerto?", "O acerto sai do histórico e a dívida correspondente volta a aparecer.")) Gravar(d => d.Acertos.RemoveAll(x => x.Id == id));
                 depois();
-            }), "ghost round danger", "Trash", soIcone: true);
+            }), "fantasma redondo perigo", "Lixeira", soIcone: true);
             var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 6) };
             Grid.SetColumn(valor, 1); Grid.SetColumn(excluir, 2); fileira.Children.Add(texto); fileira.Children.Add(valor); fileira.Children.Add(excluir); fileiras.Children.Add(fileira);
         }
-        if (dados.Acertos.Count == 0) fileiras.Children.Add(Texto("Nenhum acerto registrado ainda.", "muted"));
+        if (dados.Acertos.Count == 0) fileiras.Children.Add(Texto("Nenhum acerto registrado ainda.", "apagado"));
         return fileiras;
     }
     /// <summary>
@@ -142,7 +142,7 @@ public sealed partial class JanelaPrincipal
         Atualizar();
         var painel = Pilha(Cabecalho("Histórico de acertos", "Pagamentos já feitos entre as pessoas."), suporte);
         dialogo = Dialogo("Histórico de acertos", painel, 640); dialogo.Height = 520;
-        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primary")));
+        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primario")));
         await dialogo.ShowDialog(this);
     }
 }

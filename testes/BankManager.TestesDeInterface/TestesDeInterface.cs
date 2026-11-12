@@ -90,13 +90,13 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
                 ((MenuFlyout)mais.Flyout!).Items.OfType<MenuItem>().First(m => AutomationProperties.GetName(m) == rotulo).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); await Task.Delay(180);
             }
             // Uma condição falsa interrompe o roteiro e mantém o resultado como falha.
-            void Verificar(bool ok, string descricao) { if (!ok) throw new Exception(descricao); Console.WriteLine("PASS " + descricao); }
-            Verificar(principal.IsVisible, "Main window opens");
+            void Verificar(bool ok, string descricao) { if (!ok) throw new Exception(descricao); Console.WriteLine("PASSOU " + descricao); }
+            Verificar(principal.IsVisible, "A janela principal abre");
             // Fotografa uma janela no tamanho em que ela está na tela e salva na pasta de capturas.
             void Captura(Window janela, string nome)
             {
                 using var captura = new RenderTargetBitmap(new PixelSize((int)janela.Bounds.Width, (int)janela.Bounds.Height), new Vector(96, 96));
-                captura.Render(janela); captura.Save(Path.Combine(pastaDeCapturas!, nome + ".png"), PngBitmapEncoderOptions.Default); Console.WriteLine("Screenshot: " + nome);
+                captura.Render(janela); captura.Save(Path.Combine(pastaDeCapturas!, nome + ".png"), PngBitmapEncoderOptions.Default); Console.WriteLine("Captura: " + nome);
             }
             if (!string.IsNullOrEmpty(pastaDeCapturas))
             {
@@ -151,67 +151,67 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             }
             // O eixo do gráfico começa em zero e usa passos "redondos"; sem dados, não há eixo a desenhar além do zero.
             Verificar(BankManager.Controles.GraficoDeBarras.Eixo(4600.90m) == (6000m, 2000m) && BankManager.Controles.GraficoDeBarras.Eixo(950m) == (1000m, 500m) && BankManager.Controles.GraficoDeBarras.Eixo(0m) == (0m, 0m)
-                && BankManager.Controles.GraficoDeBarras.RotuloDoEixo(1500m, Dinheiro.Cultura) == "R$ 1,5 mil" && BankManager.Controles.GraficoDeBarras.RotuloDoEixo(0m, Dinheiro.Cultura) == "R$ 0", "Chart axis starts at zero with round steps");
+                && BankManager.Controles.GraficoDeBarras.RotuloDoEixo(1500m, Dinheiro.Cultura) == "R$ 1,5 mil" && BankManager.Controles.GraficoDeBarras.RotuloDoEixo(0m, Dinheiro.Cultura) == "R$ 0", "O eixo do gráfico começa em zero, com passos redondos");
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
             await Clicar("Cadastrar primeira pessoa", principal);
             var entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray(); entradas.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Ana"; entradas.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "3000,00";
             await Clicar("Salvar pessoa");
-            Verificar(cicloDeVida.Windows.Count == 1, "Person dialog saves and closes");
+            Verificar(cicloDeVida.Windows.Count == 1, "O diálogo de pessoa salva e fecha");
             await Clicar("Pessoas e rendas", principal); await Clicar("Adicionar pessoa", principal);
             entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray(); entradas.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Bruno"; entradas.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "1000,00"; await Clicar("Salvar pessoa");
             // Cenário 1b: uma pessoa pode ter várias rendas no mês; a linha "Extra" de zero mantém os totais dos cenários seguintes.
             await Clicar("Editar", principal); await Clicar("Adicionar renda");
             entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray(); entradas.Where(i => i.PlaceholderText == "Ex.: Salário").Last().Text = "Extra"; entradas.Where(i => i.PlaceholderText == "Ex.: 3000,00").Last().Text = "0,00";
             await Clicar("Salvar pessoa");
-            var linhasDaAna = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")); Verificar(linhasDaAna.Rendas.Count(i => i.IdDaPessoa == linhasDaAna.Pessoas[0].Id) == 2 && MotorFinanceiro.Renda(linhasDaAna, linhasDaAna.Pessoas[0].Id, Datas.Mes(DateOnly.FromDateTime(DateTime.Today))) == 3000m, "Person can have several income lines");
+            var linhasDaAna = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")); Verificar(linhasDaAna.Rendas.Count(i => i.IdDaPessoa == linhasDaAna.Pessoas[0].Id) == 2 && MotorFinanceiro.Renda(linhasDaAna, linhasDaAna.Pessoas[0].Id, Datas.Mes(DateOnly.FromDateTime(DateTime.Today))) == 3000m, "Uma pessoa pode ter várias linhas de renda");
             // Cenário 2: compra compartilhada com prévia proporcional de 600/200 e conferência do JSON salvo.
             await Clicar("Despesas", principal); await Clicar("Nova despesa", principal);
             entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray();
             entradas.First(i => i.PlaceholderText == "Ex.: Compra do mercado").Text = "Mercado da família";
             entradas.First(i => i.PlaceholderText == "Ex.: 1000,00").Text = "800,00";
             await Clicar("Conferir divisão antes de salvar");
-            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("600,00") == true && t.Text.Contains("200,00")), "Proportional preview renders 600 / 200");
+            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("600,00") == true && t.Text.Contains("200,00")), "A prévia proporcional mostra 600 / 200");
             await Clicar("Salvar despesa");
-            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single().Valor == 800m, "Expense persists from UI");
+            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single().Valor == 800m, "A despesa criada pela interface é gravada");
             // Cenário 3: mudança de situação precisa chegar ao armazenamento, não apenas à tela.
             // Pela visão geral, o item "Marcar como pago" do menu "⋯" dos próximos pagamentos.
             // Marcar como pago pergunta quem pagou: aqui, Ana.
             await Clicar("Visão geral", principal); await Menu("Marcar como pago"); await Clicar("Ana");
             var dadosPagos = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(dadosPagos.Despesas.Single().Paga && dadosPagos.Despesas.Single().PagaPor == dadosPagos.Pessoas[0].Id && dadosPagos.Despesas.Single().DataDoPagamento == DateOnly.FromDateTime(DateTime.Today), "Payment action persists with who paid and today's date");
+            Verificar(dadosPagos.Despesas.Single().Paga && dadosPagos.Despesas.Single().PagaPor == dadosPagos.Pessoas[0].Id && dadosPagos.Despesas.Single().DataDoPagamento == DateOnly.FromDateTime(DateTime.Today), "Marcar como pago grava quem pagou e a data de hoje");
             // A visão geral nova: o gráfico tem texto alternativo com os valores e a despesa paga entra nas últimas movimentações, depois das rendas.
             var grafico = principal.GetVisualDescendants().OfType<BankManager.Controles.GraficoDeBarras>().Single();
-            Verificar(AutomationProperties.GetName(grafico)!.StartsWith("Despesas dos últimos 6 meses") && AutomationProperties.GetName(grafico)!.Contains(Dinheiro.Formatar(800m)), "Chart exposes its values as alternative text");
+            Verificar(AutomationProperties.GetName(grafico)!.StartsWith("Despesas dos últimos 6 meses") && AutomationProperties.GetName(grafico)!.Contains(Dinheiro.Formatar(800m)), "O gráfico expõe os valores como texto alternativo");
             var textos = principal.GetVisualDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
-            Verificar(textos.Contains("− " + Dinheiro.Formatar(800m)) && textos.Contains("+ " + Dinheiro.Formatar(3000m)) && textos.Contains("+ " + Dinheiro.Formatar(1000m)) && textos.IndexOf("− " + Dinheiro.Formatar(800m)) < textos.IndexOf("+ " + Dinheiro.Formatar(3000m)), "Recent movements list paid expenses and incomes, newest first");
+            Verificar(textos.Contains("− " + Dinheiro.Formatar(800m)) && textos.Contains("+ " + Dinheiro.Formatar(3000m)) && textos.Contains("+ " + Dinheiro.Formatar(1000m)) && textos.IndexOf("− " + Dinheiro.Formatar(800m)) < textos.IndexOf("+ " + Dinheiro.Formatar(3000m)), "Movimentações recentes listam despesas pagas e rendas, das mais novas para as mais antigas");
             // Nenhuma linha das movimentações fica esmaecida, e o nome do mês é um botão com nome acessível e dica.
-            Verificar(principal.GetVisualDescendants().OfType<Grid>().All(g => g.Opacity == 1) && ToolTip.GetTip(AcharBotao(principal, "Voltar ao mês atual")) is "Voltar ao mês atual", "Movement rows are fully opaque and the month is a labelled button");
+            Verificar(principal.GetVisualDescendants().OfType<Grid>().All(g => g.Opacity == 1) && ToolTip.GetTip(AcharBotao(principal, "Voltar ao mês atual")) is "Voltar ao mês atual", "As linhas de movimentação têm opacidade total e o mês é um botão com nome");
             // Ana pagou 800 (600/200): o cartão de acerto mostra que Bruno deve 200 a Ana.
             var textoDaDivida = $"Bruno deve {Dinheiro.Formatar(200m)} a Ana";
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => AutomationProperties.GetName(x) == textoDaDivida), "Settlement card shows who owes whom");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => AutomationProperties.GetName(x) == textoDaDivida), "O cartão de acerto mostra quem deve a quem");
             await Clicar("Registrar acerto", principal); await Clicar("Salvar acerto");
             var acertado = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(acertado.Acertos.Count == 1 && acertado.Acertos[0].Valor == 200m && MotorDeAcertos.Dividas(acertado).Count == 0, "Registering a settlement clears the debt");
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Tudo certo") == true), "Settlement card shows all settled");
+            Verificar(acertado.Acertos.Count == 1 && acertado.Acertos[0].Valor == 200m && MotorDeAcertos.Dividas(acertado).Count == 0, "Registrar um acerto zera a dívida");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Tudo certo") == true), "O cartão de acerto mostra tudo certo");
             // Cenário 4: valor inválido mantém o formulário aberto e preserva o valor anteriormente salvo.
             // A edição fica no menu "⋯" da linha: aciona o item "Editar" sem depender de abrir o popup.
             await Clicar("Despesas", principal); await Menu("Editar");
             entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray(); entradas.First(i => i.PlaceholderText == "Ex.: 1000,00").Text = "-1";
             await Clicar("Salvar despesa");
-            Verificar(cicloDeVida.Windows.Count == 2, "Invalid expense keeps editor open");
-            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single().Valor == 800m, "Invalid edit preserves saved value");
+            Verificar(cicloDeVida.Windows.Count == 2, "Despesa inválida mantém o editor aberto");
+            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single().Valor == 800m, "Edição inválida preserva o valor salvo");
             await Clicar("Cancelar");
             // Cenário 4b: reabrir apaga a data do pagamento; pagar de novo com uma data inválida mantém o diálogo aberto, e uma data
             // válida é gravada e aparece na linha como "Pago em dd/MM".
             await Menu("Marcar em aberto");
-            var reaberta = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single(); Verificar(!reaberta.Paga && reaberta.DataDoPagamento is null && reaberta.PagaPor is null, "Reopening clears the paid date");
+            var reaberta = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single(); Verificar(!reaberta.Paga && reaberta.DataDoPagamento is null && reaberta.PagaPor is null, "Reabrir apaga a data de pagamento");
             await Menu("Marcar como pago");
             var dataDePagar = Ativa().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Data do pagamento (dd/mm/aaaa)");
-            dataDePagar.Text = "31/02/2026"; await Clicar("Bruno"); Verificar(cicloDeVida.Windows.Count == 2, "Invalid paid date keeps the dialog open");
+            dataDePagar.Text = "31/02/2026"; await Clicar("Bruno"); Verificar(cicloDeVida.Windows.Count == 2, "Data de pagamento inválida mantém o diálogo aberto");
             var dataEscolhida = Datas.Mes(DateOnly.FromDateTime(DateTime.Today)).AddDays(1);
             dataDePagar.Text = dataEscolhida.ToString("dd/MM/yyyy"); await Clicar("Ana");
-            var pagaDeNovo = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single(); Verificar(pagaDeNovo.Paga && pagaDeNovo.DataDoPagamento == dataEscolhida, "Chosen paid date persists");
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == $"Pago em {dataEscolhida:dd/MM}"), "Expense row shows the paid date");
+            var pagaDeNovo = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single(); Verificar(pagaDeNovo.Paga && pagaDeNovo.DataDoPagamento == dataEscolhida, "A data de pagamento escolhida é gravada");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == $"Pago em {dataEscolhida:dd/MM}"), "A linha da despesa mostra a data de pagamento");
             // Cenário 5: duas unidades de 25,50 devem gerar uma despesa de 51,00 com a quantidade registrada.
             await Clicar("Nova despesa", principal);
             entradas = Ativa().GetVisualDescendants().OfType<TextBox>().ToArray();
@@ -225,41 +225,41 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             await Clicar("+ Adicionar item");
             await Clicar("Salvar despesa");
             var despesaComItens = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Single(e => e.Titulo == "Compra detalhada");
-            Verificar(despesaComItens.Valor == 51m && despesaComItens.Itens.Single().Quantidade == 2m, "Item list calculates and persists 2 × 25.50");
+            Verificar(despesaComItens.Valor == 51m && despesaComItens.Itens.Single().Quantidade == 2m, "A lista de itens calcula e grava 2 × 25,50");
             // Cenário 6: navegação renderiza as páginas de previsão e backup sem erros.
             // "Previsões e metas" abre nas metas (ainda vazias) e o submenu leva às outras três abas.
             await Clicar("Previsões e metas", principal);
-            Verificar(AcharBotao(principal, "Criar primeira meta").IsVisible, "Goals tab shows the empty state");
+            Verificar(AcharBotao(principal, "Criar primeira meta").IsVisible, "A aba de metas mostra o estado vazio");
             await Clicar("Previsão do próximo mês", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "Forecast tab renders");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith("Estimativa para") == true), "A aba de previsão aparece");
             await Clicar("Despesas recorrentes", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Nenhuma despesa recorrente ainda"), "Recurrences tab renders");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Nenhuma despesa recorrente ainda"), "A aba de recorrentes aparece");
             await Clicar("Acerto de contas", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Histórico de acertos") && principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("Ana pagou a") == true || t.Text?.Contains("Bruno pagou a Ana") == true), "Settlement tab shows the history");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Histórico de acertos") && principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("Ana pagou a") == true || t.Text?.Contains("Bruno pagou a Ana") == true), "A aba de acerto mostra o histórico");
             await Clicar("Ajustes", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "Settings screen renders");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Seus dados"), "A tela de ajustes aparece");
             // Cenário 6b: categorias próprias são criadas em Ajustes e ficam disponíveis no editor de despesas.
             Ativa().GetVisualDescendants().OfType<TextBox>().First(i => i.PlaceholderText == "Nova categoria").Text = "Pets"; await Clicar("Adicionar categoria", principal);
-            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).CategoriasProprias.SequenceEqual(["Pets"]), "Custom category is created in Settings");
+            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).CategoriasProprias.SequenceEqual(["Pets"]), "Categoria própria é criada em Ajustes");
             // Cenário 7: o tema muda na hora, vai para settings.json e não toca nas finanças.
             var financasAntes = File.ReadAllBytes(Path.Combine(diretorio, "financas.json"));
             await Clicar("Tema escuro", principal);
-            Verificar(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark, "Dark theme applies immediately");
+            Verificar(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark, "O tema escuro vale na hora");
             // O fundo da janela é um degradê vindo de um DynamicResource: confirma que ele realmente mudou de cor com o tema.
             var fundoEscuro = ((IGradientBrush)principal.Background!).GradientStops[0].Color;
             await Clicar("Tema claro", principal);
             var fundoClaro = ((IGradientBrush)principal.Background!).GradientStops[0].Color;
-            Verificar(Application.Current.RequestedThemeVariant == ThemeVariant.Light && fundoEscuro != fundoClaro && fundoClaro.R > fundoEscuro.R, "Window background follows the theme");
-            Verificar(ArmazenamentoDePreferencias.Carregar(diretorio).Tema == PreferenciaDeTema.Claro, "Theme preference persists in settings.json");
-            Verificar(financasAntes.SequenceEqual(File.ReadAllBytes(Path.Combine(diretorio, "financas.json"))), "Theme change leaves financas.json untouched");
+            Verificar(Application.Current.RequestedThemeVariant == ThemeVariant.Light && fundoEscuro != fundoClaro && fundoClaro.R > fundoEscuro.R, "O fundo da janela acompanha o tema");
+            Verificar(ArmazenamentoDePreferencias.Carregar(diretorio).Tema == PreferenciaDeTema.Claro, "A preferência de tema é gravada em settings.json");
+            Verificar(financasAntes.SequenceEqual(File.ReadAllBytes(Path.Combine(diretorio, "financas.json"))), "Trocar o tema não toca no financas.json");
             // Cenário 8: Ctrl+N abre o editor de nova despesa de qualquer tela.
             principal.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.N, KeyModifiers = Avalonia.Input.KeyModifiers.Control }); await Task.Delay(300);
-            Verificar(cicloDeVida.Windows.Count == 2, "Ctrl+N opens the new expense editor");
+            Verificar(cicloDeVida.Windows.Count == 2, "Ctrl+N abre o editor de nova despesa");
             await Clicar("Cancelar");
             // Cenário 9: excluir pelo menu "⋯" pede confirmação; confirmar remove só aquele lançamento.
             await Clicar("Despesas", principal); var quantidadeAntes = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Count;
             await Menu("Excluir"); await Clicar("Confirmar");
-            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Count == quantidadeAntes - 1, "Delete from row menu removes one expense");
+            Verificar(ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Count == quantidadeAntes - 1, "Excluir pelo menu da linha remove uma despesa");
             // Cenário 10: despesa que se repete todo mês cria o modelo e os lançamentos até 12 meses à frente; depois é encerrada.
             await Clicar("Nova despesa", principal);
             Ativa().GetVisualDescendants().OfType<TextBox>().First(i => i.PlaceholderText == "Ex.: Compra do mercado").Text = "Aluguel";
@@ -267,37 +267,37 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             Ativa().GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == "Repetir todo mês").IsChecked = true; await Task.Delay(120);
             await Clicar("Salvar despesa");
             var salvo = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(salvo.Recorrencias.Count == 1 && salvo.Despesas.Count(e => e.IdDaRecorrencia is not null) == MotorDeRecorrencias.MesesDeHorizonte + 1, "Repeat monthly creates the model and 13 months");
+            Verificar(salvo.Recorrencias.Count == 1 && salvo.Despesas.Count(e => e.IdDaRecorrencia is not null) == MotorDeRecorrencias.MesesDeHorizonte + 1, "Repetir todo mês cria o modelo e 13 meses");
             await Clicar("Recorrentes", principal); await Clicar("Encerrar"); await Clicar("Confirmar");
             salvo = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(salvo.Recorrencias[0].MesFinal == Datas.Mes(DateOnly.FromDateTime(DateTime.Today)) && salvo.Despesas.Count(e => e.IdDaRecorrencia is not null) == 1, "Ending a recurrence keeps only the selected month");
+            Verificar(salvo.Recorrencias[0].MesFinal == Datas.Mes(DateOnly.FromDateTime(DateTime.Today)) && salvo.Despesas.Count(e => e.IdDaRecorrencia is not null) == 1, "Encerrar uma recorrência mantém só o mês selecionado");
             await Clicar("Fechar");
             // Cenário 10b: a busca vai a todos os meses; um termo que não existe no mês aparece ao ampliar o escopo.
             await Clicar("Despesas", principal); await Clicar("Todos os meses", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Busca em todos os meses") == true), "All-months search mode opens");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("Busca em todos os meses") == true), "A busca em todos os meses abre");
             await Clicar("Este mês", principal);
             // Cenário 10c: importar um extrato em CSV (o assistente é aberto direto no arquivo, sem o seletor nativo).
             var extrato = Path.Combine(diretorio, "extrato.csv");
             File.WriteAllText(extrato, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA;-12,50\r\n03/11/2026;SALARIO;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-1.234,56\r\n", new System.Text.UTF8Encoding(true));
             var antes = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json")).Despesas.Count;
             _ = ((JanelaPrincipal)principal).ImportarExtratoDoArquivo(extrato); await Task.Delay(500);
-            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("2 despesas serão importadas") == true), "Import wizard previews the statement");
+            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.StartsWith("2 despesas serão importadas") == true), "O assistente mostra a prévia do extrato");
             await Clicar("Importar");
             var importado = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(importado.Despesas.Count == antes + 2 && importado.Despesas.Any(e => e.Titulo == "FARMACIA CENTRAL" && e.Valor == 1234.56m && e.Paga && e.PagaPor is null && e.DataDoPagamento == new DateOnly(2026, 11, 4)), "Statement import creates paid expenses");
+            Verificar(importado.Despesas.Count == antes + 2 && importado.Despesas.Any(e => e.Titulo == "FARMACIA CENTRAL" && e.Valor == 1234.56m && e.Paga && e.PagaPor is null && e.DataDoPagamento == new DateOnly(2026, 11, 4)), "Importar extrato cria despesas pagas");
             // Importar o mesmo arquivo outra vez não repete nada: o botão Importar fica desligado e o aviso mostra as repetidas.
             _ = ((JanelaPrincipal)principal).ImportarExtratoDoArquivo(extrato); await Task.Delay(500);
-            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !AcharBotao(Ativa(), "Importar").IsEnabled, "Re-importing the same statement finds only duplicates");
+            Verificar(Ativa().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !AcharBotao(Ativa(), "Importar").IsEnabled, "Reimportar o mesmo extrato só encontra duplicadas");
             await Clicar("Cancelar");
             // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
             await Clicar("Visão geral", principal); await Clicar("Criar primeira meta", principal);
             Ativa().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Clicar("Salvar metas");
             var metaSalva = ArmazenamentoLocal.Ler(Path.Combine(diretorio, "financas.json"));
-            Verificar(metaSalva.Metas.Count == 1 && metaSalva.Metas[0].Categoria == "Mercado" && metaSalva.Metas[0].Valor == 500m, "Goal is saved from the dialog");
-            Verificar(principal.GetVisualDescendants().OfType<ProgressBar>().Any(b => b.Classes.Contains("over")), "Goal over the limit is highlighted");
+            Verificar(metaSalva.Metas.Count == 1 && metaSalva.Metas[0].Categoria == "Mercado" && metaSalva.Metas[0].Valor == 500m, "A meta é salva pelo diálogo");
+            Verificar(principal.GetVisualDescendants().OfType<ProgressBar>().Any(b => b.Classes.Contains("acima")), "Meta acima do limite fica destacada");
             // A mesma meta aparece em lista na aba de metas, com o valor que passou do limite.
             await Clicar("Previsões e metas", principal); await Clicar("Metas por categoria", principal);
-            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Acima da meta") && principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Mercado · meta " + Dinheiro.Formatar(500m)), "Goals tab lists the goal card");
+            Verificar(principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Acima da meta") && principal.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Mercado · meta " + Dinheiro.Formatar(500m)), "A aba de metas lista o cartão da meta");
             await Clicar("Visão geral", principal);
             // Cenário 12: modo de seleção da página Despesas e diálogo de exportar. O arquivo leva só as despesas marcadas.
             var janelaDoApp = (JanelaPrincipal)principal; var arquivoDeDados = Path.Combine(diretorio, "financas.json");
@@ -309,40 +309,40 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             async Task TeclaEsc() { principal.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Escape }); await Task.Delay(220); }
             bool TemTexto(Visual escopo, Func<string, bool> teste) => escopo.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text is { } texto && teste(texto));
             List<CheckBox> CaixasDasLinhas() => principal.GetVisualDescendants().OfType<CheckBox>().Where(c => AutomationProperties.GetName(c)?.StartsWith("Selecionar ") == true).ToList();
-            var barra = principal.GetVisualDescendants().OfType<Border>().First(x => x.Classes.Contains("selectbar"));
+            var barra = principal.GetVisualDescendants().OfType<Border>().First(x => x.Classes.Contains("barra-selecao"));
             await Clicar("Despesas", principal);
-            Verificar(!barra.IsVisible && CaixasDasLinhas().Count == 0, "Selection mode is off by default");
+            Verificar(!barra.IsVisible && CaixasDasLinhas().Count == 0, "O modo de seleção começa desligado");
             await Clicar("Compartilhar", principal);
             Verificar(barra.IsVisible && CaixasDasLinhas().Count == noMes && !AcharBotao(principal, "Compartilhar…").IsEnabled && TemTexto(principal, t => t == "Escolha as despesas que quer enviar.")
-                && !principal.GetVisualDescendants().OfType<Button>().Any(x => AutomationProperties.GetName(x) == "Mais ações"), "Share button enters selection mode with checkboxes and no row menus");
+                && !principal.GetVisualDescendants().OfType<Button>().Any(x => AutomationProperties.GetName(x) == "Mais ações"), "O botão Compartilhar liga o modo de seleção, com caixas e sem menus nas linhas");
             await Clicar("Todas deste mês", principal);
-            Verificar(TemTexto(barra, t => t == $"{noMes} selecionadas") && principal.GetVisualDescendants().OfType<Border>().Count(x => x.Classes.Contains("exrow") && x.Classes.Contains("selected")) == noMes && AcharBotao(principal, "Compartilhar…").IsEnabled, "All of this month marks every visible row");
-            await Clicar("Limpar seleção", principal); Verificar(TemTexto(barra, t => t == "0 selecionadas"), "Clear selection unmarks everything");
+            Verificar(TemTexto(barra, t => t == $"{noMes} selecionadas") && principal.GetVisualDescendants().OfType<Border>().Count(x => x.Classes.Contains("linha-despesa") && x.Classes.Contains("selecionado")) == noMes && AcharBotao(principal, "Compartilhar…").IsEnabled, "Todas deste mês marca todas as linhas visíveis");
+            await Clicar("Limpar seleção", principal); Verificar(TemTexto(barra, t => t == "0 selecionadas"), "Limpar seleção desmarca tudo");
             // "Uma categoria…" marca só a categoria escolhida entre as visíveis.
             ((MenuFlyout)AcharBotao(principal, "Uma categoria…").Flyout!).Items.OfType<MenuItem>().First(m => AutomationProperties.GetName(m) == "Mercado").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); await Task.Delay(200);
-            Verificar(TemTexto(barra, t => t == $"{antesDeCompartilhar.Despesas.Count(e => Datas.Mes(e.Vencimento) == mesAtual && e.Categoria == "Mercado")} selecionada" || t.EndsWith(" selecionadas") && !t.StartsWith("0 ")), "A category shortcut marks that category");
+            Verificar(TemTexto(barra, t => t == $"{antesDeCompartilhar.Despesas.Count(e => Datas.Mes(e.Vencimento) == mesAtual && e.Categoria == "Mercado")} selecionada" || t.EndsWith(" selecionadas") && !t.StartsWith("0 ")), "O atalho de categoria marca aquela categoria");
             // Esc sai do modo e esquece a seleção.
-            await TeclaEsc(); Verificar(!barra.IsVisible && CaixasDasLinhas().Count == 0, "Escape leaves selection mode");
+            await TeclaEsc(); Verificar(!barra.IsVisible && CaixasDasLinhas().Count == 0, "Esc sai do modo de seleção");
             // Duas despesas marcadas pela caixa; a busca filtra a lista sem perder a seleção.
             // (as duas despesas divididas entre Ana e Bruno)
             await Clicar("Compartilhar", principal); foreach (var nome in new[] { "Selecionar Mercado da família", "Selecionar Aluguel" }) CaixasDasLinhas().First(c => AutomationProperties.GetName(c) == nome).IsChecked = true; await Task.Delay(150);
-            Verificar(TemTexto(barra, t => t == "2 selecionadas") && TemTexto(barra, t => t.StartsWith("Total ")), "Row checkboxes update the floating bar");
+            Verificar(TemTexto(barra, t => t == "2 selecionadas") && TemTexto(barra, t => t.StartsWith("Total ")), "As caixas das linhas atualizam a barra flutuante");
             var caixaDeBusca = principal.GetVisualDescendants().OfType<TextBox>().First(t => AutomationProperties.GetName(t) == "Buscar despesas"); caixaDeBusca.Text = "texto que não existe"; await Task.Delay(200);
-            Verificar(TemTexto(barra, t => t == "2 selecionadas") && CaixasDasLinhas().Count == 0, "Filtering keeps the selection"); caixaDeBusca.Text = ""; await Task.Delay(200);
-            Verificar(CaixasDasLinhas().Count(c => c.IsChecked == true) == 2, "Selection survives clearing the filter");
+            Verificar(TemTexto(barra, t => t == "2 selecionadas") && CaixasDasLinhas().Count == 0, "Filtrar mantém a seleção"); caixaDeBusca.Text = ""; await Task.Delay(200);
+            Verificar(CaixasDasLinhas().Count(c => c.IsChecked == true) == 2, "A seleção continua depois de limpar o filtro");
             // O diálogo de exportar abre sobre a janela, com o foco no título; Cancelar e Esc fecham e mantêm a seleção.
             await Clicar("Compartilhar…", principal); await Task.Delay(250);
-            Verificar(Modal() is { } cartao && AutomationProperties.GetName(cartao) == "Compartilhar despesas" && cicloDeVida.Windows.Count == 1 && AcharBotaoEm(cartao, "Fechar").IsVisible, "Export dialog opens as an overlay with a close button");
-            Verificar(principal.FocusManager?.GetFocusedElement() is TextBlock focado && focado.Text == "Compartilhar despesas", "Export dialog moves focus to its title");
-            Verificar(TemTexto(Modal()!, t => t == "2") && TemTexto(Modal()!, t => t.Contains("Envie só para quem deve receber")) && TemTexto(Modal()!, t => t.EndsWith(ArquivoDeCompartilhamento.Extensao)), "Export dialog shows the indicators, the warning and the file name");
-            await ClicarEm("Cancelar"); Verificar(Modal() is null && TemTexto(barra, t => t == "2 selecionadas") && !File.Exists(caminhoDoCompartilhamento), "Cancel closes the export dialog and keeps the selection");
-            await Clicar("Compartilhar…", principal); await TeclaEsc(); Verificar(Modal() is null && barra.IsVisible, "Escape closes the export dialog");
-            await Clicar("Compartilhar…", principal); await ClicarEm("Fechar"); Verificar(Modal() is null, "The X button closes the export dialog");
+            Verificar(Modal() is { } cartao && AutomationProperties.GetName(cartao) == "Compartilhar despesas" && cicloDeVida.Windows.Count == 1 && AcharBotaoEm(cartao, "Fechar").IsVisible, "O diálogo de exportar abre sobreposto, com botão de fechar");
+            Verificar(principal.FocusManager?.GetFocusedElement() is TextBlock focado && focado.Text == "Compartilhar despesas", "O diálogo de exportar leva o foco para o título");
+            Verificar(TemTexto(Modal()!, t => t == "2") && TemTexto(Modal()!, t => t.Contains("Envie só para quem deve receber")) && TemTexto(Modal()!, t => t.EndsWith(ArquivoDeCompartilhamento.Extensao)), "O diálogo de exportar mostra os indicadores, o aviso e o nome do arquivo");
+            await ClicarEm("Cancelar"); Verificar(Modal() is null && TemTexto(barra, t => t == "2 selecionadas") && !File.Exists(caminhoDoCompartilhamento), "Cancelar fecha o diálogo de exportar e mantém a seleção");
+            await Clicar("Compartilhar…", principal); await TeclaEsc(); Verificar(Modal() is null && barra.IsVisible, "Esc fecha o diálogo de exportar");
+            await Clicar("Compartilhar…", principal); await ClicarEm("Fechar"); Verificar(Modal() is null, "O botão X fecha o diálogo de exportar");
             // Salvar: o arquivo tem só as duas despesas, em aberto; o modo de seleção termina e o aviso mostra onde o arquivo ficou.
             janelaDoApp.CaminhoDeTesteParaSalvar = caminhoDoCompartilhamento; await Clicar("Compartilhar…", principal); await ClicarEm("Salvar arquivo");
             var compartilhada = CompartilhamentoDeDespesas.Ler(caminhoDoCompartilhamento); var textoDoCompartilhamento = File.ReadAllText(caminhoDoCompartilhamento);
-            Verificar(compartilhada.Despesas.Count == 2 && compartilhada.Despesas.All(e => !e.Paga) && compartilhada.VersaoDoAplicativo.Length > 0 && !textoDoCompartilhamento.Contains("Incomes") && !textoDoCompartilhamento.Contains("Goals") && !textoDoCompartilhamento.Contains("Settlements"), "Share file has only the selected expenses, as open");
-            Verificar(Modal() is null && !barra.IsVisible && TemTexto(principal, t => t.Contains(caminhoDoCompartilhamento)) && bytesAntesDeCompartilhar.SequenceEqual(File.ReadAllBytes(arquivoDeDados)), "Saving confirms the location, leaves selection mode and does not change the data");
+            Verificar(compartilhada.Despesas.Count == 2 && compartilhada.Despesas.All(e => !e.Paga) && compartilhada.VersaoDoAplicativo.Length > 0 && !textoDoCompartilhamento.Contains("Incomes") && !textoDoCompartilhamento.Contains("Goals") && !textoDoCompartilhamento.Contains("Settlements"), "O arquivo tem só as despesas marcadas, em aberto");
+            Verificar(Modal() is null && !barra.IsVisible && TemTexto(principal, t => t.Contains(caminhoDoCompartilhamento)) && bytesAntesDeCompartilhar.SequenceEqual(File.ReadAllBytes(arquivoDeDados)), "Salvar confirma o local, sai do modo de seleção e não muda os dados");
             // Cenário 13: assistente "Importar despesas compartilhadas" (Arquivo → Pessoas → Prévia → resultado), em uma base com dados.
             bool FocoEm(string titulo) => principal.FocusManager?.GetFocusedElement() is TextBlock t && t.Text == titulo;
             ComboBox Caixa(string nome) => Modal()!.GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == nome);
@@ -350,70 +350,70 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
             bool SemMudanca(byte[] bytes) => bytes.SequenceEqual(File.ReadAllBytes(arquivoDeDados));
             // 13a. O próprio arquivo: tudo já existe. Passo 1 valida o arquivo; o foco vai para o título de cada passo.
             await AbrirImportacao(caminhoDoCompartilhamento);
-            Verificar(Modal() is not null && FocoEm("Importar despesas compartilhadas") && TemTexto(Modal()!, t => t.StartsWith("Arquivo válido, gerado pelo BankManager")) && AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "Import step 1 validates the file");
+            Verificar(Modal() is not null && FocoEm("Importar despesas compartilhadas") && TemTexto(Modal()!, t => t.StartsWith("Arquivo válido, gerado pelo BankManager")) && AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "O passo 1 da importação valida o arquivo");
             await ClicarEm("Continuar");
-            Verificar(FocoEm("Quem é quem?") && Caixa("Pessoa: Ana").SelectedIndex == 0 && TemTexto(Modal()!, t => t == "Mesmo nome"), "Import step 2 suggests people by name");
+            Verificar(FocoEm("Quem é quem?") && Caixa("Pessoa: Ana").SelectedIndex == 0 && TemTexto(Modal()!, t => t == "Mesmo nome"), "O passo 2 da importação sugere as pessoas pelo nome");
             await ClicarEm("Continuar");
-            Verificar(FocoEm("Confira antes de adicionar") && TemTexto(Modal()!, t => t == "2 já existem · serão puladas") && !AcharBotaoEm(Modal()!, "Nada a adicionar").IsEnabled, "Import step 3 skips what already exists");
+            Verificar(FocoEm("Confira antes de adicionar") && TemTexto(Modal()!, t => t == "2 já existem · serão puladas") && !AcharBotaoEm(Modal()!, "Nada a adicionar").IsEnabled, "O passo 3 da importação pula o que já existe");
             var caixaDeForcar = Modal()!.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c)?.StartsWith("Importar mesmo assim: ") == true); var nomeForcado = AutomationProperties.GetName(caixaDeForcar)!;
             caixaDeForcar.IsChecked = true; await Task.Delay(200);
-            Verificar(AcharBotaoEm(Modal()!, "Adicionar 1 despesa").IsEnabled && TemTexto(Modal()!, t => t == "1 já existe · será pulada"), "Import anyway turns one duplicate into an addition");
+            Verificar(AcharBotaoEm(Modal()!, "Adicionar 1 despesa").IsEnabled && TemTexto(Modal()!, t => t == "1 já existe · será pulada"), "Importar mesmo assim transforma uma duplicada em adição");
             // Voltar até o passo 1 e avançar de novo não perde as escolhas.
-            await ClicarEm("Voltar"); await ClicarEm("Voltar"); Verificar(FocoEm("Importar despesas compartilhadas"), "Back returns to the previous steps"); await ClicarEm("Continuar"); await ClicarEm("Continuar");
-            Verificar(Modal()!.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == nomeForcado).IsChecked == true && AcharBotaoEm(Modal()!, "Adicionar 1 despesa").IsEnabled, "Going back keeps the choices");
+            await ClicarEm("Voltar"); await ClicarEm("Voltar"); Verificar(FocoEm("Importar despesas compartilhadas"), "Voltar retorna aos passos anteriores"); await ClicarEm("Continuar"); await ClicarEm("Continuar");
+            Verificar(Modal()!.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == nomeForcado).IsChecked == true && AcharBotaoEm(Modal()!, "Adicionar 1 despesa").IsEnabled, "Voltar mantém as escolhas");
             // Esc com escolhas feitas pede confirmação; recusar mantém o assistente, confirmar fecha sem gravar e devolve o foco ao botão de origem.
-            await TeclaEsc(); Verificar(cicloDeVida.Windows.Count == 2, "Escape asks before discarding choices"); await Clicar("Cancelar"); Verificar(Modal() is not null, "Declining keeps the wizard open");
+            await TeclaEsc(); Verificar(cicloDeVida.Windows.Count == 2, "Esc pergunta antes de descartar as escolhas"); await Clicar("Cancelar"); Verificar(Modal() is not null, "Recusar mantém o assistente aberto");
             await TeclaEsc(); await Clicar("Confirmar");
-            Verificar(Modal() is null && SemMudanca(bytesAntesDeCompartilhar) && principal.FocusManager?.GetFocusedElement() is Button retorno && AutomationProperties.GetName(retorno) == "Importar despesas compartilhadas", "Confirming closes the wizard, saves nothing and returns focus");
+            Verificar(Modal() is null && SemMudanca(bytesAntesDeCompartilhar) && principal.FocusManager?.GetFocusedElement() is Button retorno && AutomationProperties.GetName(retorno) == "Importar despesas compartilhadas", "Confirmar fecha o assistente, não grava nada e devolve o foco");
             // Cancelar em cada passo e o X não mudam a base.
             await AbrirImportacao(caminhoDoCompartilhamento); await ClicarEm("Cancelar"); var cancelou1 = Modal() is null && SemMudanca(bytesAntesDeCompartilhar);
             await AbrirImportacao(caminhoDoCompartilhamento); await ClicarEm("Continuar"); await ClicarEm("Cancelar"); var cancelou2 = Modal() is null && SemMudanca(bytesAntesDeCompartilhar);
             await AbrirImportacao(caminhoDoCompartilhamento); await ClicarEm("Continuar"); await ClicarEm("Continuar"); await ClicarEm("Fechar");
-            Verificar(cancelou1 && cancelou2 && Modal() is null && SemMudanca(bytesAntesDeCompartilhar), "Cancelling at any step leaves the data untouched");
+            Verificar(cancelou1 && cancelou2 && Modal() is null && SemMudanca(bytesAntesDeCompartilhar), "Cancelar em qualquer passo não altera os dados");
             // Importar mesmo assim, de verdade: uma despesa nova, a outra pulada, e a tela de resultado.
             await AbrirImportacao(caminhoDoCompartilhamento); await ClicarEm("Continuar"); await ClicarEm("Continuar");
             Modal()!.GetVisualDescendants().OfType<CheckBox>().First(c => AutomationProperties.GetName(c) == nomeForcado).IsChecked = true; await Task.Delay(200); await ClicarEm("Adicionar 1 despesa");
             var depoisDeForcar = ArmazenamentoLocal.Ler(arquivoDeDados);
-            Verificar(FocoEm("1 despesa adicionada") && TemTexto(Modal()!, t => t.StartsWith("1 foi pulada porque você já tinha")) && depoisDeForcar.Despesas.Count == antesDeCompartilhar.Despesas.Count + 1 && depoisDeForcar.Despesas.Count(e => e.IdDeOrigem is not null) == 1, "Result screen reports one added and one skipped");
-            await ClicarEm("Fechar"); Verificar(Modal() is null, "Result screen closes");
+            Verificar(FocoEm("1 despesa adicionada") && TemTexto(Modal()!, t => t.StartsWith("1 foi pulada porque você já tinha")) && depoisDeForcar.Despesas.Count == antesDeCompartilhar.Despesas.Count + 1 && depoisDeForcar.Despesas.Count(e => e.IdDeOrigem is not null) == 1, "A tela de resultado informa uma adicionada e uma pulada");
+            await ClicarEm("Fechar"); Verificar(Modal() is null, "A tela de resultado fecha");
             // 13b. Arquivo de outra pessoa: uma despesa nova em uma categoria que não existe aqui, uma que já existe, e "Carla" no lugar de "Bruno".
             var recebido = System.Text.Json.Nodes.JsonNode.Parse(textoDoCompartilhamento.Replace("\"Bruno\"", "\"Carla\""))!; var lista = recebido["Expenses"]!.AsArray();
             lista[0]!["OriginId"] = Guid.NewGuid().ToString(); lista[0]!["Category"] = "Viagens"; recebido["CustomCategories"]!.AsArray().Add("Viagens");
             var outroCaminho = Path.Combine(pastaDoCompartilhamento, "de-outra-pessoa" + ArquivoDeCompartilhamento.Extensao); File.WriteAllText(outroCaminho, recebido.ToJsonString());
             var outra = CompartilhamentoDeDespesas.Ler(outroCaminho); var tituloNovo = outra.Despesas[0].Titulo; var bytesAntesDaOutra = File.ReadAllBytes(arquivoDeDados);
             await AbrirImportacao(outroCaminho);
-            Verificar(outra.Pessoas.Contains("Carla") && TemTexto(Modal()!, t => t == "Viagens") && TemTexto(Modal()!, t => t.Contains("Carla")), "Step 1 summarises people and missing categories");
+            Verificar(outra.Pessoas.Contains("Carla") && TemTexto(Modal()!, t => t == "Viagens") && TemTexto(Modal()!, t => t.Contains("Carla")), "O passo 1 resume as pessoas e as categorias que faltam");
             await ClicarEm("Continuar");
-            Verificar(Caixa("Pessoa: Carla").SelectedIndex == depoisDeForcar.Pessoas.Count && TemTexto(Modal()!, t => t == "Nova pessoa") && Caixa("Categoria: Viagens").SelectedIndex == 0, "Step 2 offers a new person and a new category");
+            Verificar(Caixa("Pessoa: Carla").SelectedIndex == depoisDeForcar.Pessoas.Count && TemTexto(Modal()!, t => t == "Nova pessoa") && Caixa("Categoria: Viagens").SelectedIndex == 0, "O passo 2 oferece pessoa nova e categoria nova");
             // Duas pessoas do arquivo ligadas à mesma pessoa daqui, dividindo uma despesa: erro claro, sem avançar.
             if (outra.Despesas.Any(e => e.Participantes.Contains("Ana") && e.Participantes.Contains("Carla")))
             {
                 Caixa("Pessoa: Carla").SelectedIndex = 0; await Task.Delay(150); await ClicarEm("Continuar");
-                Verificar(FocoEm("Quem é quem?") && TemTexto(Modal()!, t => t.Contains("mesma pessoa")), "Mapping two file people to one person is refused with a clear message");
+                Verificar(FocoEm("Quem é quem?") && TemTexto(Modal()!, t => t.Contains("mesma pessoa")), "Ligar duas pessoas do arquivo a uma só é recusado com mensagem clara");
                 Caixa("Pessoa: Carla").SelectedIndex = depoisDeForcar.Pessoas.Count; await Task.Delay(150);
             }
             await ClicarEm("Continuar");
-            Verificar(TemTexto(Modal()!, t => t.StartsWith("1 será adicionada")) && TemTexto(Modal()!, t => t == "1 já existe · será pulada") && TemTexto(Modal()!, t => t.Contains("você já tem esta despesa")) && SemMudanca(bytesAntesDaOutra), "Preview shows one to add and one to skip, without saving");
+            Verificar(TemTexto(Modal()!, t => t.StartsWith("1 será adicionada")) && TemTexto(Modal()!, t => t == "1 já existe · será pulada") && TemTexto(Modal()!, t => t.Contains("você já tem esta despesa")) && SemMudanca(bytesAntesDaOutra), "A prévia mostra uma a adicionar e uma a pular, sem gravar");
             // Com divisão proporcional, a prévia avisa e deixa trocar por divisão igual.
             var proporcional = outra.Despesas[0].Divisao == ModoDeDivisao.RendaDisponivel;
-            if (proporcional) { Verificar(Modal()!.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Inlines?.Text?.Contains("recalculado com a renda dos seus dados") == true) && AcharBotaoEm(Modal()!, "Manter proporcional").Classes.Contains("active"), "Preview warns about proportional split"); await ClicarEm("Dividir igualmente"); }
+            if (proporcional) { Verificar(Modal()!.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Inlines?.Text?.Contains("recalculado com a renda dos seus dados") == true) && AcharBotaoEm(Modal()!, "Manter proporcional").Classes.Contains("ativo"), "A prévia avisa sobre a divisão proporcional"); await ClicarEm("Dividir igualmente"); }
             await ClicarEm("Adicionar 1 despesa");
             var depoisDaOutra = ArmazenamentoLocal.Ler(arquivoDeDados); var importada2 = depoisDaOutra.Despesas.Single(e => e.IdDeOrigem is not null && e.Titulo == tituloNovo && e.Categoria == "Viagens");
-            Verificar(FocoEm("1 despesa adicionada") && TemTexto(Modal()!, t => t == "Carla") && TemTexto(Modal()!, t => t == "Viagens") && TemTexto(Modal()!, t => t.Contains("recuperá-la em Ajustes")), "Result lists the new person and the new category");
-            Verificar(depoisDaOutra.Despesas.Count == depoisDeForcar.Despesas.Count + 1 && depoisDaOutra.Pessoas.Select(x => x.Nome).SequenceEqual(depoisDeForcar.Pessoas.Select(x => x.Nome).Append("Carla")) && depoisDaOutra.CategoriasProprias.Contains("Viagens") && (!proporcional || importada2.Divisao == ModoDeDivisao.Igual), "Import adds the expense, the person and the category");
+            Verificar(FocoEm("1 despesa adicionada") && TemTexto(Modal()!, t => t == "Carla") && TemTexto(Modal()!, t => t == "Viagens") && TemTexto(Modal()!, t => t.Contains("recuperá-la em Ajustes")), "O resultado lista a pessoa nova e a categoria nova");
+            Verificar(depoisDaOutra.Despesas.Count == depoisDeForcar.Despesas.Count + 1 && depoisDaOutra.Pessoas.Select(x => x.Nome).SequenceEqual(depoisDeForcar.Pessoas.Select(x => x.Nome).Append("Carla")) && depoisDaOutra.CategoriasProprias.Contains("Viagens") && (!proporcional || importada2.Divisao == ModoDeDivisao.Igual), "Importar adiciona a despesa, a pessoa e a categoria");
             Verificar(depoisDaOutra.Rendas.SequenceEqual(antesDeCompartilhar.Rendas) && depoisDaOutra.Metas.SequenceEqual(antesDeCompartilhar.Metas) && depoisDaOutra.Acertos.SequenceEqual(antesDeCompartilhar.Acertos)
-                && antesDeCompartilhar.Despesas.All(antigo => depoisDaOutra.Despesas.Any(e => e.Id == antigo.Id && e.Valor == antigo.Valor && e.Paga == antigo.Paga && e.Titulo == antigo.Titulo)) && bytesAntesDaOutra.SequenceEqual(File.ReadAllBytes(Path.Combine(diretorio, "financas.backup.json"))), "Import leaves existing data untouched and keeps the previous file as backup");
+                && antesDeCompartilhar.Despesas.All(antigo => depoisDaOutra.Despesas.Any(e => e.Id == antigo.Id && e.Valor == antigo.Valor && e.Paga == antigo.Paga && e.Titulo == antigo.Titulo)) && bytesAntesDaOutra.SequenceEqual(File.ReadAllBytes(Path.Combine(diretorio, "financas.backup.json"))), "Importar não toca nos dados existentes e guarda o arquivo anterior como cópia");
             await ClicarEm("Ver despesas");
-            Verificar(Modal() is null && TemTexto(principal, t => t == tituloNovo) && principal.GetVisualDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == "Buscar despesas"), "See expenses opens the expenses page on the month of the new expense");
+            Verificar(Modal() is null && TemTexto(principal, t => t == tituloNovo) && principal.GetVisualDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == "Buscar despesas"), "Ver despesas abre a página de despesas no mês da despesa nova");
             // 13c. Arquivos recusados: um backup no lugar do compartilhamento e um arquivo corrompido. Nada muda; "Trocar arquivo" recupera.
             var caminhoDoBackup = Path.Combine(pastaDoCompartilhamento, "backup.json"); ArmazenamentoLocal.Exportar(caminhoDoBackup, depoisDaOutra); var caminhoQuebrado = Path.Combine(pastaDoCompartilhamento, "quebrado" + ArquivoDeCompartilhamento.Extensao); File.WriteAllText(caminhoQuebrado, "{"); var bytesDepois = File.ReadAllBytes(arquivoDeDados);
             await AbrirImportacao(caminhoDoBackup);
-            Verificar(TemTexto(Modal()!, t => t.Contains("backup") && t.Contains("Nada foi alterado")) && !AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "A backup is refused as a share file, in plain language");
+            Verificar(TemTexto(Modal()!, t => t.Contains("backup") && t.Contains("Nada foi alterado")) && !AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "Um backup é recusado como compartilhamento, em linguagem simples");
             janelaDoApp.CaminhoDeTesteParaAbrir = caminhoQuebrado; await ClicarEm("Trocar arquivo"); await Task.Delay(200);
-            Verificar(TemTexto(Modal()!, t => t.Contains("não é um compartilhamento de despesas válido")) && !AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "A corrupted file is refused");
+            Verificar(TemTexto(Modal()!, t => t.Contains("não é um compartilhamento de despesas válido")) && !AcharBotaoEm(Modal()!, "Continuar").IsEnabled, "Um arquivo corrompido é recusado");
             janelaDoApp.CaminhoDeTesteParaAbrir = caminhoDoCompartilhamento; await ClicarEm("Trocar arquivo"); await Task.Delay(200);
-            Verificar(AcharBotaoEm(Modal()!, "Continuar").IsEnabled && TemTexto(Modal()!, t => t.StartsWith("Arquivo válido")), "Changing to a valid file enables Continue");
-            await ClicarEm("Cancelar"); Verificar(Modal() is null && SemMudanca(bytesDepois), "Refused files change nothing");
+            Verificar(AcharBotaoEm(Modal()!, "Continuar").IsEnabled && TemTexto(Modal()!, t => t.StartsWith("Arquivo válido")), "Trocar por um arquivo válido habilita Continuar");
+            await ClicarEm("Cancelar"); Verificar(Modal() is null && SemMudanca(bytesDepois), "Arquivos recusados não mudam nada");
             janelaDoApp.CaminhoDeTesteParaAbrir = null; janelaDoApp.CaminhoDeTesteParaSalvar = null;
             try { Directory.Delete(pastaDoCompartilhamento, true); } catch (IOException) { }
             await Clicar("Visão geral", principal);
@@ -425,7 +425,7 @@ AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().AfterSetu
                 var temaDaCaptura = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT_THEME");
                 if (temaDaCaptura is "dark" or "light") { Aplicativo.AplicarTema(temaDaCaptura == "dark" ? PreferenciaDeTema.Escuro : PreferenciaDeTema.Claro); await Task.Delay(300); }
                 using var bitmap = new RenderTargetBitmap(new PixelSize((int)principal.Bounds.Width, (int)principal.Bounds.Height), new Vector(96, 96));
-                bitmap.Render(principal); bitmap.Save(saida, PngBitmapEncoderOptions.Default); Console.WriteLine("Screenshot: " + saida);
+                bitmap.Render(principal); bitmap.Save(saida, PngBitmapEncoderOptions.Default); Console.WriteLine("Captura: " + saida);
             }
             codigoDeSaida = 0;
         }

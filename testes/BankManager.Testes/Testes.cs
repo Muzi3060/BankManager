@@ -15,35 +15,35 @@ DadosDoOrcamento Familia(decimal a = 3000, decimal b = 1000)
 // Fábrica de despesa: modo individual seleciona só Ana; os demais modos incluem as duas pessoas.
 Despesa Conta(DadosDoOrcamento d, decimal valor, ModoDeDivisao divisao = ModoDeDivisao.RendaDisponivel) => new() { Titulo = "Mercado", Categoria = "Mercado", Valor = valor, Vencimento = mes, Divisao = divisao, Participantes = divisao == ModoDeDivisao.Individual ? [d.Pessoas[0].Id] : d.Pessoas.Select(p => p.Id).ToList() };
 // Compara resultados exatos, inclusive decimal, e lança uma exceção que o executor registra como falha.
-void Igual<T>(T esperado, T obtido) { if (!EqualityComparer<T>.Default.Equals(esperado, obtido)) throw new Exception($"Expected {esperado}, got {obtido}"); }
+void Igual<T>(T esperado, T obtido) { if (!EqualityComparer<T>.Default.Equals(esperado, obtido)) throw new Exception($"Esperado {esperado}, obtido {obtido}"); }
 // Exige falha de negócio: outra exceção indica um defeito e não deve ser aceita como validação correta.
-void Rejeitar(Action acao) { try { acao(); } catch (ErroDeOrcamento) { return; } throw new Exception("Expected validation rejection"); }
+void Rejeitar(Action acao) { try { acao(); } catch (ErroDeOrcamento) { return; } throw new Exception("Era esperada uma recusa de validação"); }
 // Registra o cenário para execução posterior, permitindo que uma falha não interrompa os outros testes.
 void Teste(string nome, Action acao) => testes.Add((nome, acao));
 
 // A divisão proporcional deve reproduzir o exemplo: disponíveis de 3.000/1.000 dividem 800 em 600/200.
-Teste("75/25 proportional allocation", () => { var d = Familia(); var a = MotorFinanceiro.Ratear(d, Conta(d, 800)); Igual(600m, a.Valores[d.Pessoas[0].Id]); Igual(200m, a.Valores[d.Pessoas[1].Id]); });
+Teste("Rateio proporcional 75/25", () => { var d = Familia(); var a = MotorFinanceiro.Ratear(d, Conta(d, 800)); Igual(600m, a.Valores[d.Pessoas[0].Id]); Igual(200m, a.Valores[d.Pessoas[1].Id]); });
 
 // Uma conta individual de 2.000 reduz a disponibilidade de Ana para 1.000, igualando os pesos.
-Teste("Individual debts reduce disposable income", () => { var d = Familia(); d.Despesas.Add(Conta(d, 2000, ModoDeDivisao.Individual)); var a = MotorFinanceiro.Ratear(d, Conta(d, 800)); Igual(400m, a.Valores[d.Pessoas[0].Id]); Igual(400m, a.Valores[d.Pessoas[1].Id]); });
+Teste("Dívidas individuais reduzem a renda disponível", () => { var d = Familia(); d.Despesas.Add(Conta(d, 2000, ModoDeDivisao.Individual)); var a = MotorFinanceiro.Ratear(d, Conta(d, 800)); Igual(400m, a.Valores[d.Pessoas[0].Id]); Igual(400m, a.Valores[d.Pessoas[1].Id]); });
 
 // Quitar a conta individual não devolve esse dinheiro à capacidade mensal de pagar contas compartilhadas.
-Teste("Paid individual debts still reduce disposable income", () => { var d = Familia(); var divida = Conta(d, 2000, ModoDeDivisao.Individual); divida.Paga = true; d.Despesas.Add(divida); Igual(400m, MotorFinanceiro.Ratear(d, Conta(d, 800)).Valores[d.Pessoas[0].Id]); });
+Teste("Dívidas individuais pagas continuam reduzindo a renda disponível", () => { var d = Familia(); var divida = Conta(d, 2000, ModoDeDivisao.Individual); divida.Paga = true; d.Despesas.Add(divida); Igual(400m, MotorFinanceiro.Ratear(d, Conta(d, 800)).Valores[d.Pessoas[0].Id]); });
 
 // Sem renda para ninguém, a divisão deve ser igual e acompanhada de um aviso explícito.
-Teste("Zero available income falls back explicitly", () => { var d = Familia(0, 0); var a = MotorFinanceiro.Ratear(d, Conta(d, 101)); Igual(50.5m, a.Valores[d.Pessoas[0].Id]); Igual(true, a.Aviso is not null); });
+Teste("Sem renda disponível, a divisão igual é aplicada com aviso", () => { var d = Familia(0, 0); var a = MotorFinanceiro.Ratear(d, Conta(d, 101)); Igual(50.5m, a.Valores[d.Pessoas[0].Id]); Igual(true, a.Aviso is not null); });
 
 // Despesas individuais acima da renda zeram o peso, sem criar participação negativa.
-Teste("Negative capacity contributes zero", () => { var d = Familia(100, 1000); d.Despesas.Add(Conta(d, 200, ModoDeDivisao.Individual)); var a = MotorFinanceiro.Ratear(d, Conta(d, 400)); Igual(0m, a.Valores[d.Pessoas[0].Id]); Igual(400m, a.Valores[d.Pessoas[1].Id]); });
+Teste("Capacidade negativa contribui com zero", () => { var d = Familia(100, 1000); d.Despesas.Add(Conta(d, 200, ModoDeDivisao.Individual)); var a = MotorFinanceiro.Ratear(d, Conta(d, 400)); Igual(0m, a.Valores[d.Pessoas[0].Id]); Igual(400m, a.Valores[d.Pessoas[1].Id]); });
 
 // O modo individual atribui todo o lançamento ao único participante.
-Teste("Individual expense entirely assigned", () => { var d = Familia(); Igual(123.45m, MotorFinanceiro.Ratear(d, Conta(d, 123.45m, ModoDeDivisao.Individual)).Valores[d.Pessoas[0].Id]); });
+Teste("Despesa individual vai inteira para uma pessoa", () => { var d = Familia(); Igual(123.45m, MotorFinanceiro.Ratear(d, Conta(d, 123.45m, ModoDeDivisao.Individual)).Valores[d.Pessoas[0].Id]); });
 
 // O modo igual não usa a diferença de salário como peso.
-Teste("Equal split ignores salary", () => { var d = Familia(); Igual(50m, MotorFinanceiro.Ratear(d, Conta(d, 100, ModoDeDivisao.Igual)).Valores[d.Pessoas[0].Id]); });
+Teste("Divisão igual ignora o salário", () => { var d = Familia(); Igual(50m, MotorFinanceiro.Ratear(d, Conta(d, 100, ModoDeDivisao.Igual)).Valores[d.Pessoas[0].Id]); });
 
 // Verifica conservação do total, precisão de centavos e estabilidade do rateio em 1.000 amostras.
-Teste("Cent rounding preserves totals across 1000 samples", () =>
+Teste("Arredondamento de centavos preserva o total em 1000 amostras", () =>
 {
     // Semente fixa torna os valores reproduzíveis; os Guids variam, mas a repetição usa a mesma base de pessoas.
     var aleatorio = new Random(42);
@@ -57,67 +57,67 @@ Teste("Cent rounding preserves totals across 1000 samples", () =>
 });
 
 // Quem tem peso zero não pode receber nem o centavo residual do arredondamento.
-Teste("Zero weight never receives rounding remainder", () => { var d = Familia(0, 100); var a = MotorFinanceiro.Ratear(d, Conta(d, .01m)); Igual(0m, a.Valores[d.Pessoas[0].Id]); Igual(.01m, a.Valores[d.Pessoas[1].Id]); });
+Teste("Peso zero nunca recebe o resto do arredondamento", () => { var d = Familia(0, 100); var a = MotorFinanceiro.Ratear(d, Conta(d, .01m)); Igual(0m, a.Valores[d.Pessoas[0].Id]); Igual(.01m, a.Valores[d.Pessoas[1].Id]); });
 
 // Rendas novas não alteram a competência anterior e não são propagadas para outra pessoa.
-Teste("Monthly incomes are isolated", () => { var d = Familia(); d.Rendas.Add(new() { IdDaPessoa = d.Pessoas[0].Id, Mes = mes.AddMonths(1), Valor = 5000 }); Igual(3000m, MotorFinanceiro.Renda(d, d.Pessoas[0].Id, mes)); Igual(0m, MotorFinanceiro.Renda(d, d.Pessoas[1].Id, mes.AddMonths(1))); });
+Teste("As rendas de cada mês são independentes", () => { var d = Familia(); d.Rendas.Add(new() { IdDaPessoa = d.Pessoas[0].Id, Mes = mes.AddMonths(1), Valor = 5000 }); Igual(3000m, MotorFinanceiro.Renda(d, d.Pessoas[0].Id, mes)); Igual(0m, MotorFinanceiro.Renda(d, d.Pessoas[1].Id, mes.AddMonths(1))); });
 
 // O saldo desconta a responsabilidade uma vez, separando os valores já quitados.
-Teste("Dashboard paid and planned balances", () => { var d = Familia(); var e = Conta(d, 800); e.Paga = true; d.Despesas.Add(e); var a = MotorFinanceiro.Saldos(d, mes)[0]; Igual(600m, a.Pago); Igual(2400m, a.Sobra); });
+Teste("Saldos pago e planejado da visão geral", () => { var d = Familia(); var e = Conta(d, 800); e.Paga = true; d.Despesas.Add(e); var a = MotorFinanceiro.Saldos(d, mes)[0]; Igual(600m, a.Pago); Igual(2400m, a.Sobra); });
 
 // Parcelamento deve preservar total, identificadores únicos e o dia de referência após fevereiro.
-Teste("Installments preserve total and month-end anchor", () => { var d = Familia(); var e = Conta(d, 100); e.Vencimento = new(2028, 1, 31); var partes = RegrasDoOrcamento.Parcelar(e, 3); Igual(100m, partes.Sum(p => p.Valor)); Igual(33.34m, partes[0].Valor); Igual(new DateOnly(2028, 2, 29), partes[1].Vencimento); Igual(new DateOnly(2028, 3, 31), partes[2].Vencimento); Igual(3, partes.Select(p => p.Id).Distinct().Count()); });
+Teste("Parcelas preservam o total e o dia de referência no fim do mês", () => { var d = Familia(); var e = Conta(d, 100); e.Vencimento = new(2028, 1, 31); var partes = RegrasDoOrcamento.Parcelar(e, 3); Igual(100m, partes.Sum(p => p.Valor)); Igual(33.34m, partes[0].Valor); Igual(new DateOnly(2028, 2, 29), partes[1].Vencimento); Igual(new DateOnly(2028, 3, 31), partes[2].Vencimento); Igual(3, partes.Select(p => p.Id).Distinct().Count()); });
 
 // Parcelas de menos de um centavo e quantidades acima do limite precisam ser recusadas.
-Teste("Too-small and too-many installments rejected", () => { var d = Familia(); Rejeitar(() => RegrasDoOrcamento.Parcelar(Conta(d, .01m), 2)); Rejeitar(() => RegrasDoOrcamento.Parcelar(Conta(d, 100), 121)); });
+Teste("Parcelas pequenas demais ou em excesso são recusadas", () => { var d = Familia(); Rejeitar(() => RegrasDoOrcamento.Parcelar(Conta(d, .01m), 2)); Rejeitar(() => RegrasDoOrcamento.Parcelar(Conta(d, 100), 121)); });
 
 // Com apenas um mês de mercado, a estimativa do mês seguinte é o mesmo valor.
-Teste("One month market forecast equals actual", () => { var d = Familia(); d.Despesas.Add(Conta(d, 1000)); Igual(1000m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); });
+Teste("Previsão com um mês de mercado é igual ao gasto real", () => { var d = Familia(); d.Despesas.Add(Conta(d, 1000)); Igual(1000m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); });
 
 // Meses sem registros dentro da janela observada contam como zero na média.
-Teste("Forecast includes zero months in observed window", () => { var d = Familia(); d.Despesas.Add(Conta(d, 900)); var estimativa = MotorFinanceiro.Previsoes(d, mes.AddMonths(3)).Single(); Igual(300m, estimativa.Historico); Igual(3, estimativa.Meses); });
+Teste("Previsão conta meses zerados dentro da janela", () => { var d = Familia(); d.Despesas.Add(Conta(d, 900)); var estimativa = MotorFinanceiro.Previsoes(d, mes.AddMonths(3)).Single(); Igual(300m, estimativa.Historico); Igual(3, estimativa.Meses); });
 
 // Gastos anteriores aos três meses da janela não podem continuar na previsão.
-Teste("Forecast excludes older history", () => { var d = Familia(); d.Despesas.Add(Conta(d, 900)); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(4)).Count); });
+Teste("Previsão ignora histórico mais antigo", () => { var d = Familia(); d.Despesas.Add(Conta(d, 900)); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(4)).Count); });
 
 // Um compromisso à vista já previsto pela média não deve ser somado novamente.
-Teste("Scheduled ordinary expenses do not double count history", () => { var d = Familia(); d.Despesas.Add(Conta(d, 1000)); var proximo = Conta(d, 600); proximo.Vencimento = mes.AddMonths(1); d.Despesas.Add(proximo); Igual(1000m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); proximo.Valor = 1300; Igual(1300m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); });
+Teste("Despesas à vista já lançadas não contam duas vezes", () => { var d = Familia(); d.Despesas.Add(Conta(d, 1000)); var proximo = Conta(d, 600); proximo.Vencimento = mes.AddMonths(1); d.Despesas.Add(proximo); Igual(1000m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); proximo.Valor = 1300; Igual(1300m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); });
 
 // Parcelas só são previstas nos seus vencimentos e desaparecem ao terminar a dívida.
-Teste("Installments counted only on due month", () => { var d = Familia(); d.Despesas.AddRange(RegrasDoOrcamento.Parcelar(Conta(d, 900), 3)); Igual(300m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(3)).Count); });
+Teste("Parcelas contam só no mês do vencimento", () => { var d = Familia(); d.Despesas.AddRange(RegrasDoOrcamento.Parcelar(Conta(d, 900), 3)); Igual(300m, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Single().Estimativa); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(3)).Count); });
 
 // Registros posteriores ao alvo não podem influenciar uma previsão de meses anteriores.
-Teste("Future records cannot leak into historical forecast", () => { var d = Familia(); var e = Conta(d, 1000); e.Vencimento = mes.AddMonths(5); d.Despesas.Add(e); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Count); });
+Teste("Lançamentos futuros não entram na média histórica", () => { var d = Familia(); var e = Conta(d, 1000); e.Vencimento = mes.AddMonths(5); d.Despesas.Add(e); Igual(0, MotorFinanceiro.Previsoes(d, mes.AddMonths(1)).Count); });
 
 // A entrada brasileira aceita vírgula decimal e zero quando permitido.
-Teste("Brazilian money parses exactly", () => { Igual(1000.50m, Dinheiro.Interpretar("1000,50", "Valor")); Igual(0m, Dinheiro.Interpretar("0", "Valor")); });
+Teste("Valores no formato brasileiro são lidos com exatidão", () => { Igual(1000.50m, Dinheiro.Interpretar("1000,50", "Valor")); Igual(0m, Dinheiro.Interpretar("0", "Valor")); });
 
 // Rejeita formatos ambíguos, negativos, notação científica, símbolos e precisão além do limite.
-Teste("Ambiguous negative exponent and excessive precision rejected", () => { foreach (var entrada in new[] { "1.000", "1,000", "-1", "1e3", "NaN", "", "R$ 10", "1000000000", "1,234" }) Rejeitar(() => Dinheiro.Interpretar(entrada, "Valor")); Rejeitar(() => Dinheiro.Interpretar("0", "Valor", true)); });
+Teste("Valores ambíguos, negativos, com expoente ou casas demais são recusados", () => { foreach (var entrada in new[] { "1.000", "1,000", "-1", "1e3", "NaN", "", "R$ 10", "1000000000", "1,234" }) Rejeitar(() => Dinheiro.Interpretar(entrada, "Valor")); Rejeitar(() => Dinheiro.Interpretar("0", "Valor", true)); });
 
 // Nomes repetidos e responsáveis inexistentes devem impedir o salvamento.
-Teste("Duplicate names and invalid identity rejected", () => { var d = Familia(); d.Pessoas[1].Nome = " ana "; Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Pessoas[1].Nome = "Bruno"; d.Despesas.Add(Conta(d, 10) with { Participantes = [Guid.NewGuid()] }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Nomes repetidos e identificadores inválidos são recusados", () => { var d = Familia(); d.Pessoas[1].Nome = " ana "; Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Pessoas[1].Nome = "Bruno"; d.Despesas.Add(Conta(d, 10) with { Participantes = [Guid.NewGuid()] }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // O modo individual exige um responsável; valores desconhecidos do enum também são inválidos.
-Teste("Participant count and enum validated", () => { var d = Familia(); d.Despesas.Add(Conta(d, 10) with { Divisao = ModoDeDivisao.Individual }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Despesas[0].Divisao = (ModoDeDivisao)90; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Quantidade de participantes e modo de divisão são validados", () => { var d = Familia(); d.Despesas.Add(Conta(d, 10) with { Divisao = ModoDeDivisao.Individual }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Despesas[0].Divisao = (ModoDeDivisao)90; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // Cada pessoa só pode ter uma renda por mês e as competências devem estar no intervalo suportado.
-Teste("Dates and income uniqueness validated", () => { var d = Familia(); d.Rendas.Add(d.Rendas[0] with { }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Rendas.RemoveAt(2); d.Rendas[0].Mes = new(1999, 1, 1); Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Datas e unicidade das rendas são validadas", () => { var d = Familia(); d.Rendas.Add(d.Rendas[0] with { }); Rejeitar(() => RegrasDoOrcamento.Validar(d)); d.Rendas.RemoveAt(2); d.Rendas[0].Mes = new(1999, 1, 1); Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // O total de itens precisa coincidir com a despesa; um backup adulterado não pode impor outro total.
-Teste("Item arithmetic and tampered total validated", () => { var d = Familia(); var e = Conta(d, 5); e.Itens.Add(new() { Nome = "Arroz", Quantidade = 2, PrecoUnitario = 2.50m }); d.Despesas.Add(e); RegrasDoOrcamento.Validar(d); e.Valor = 6; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Soma dos itens e total adulterado são validados", () => { var d = Familia(); var e = Conta(d, 5); e.Itens.Add(new() { Nome = "Arroz", Quantidade = 2, PrecoUnitario = 2.50m }); d.Despesas.Add(e); RegrasDoOrcamento.Validar(d); e.Valor = 6; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // Quantidade fracionária que resulta em meio centavo deve arredondar para longe de zero.
-Teste("Fractional items round away from zero", () => { Igual(.01m, new ItemDaDespesa { Nome = "Peso", Quantidade = .5m, PrecoUnitario = .01m }.Total); });
+Teste("Itens fracionados arredondam para longe do zero", () => { Igual(.01m, new ItemDaDespesa { Nome = "Peso", Quantidade = .5m, PrecoUnitario = .01m }.Total); });
 
 // Coleções nulas vindas de JSON devem causar erro de negócio, não acesso a referência nula.
-Teste("Null collections rejected", () => { var d = Familia(); d.Despesas = null!; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Listas nulas são recusadas", () => { var d = Familia(); d.Despesas = null!; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // Nomes não podem conter caracteres de controle que deformem a apresentação.
-Teste("Text control characters rejected", () => { var d = Familia(); d.Pessoas[0].Nome = "Ana\nBruno"; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
+Teste("Caracteres de controle em textos são recusados", () => { var d = Familia(); d.Pessoas[0].Nome = "Ana\nBruno"; Rejeitar(() => RegrasDoOrcamento.Validar(d)); });
 
 // Confere leitura após gravação, cópia anterior, preservação após falha e permissões privadas no Unix.
-Teste("Persistence roundtrip backup and invalid-save preservation", () =>
+Teste("Gravação, leitura, cópia anterior e preservação após salvamento inválido", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -132,7 +132,7 @@ Teste("Persistence roundtrip backup and invalid-save preservation", () =>
 });
 
 // Uma segunda instância cooperante não pode adquirir o mesmo arquivo de bloqueio.
-Teste("Second writer is prevented", () =>
+Teste("Uma segunda instância não consegue gravar", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try { using var armazenamento = new ArmazenamentoLocal(caminho); Rejeitar(() => { using var duplicada = new ArmazenamentoLocal(caminho); }); }
@@ -140,7 +140,7 @@ Teste("Second writer is prevented", () =>
 });
 
 // Recusa JSON malformado, versão desconhecida, campos estranhos, registros nulos e arquivo muito grande.
-Teste("Malformed and unsupported JSON cannot import", () =>
+Teste("JSON malformado ou de versão não suportada não é importado", () =>
 {
     var caminho = Path.GetTempFileName();
     try
@@ -152,7 +152,7 @@ Teste("Malformed and unsupported JSON cannot import", () =>
     finally { File.Delete(caminho); }
 });
 // A situação de vencimento: pago prevalece; atraso começa no dia seguinte; "em breve" vale de hoje a 3 dias.
-Teste("Due status classification", () =>
+Teste("Classificação da situação de vencimento", () =>
 {
     var d = Familia(); var hoje = new DateOnly(2026, 11, 11);
     SituacaoDoPrazo Em(int deslocamento, bool paga = false) { var e = Conta(d, 10); e.Vencimento = hoje.AddDays(deslocamento); e.Paga = paga; return SituacaoDoPrazo.De(e, hoje); }
@@ -161,7 +161,7 @@ Teste("Due status classification", () =>
 });
 
 // A preferência de tema é gravada em settings.json e lida de volta; o padrão é seguir o sistema.
-Teste("Theme preference roundtrip and default", () =>
+Teste("Preferência de tema: gravação, leitura e padrão", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -175,7 +175,7 @@ Teste("Theme preference roundtrip and default", () =>
 });
 
 // Preferência corrompida ou com valor desconhecido nunca impede abrir o app: volta ao padrão.
-Teste("Corrupt settings fall back to defaults", () =>
+Teste("Preferências corrompidas voltam ao padrão", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(caminho);
     try
@@ -190,7 +190,7 @@ Teste("Corrupt settings fall back to defaults", () =>
 });
 
 // Trocar o tema não pode tocar nos dados financeiros: o financas.json fica byte a byte igual.
-Teste("Saving settings leaves financial data untouched", () =>
+Teste("Salvar preferências não toca nos dados financeiros", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -217,7 +217,7 @@ string JsonV1(DadosDoOrcamento d)
 }
 
 // Um arquivo v1 é lido sem perda, ganha a versão atual e, no primeiro salvamento, o v1 original vira o backup.
-Teste("Version 1 file migrates to the current version without losing data", () =>
+Teste("Arquivo da versão 1 migra para a versão atual sem perder dados", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(caminho);
     try
@@ -233,7 +233,7 @@ Teste("Version 1 file migrates to the current version without losing data", () =
 });
 
 // Um arquivo que diz ser v1 mas traz recorrências está adulterado: é recusado em vez de adivinhado.
-Teste("Version 1 file with recurrences is rejected", () =>
+Teste("Arquivo da versão 1 com recorrências é recusado", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d)); var caminho = Path.GetTempFileName();
     try { var no = JsonNode.Parse(JsonSerializer.Serialize(d, ArmazenamentoLocal.OpcoesJson))!; no["Version"] = 1; File.WriteAllText(caminho, no.ToJsonString()); Rejeitar(() => ArmazenamentoLocal.Ler(caminho)); }
@@ -241,7 +241,7 @@ Teste("Version 1 file with recurrences is rejected", () =>
 });
 
 // Do mês inicial ao horizonte (12 meses à frente), dia 31 vira o último dia dos meses curtos, e repetir não duplica nada.
-Teste("Recurrence generates months up to the horizon and is idempotent", () =>
+Teste("Recorrência gera os meses até o horizonte e não duplica", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d));
     Igual(23, MotorDeRecorrencias.Gerar(d, hoje)); // jan/2026 a nov/2027
@@ -254,7 +254,7 @@ Teste("Recurrence generates months up to the horizon and is idempotent", () =>
 });
 
 // Com o passar do tempo, a janela avança e só os meses novos são criados.
-Teste("Recurrence tops up as time passes", () =>
+Teste("Recorrência completa os meses conforme o tempo passa", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d)); MotorDeRecorrencias.Gerar(d, hoje);
     Igual(2, MotorDeRecorrencias.Gerar(d, new DateOnly(2027, 1, 5))); // dez/2027 e jan/2028
@@ -262,7 +262,7 @@ Teste("Recurrence tops up as time passes", () =>
 });
 
 // O horizonte respeita o limite de 2099 e um início distante ainda cria o primeiro mês.
-Teste("Horizon clamp and far-future start", () =>
+Teste("Limite do horizonte e início muito no futuro", () =>
 {
     Igual(new DateOnly(2099, 12, 1), MotorDeRecorrencias.Horizonte(new DateOnly(2099, 6, 15)));
     var d = Familia(); d.Recorrencias.Add(Aluguel(d, 5, new DateOnly(2030, 1, 1)));
@@ -270,7 +270,7 @@ Teste("Horizon clamp and far-future start", () =>
 });
 
 // Excluir um mês de uma recorrência registra o mês como ignorado: a geração não o recria.
-Teste("Deleted occurrence is not regenerated", () =>
+Teste("Mês excluído não é recriado", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d)); MotorDeRecorrencias.Gerar(d, hoje);
     var marco = d.Despesas.First(e => e.MesDaRecorrencia == new DateOnly(2026, 3, 1)); MotorDeRecorrencias.RemoverDespesa(d, marco.Id);
@@ -278,7 +278,7 @@ Teste("Deleted occurrence is not regenerated", () =>
 });
 
 // Encerrar remove só o que está em aberto depois do mês final; o que já foi pago permanece no histórico.
-Teste("Ending a recurrence keeps paid history", () =>
+Teste("Encerrar uma recorrência mantém o histórico pago", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d)); MotorDeRecorrencias.Gerar(d, hoje);
     var dezembro = d.Despesas.First(e => e.MesDaRecorrencia == new DateOnly(2026, 12, 1)); dezembro.Paga = true;
@@ -289,7 +289,7 @@ Teste("Ending a recurrence keeps paid history", () =>
 });
 
 // Não se encerra antes do início; remover o modelo mantém os lançamentos como despesas comuns.
-Teste("End before start is rejected and removing the model keeps expenses", () =>
+Teste("Encerrar antes do início é recusado e remover o modelo mantém as despesas", () =>
 {
     var d = Familia(); d.Recorrencias.Add(Aluguel(d)); MotorDeRecorrencias.Gerar(d, hoje);
     Rejeitar(() => MotorDeRecorrencias.Encerrar(d, d.Recorrencias[0].Id, new DateOnly(2025, 12, 1)));
@@ -298,7 +298,7 @@ Teste("End before start is rejected and removing the model keeps expenses", () =
 });
 
 // Dados de recorrência inconsistentes nunca são salvos nem importados.
-Teste("Invalid recurrence data is rejected", () =>
+Teste("Dados inválidos de recorrência são recusados", () =>
 {
     DadosDoOrcamento Novo() { var d = Familia(); d.Recorrencias.Add(Aluguel(d)); MotorDeRecorrencias.Gerar(d, hoje); return d; }
     var d = Novo(); d.Recorrencias[0].DiaDoMes = 0; Rejeitar(() => RegrasDoOrcamento.Validar(d));
@@ -314,7 +314,7 @@ Teste("Invalid recurrence data is rejected", () =>
 });
 
 // A recorrência sobrevive a gravar e ler (inclusive os meses ignorados).
-Teste("Recurrence persistence roundtrip", () =>
+Teste("Recorrências: gravação e leitura", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -332,21 +332,21 @@ Despesa PagaPelaPessoa(DadosDoOrcamento d, decimal valor, Guid? pagador, ModoDeD
 decimal Deve(List<Divida> dividas, Guid devedor, Guid credor) => dividas.Where(x => x.IdDoDevedor == devedor && x.IdDoCredor == credor).Sum(x => x.Valor);
 
 // Ana paga 800 e a divisão proporcional dá 600/200: Bruno deve 200 a Ana, e Ana não deve nada a si mesma.
-Teste("Payer is owed the others' shares", () =>
+Teste("Quem pagou recebe a parte dos outros", () =>
 {
     var d = Familia(); var (ana, bruno) = (d.Pessoas[0].Id, d.Pessoas[1].Id); PagaPelaPessoa(d, 800, ana);
     var dividas = MotorDeAcertos.Dividas(d); Igual(1, dividas.Count); Igual(200m, Deve(dividas, bruno, ana));
 });
 
 // Despesas em aberto e pagas sem pagador informado não geram dívida (comportamento antigo preservado).
-Teste("Unpaid and unattributed payments create no debt", () =>
+Teste("Despesa em aberto ou sem pagador não cria dívida", () =>
 {
     var d = Familia(); d.Despesas.Add(Conta(d, 800)); PagaPelaPessoa(d, 500, null);
     Igual(0, MotorDeAcertos.Dividas(d).Count);
 });
 
 // Quem paga uma despesa individual de outra pessoa passa a ter o valor inteiro a receber; a própria despesa individual não gera dívida.
-Teste("Paying someone else's individual expense creates a full debt", () =>
+Teste("Pagar a despesa individual de outra pessoa cria dívida do valor inteiro", () =>
 {
     var d = Familia(); var (ana, bruno) = (d.Pessoas[0].Id, d.Pessoas[1].Id);
     var e = PagaPelaPessoa(d, 100, ana); e.Divisao = ModoDeDivisao.Individual; e.Participantes = [bruno]; // Bruno é o responsável, Ana pagou
@@ -356,7 +356,7 @@ Teste("Paying someone else's individual expense creates a full debt", () =>
 });
 
 // As dívidas de um par se compensam: 200 a favor de Ana menos 100 a favor de Bruno deixa Bruno devendo 100.
-Teste("Mutual debts net out within a pair", () =>
+Teste("Dívidas mútuas se compensam dentro do par", () =>
 {
     var d = Familia(); var (ana, bruno) = (d.Pessoas[0].Id, d.Pessoas[1].Id);
     PagaPelaPessoa(d, 800, ana);                           // Bruno deve 200 a Ana
@@ -365,7 +365,7 @@ Teste("Mutual debts net out within a pair", () =>
 });
 
 // Um acerto abate a dívida; pagar a mais inverte o sentido; pagar exatamente quita.
-Teste("Settlements reduce, clear and flip the balance", () =>
+Teste("Acertos reduzem, zeram e invertem o saldo", () =>
 {
     var d = Familia(); var (ana, bruno) = (d.Pessoas[0].Id, d.Pessoas[1].Id); PagaPelaPessoa(d, 800, ana);
     d.Acertos.Add(new Acerto { IdDoPagador = bruno, IdDoRecebedor = ana, Valor = 150 }); Igual(50m, Deve(MotorDeAcertos.Dividas(d), bruno, ana));
@@ -374,7 +374,7 @@ Teste("Settlements reduce, clear and flip the balance", () =>
 });
 
 // Com três pessoas, cada par é calculado separadamente: ninguém ganha dívida com quem não pagou nada por ele.
-Teste("Three people settle pairwise", () =>
+Teste("Três pessoas acertam em pares", () =>
 {
     var d = Familia(); d.Pessoas.Add(new Pessoa { Nome = "Carla" }); var (ana, bruno, carla) = (d.Pessoas[0].Id, d.Pessoas[1].Id, d.Pessoas[2].Id);
     var e = Conta(d, 900, ModoDeDivisao.Igual); e.Participantes = [ana, bruno, carla]; e.Paga = true; e.PagaPor = ana; d.Despesas.Add(e);
@@ -382,7 +382,7 @@ Teste("Three people settle pairwise", () =>
 });
 
 // Centavos não se perdem: 100,00 em três partes (33,34/33,33/33,33) soma exatamente o que o pagador adiantou pelos outros.
-Teste("Debts add up to the exact amount advanced for others", () =>
+Teste("As dívidas somam exatamente o valor adiantado pelos outros", () =>
 {
     var d = Familia(); d.Pessoas.Add(new Pessoa { Nome = "Carla" }); var ids = d.Pessoas.Select(p => p.Id).ToList();
     var e = Conta(d, 100, ModoDeDivisao.Igual); e.Participantes = ids; e.Paga = true; e.PagaPor = ids[0]; d.Despesas.Add(e);
@@ -391,7 +391,7 @@ Teste("Debts add up to the exact amount advanced for others", () =>
 });
 
 // Quem pagou só vale em despesa paga e com pessoa existente; acertos precisam de duas pessoas diferentes e valor positivo.
-Teste("Invalid payer and settlement data is rejected", () =>
+Teste("Pagador e acerto inválidos são recusados", () =>
 {
     var d = Familia(); var (ana, bruno) = (d.Pessoas[0].Id, d.Pessoas[1].Id);
     var emAberto = Conta(d, 100); emAberto.PagaPor = ana; d.Despesas.Add(emAberto); Rejeitar(() => RegrasDoOrcamento.Validar(d));
@@ -403,7 +403,7 @@ Teste("Invalid payer and settlement data is rejected", () =>
 });
 
 // Quem pagou e os acertos sobrevivem a gravar e ler; um arquivo v2 antigo (sem esses campos) continua abrindo.
-Teste("Payer and settlements persist; older v2 files still open", () =>
+Teste("Pagador e acertos são gravados; arquivos v2 antigos continuam abrindo", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -419,7 +419,7 @@ Teste("Payer and settlements persist; older v2 files still open", () =>
 });
 
 // Um arquivo v1 que traga quem pagou ou acertos é adulterado: recusado.
-Teste("Version 1 file with payer data is rejected", () =>
+Teste("Arquivo da versão 1 com dados de pagador é recusado", () =>
 {
     var d = Familia(); PagaPelaPessoa(d, 100, d.Pessoas[0].Id); var caminho = Path.GetTempFileName();
     try { var no = JsonNode.Parse(JsonSerializer.Serialize(d, ArmazenamentoLocal.OpcoesJson))!; no["Version"] = 1; no.AsObject().Remove("Recurrences"); File.WriteAllText(caminho, no.ToJsonString()); Rejeitar(() => ArmazenamentoLocal.Ler(caminho)); }
@@ -428,7 +428,7 @@ Teste("Version 1 file with payer data is rejected", () =>
 
 // ---- Várias rendas por pessoa ----
 // A renda do mês é a soma das linhas (salário + extra) e o rateio proporcional usa esse total.
-Teste("Income lines add up and drive the split", () =>
+Teste("Linhas de renda somam e alimentam o rateio", () =>
 {
     var d = Familia(0, 1000); d.Rendas.Add(new RendaMensal { IdDaPessoa = d.Pessoas[0].Id, Mes = mes, Valor = 1000, Rotulo = "Salário" }); d.Rendas.Add(new RendaMensal { IdDaPessoa = d.Pessoas[0].Id, Mes = mes, Valor = 2000, Rotulo = "Extra" });
     Igual(3000m, MotorFinanceiro.Renda(d, d.Pessoas[0].Id, mes)); Igual(3, MotorFinanceiro.LinhasDeRenda(d, d.Pessoas[0].Id, mes).Count); // a linha "Renda" de zero criada por Family + Salário + Extra
@@ -436,7 +436,7 @@ Teste("Income lines add up and drive the split", () =>
 });
 
 // Nomes repetidos, mais de 20 linhas, nome vazio e identificador repetido são recusados.
-Teste("Income line validation", () =>
+Teste("Validação das linhas de renda", () =>
 {
     var d = Familia(); d.Rendas.Add(new RendaMensal { IdDaPessoa = d.Pessoas[0].Id, Mes = mes, Valor = 10, Rotulo = " salário" }); d.Rendas[0].Rotulo = "Salário"; Rejeitar(() => RegrasDoOrcamento.Validar(d));
     d = Familia(); d.Rendas[0].Rotulo = ""; Rejeitar(() => RegrasDoOrcamento.Validar(d));
@@ -445,7 +445,7 @@ Teste("Income line validation", () =>
 });
 
 // Um arquivo anterior (uma renda por mês, sem Id nem Label) abre: a renda vira "Renda" e ganha identificador.
-Teste("Older income records without id and label still open", () =>
+Teste("Rendas antigas, sem id e sem nome, continuam abrindo", () =>
 {
     var d = Familia(); var no = JsonNode.Parse(JsonSerializer.Serialize(d, ArmazenamentoLocal.OpcoesJson))!; var caminho = Path.GetTempFileName();
     try
@@ -459,7 +459,7 @@ Teste("Older income records without id and label still open", () =>
 
 // ---- Categorias personalizadas ----
 // Adicionar, usar numa despesa e ver a categoria nas previsões; as padrão continuam disponíveis.
-Teste("Custom category can be added and used", () =>
+Teste("Categoria própria pode ser criada e usada", () =>
 {
     var d = Familia(); MotorDeCategorias.Adicionar(d, "  Pets "); Igual("Pets", d.CategoriasProprias[0]); Igual(9, RegrasDoOrcamento.TodasAsCategorias(d).Count);
     var e = Conta(d, 90); e.Categoria = "Pets"; e.Vencimento = mes.AddMonths(1); d.Despesas.Add(e); RegrasDoOrcamento.Validar(d);
@@ -467,7 +467,7 @@ Teste("Custom category can be added and used", () =>
 });
 
 // Nome vazio, longo, repetido (ignorando caixa), igual a uma padrão e acima de 40 categorias são recusados.
-Teste("Custom category names are validated", () =>
+Teste("Nomes de categorias próprias são validados", () =>
 {
     var d = Familia(); MotorDeCategorias.Adicionar(d, "Pets");
     Rejeitar(() => MotorDeCategorias.Adicionar(d, "  ")); Rejeitar(() => MotorDeCategorias.Adicionar(d, new string('x', 31))); Rejeitar(() => MotorDeCategorias.Adicionar(d, "pets")); Rejeitar(() => MotorDeCategorias.Adicionar(d, "mercado")); Rejeitar(() => MotorDeCategorias.Adicionar(d, "Ab\nc"));
@@ -477,7 +477,7 @@ Teste("Custom category names are validated", () =>
 });
 
 // Renomear atualiza despesas e recorrências; as padrão não podem ser renomeadas nem excluídas.
-Teste("Renaming a category updates its expenses and recurrences", () =>
+Teste("Renomear uma categoria atualiza despesas e recorrências", () =>
 {
     var d = Familia(); MotorDeCategorias.Adicionar(d, "Pets"); var e = Conta(d, 90); e.Categoria = "Pets"; d.Despesas.Add(e);
     var r = Aluguel(d); r.Categoria = "Pets"; d.Recorrencias.Add(r);
@@ -487,14 +487,14 @@ Teste("Renaming a category updates its expenses and recurrences", () =>
 });
 
 // Excluir só é possível sem uso; com uso, a mensagem explica o que fazer.
-Teste("A category in use cannot be removed", () =>
+Teste("Categoria em uso não pode ser removida", () =>
 {
     var d = Familia(); MotorDeCategorias.Adicionar(d, "Pets"); var e = Conta(d, 90); e.Categoria = "Pets"; d.Despesas.Add(e);
     Rejeitar(() => MotorDeCategorias.Remover(d, "Pets")); d.Despesas.Clear(); MotorDeCategorias.Remover(d, "Pets"); Igual(0, d.CategoriasProprias.Count);
 });
 
 // As categorias próprias sobrevivem a gravar e ler; arquivos sem o campo continuam abrindo.
-Teste("Custom categories persist; older files still open", () =>
+Teste("Categorias próprias são gravadas; arquivos antigos continuam abrindo", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -507,7 +507,7 @@ Teste("Custom categories persist; older files still open", () =>
 
 // ---- Metas por categoria ----
 // Gasto, meta e nível: 80% é "perto", exatamente 100% ainda é "perto", acima de 100% é "acima".
-Teste("Goal progress levels", () =>
+Teste("Níveis de progresso da meta", () =>
 {
     var d = Familia(); MotorDeMetas.Definir(d, "Mercado", 1000);
     ProgressoDaMeta Em(decimal gasto) { d.Despesas.Clear(); if (gasto > 0) { var e = Conta(d, gasto); e.Categoria = "Mercado"; d.Despesas.Add(e); } return MotorDeMetas.Progresso(d, mes).Single(); }
@@ -516,7 +516,7 @@ Teste("Goal progress levels", () =>
 });
 
 // Só despesas do mês e da categoria contam (pagas ou não); definir de novo troca o valor e limpar remove.
-Teste("Goal counts the month and category only", () =>
+Teste("A meta conta só o mês e a categoria", () =>
 {
     var d = Familia(); MotorDeMetas.Definir(d, "Mercado", 800); MotorDeMetas.Definir(d, "Mercado", 600); Igual(1, d.Metas.Count); Igual(600m, d.Metas[0].Valor);
     var a = Conta(d, 100); a.Categoria = "Mercado"; var b = Conta(d, 50); b.Categoria = "Mercado"; b.Paga = true; var outra = Conta(d, 70); outra.Categoria = "Lazer"; var maisTarde = Conta(d, 90); maisTarde.Categoria = "Mercado"; maisTarde.Vencimento = mes.AddMonths(1);
@@ -525,7 +525,7 @@ Teste("Goal counts the month and category only", () =>
 });
 
 // Meta inválida (categoria inexistente, valor zero ou duplicada) é recusada; renomear acompanha e excluir a categoria remove a meta.
-Teste("Goal validation and category interplay", () =>
+Teste("Validação de metas e relação com categorias", () =>
 {
     var d = Familia(); Rejeitar(() => MotorDeMetas.Definir(d, "Inexistente", 100)); Rejeitar(() => MotorDeMetas.Definir(d, "Mercado", 0));
     d.Metas = [new() { Categoria = "Mercado", Valor = 10 }, new() { Categoria = "MERCADO", Valor = 20 }]; Rejeitar(() => RegrasDoOrcamento.Validar(d));
@@ -534,7 +534,7 @@ Teste("Goal validation and category interplay", () =>
 });
 
 // Metas persistem; arquivos anteriores sem o campo abrem; v1 com metas é recusado.
-Teste("Goals persist; older files open; v1 with goals rejected", () =>
+Teste("Metas são gravadas; arquivos antigos abrem; v1 com metas é recusado", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -548,7 +548,7 @@ Teste("Goals persist; older files open; v1 with goals rejected", () =>
 
 // ---- Busca em todos os meses ----
 // Sem mês, procura em todos (mais recente primeiro); com mês, só naquele (por vencimento).
-Teste("Search across all months or one month", () =>
+Teste("Busca em todos os meses ou em um mês", () =>
 {
     var d = Familia(); var a = Conta(d, 10); a.Titulo = "Mercado de outubro"; var b = Conta(d, 20); b.Titulo = "Mercado de setembro"; b.Vencimento = mes.AddMonths(-1); var c = Conta(d, 30); c.Titulo = "Cinema"; c.Categoria = "Lazer"; c.Vencimento = mes.AddMonths(2);
     d.Despesas.AddRange([b, a, c]);
@@ -558,7 +558,7 @@ Teste("Search across all months or one month", () =>
 });
 
 // A busca ignora maiúsculas e acentos, procura também na categoria e combina com situação e categoria.
-Teste("Search ignores case and accents and combines filters", () =>
+Teste("Busca ignora maiúsculas e acentos e combina filtros", () =>
 {
     var d = Familia(); var a = Conta(d, 10); a.Titulo = "Consulta médica"; a.Categoria = "Saúde"; var b = Conta(d, 20); b.Titulo = "Farmácia"; b.Categoria = "Saúde"; b.Paga = true; var c = Conta(d, 30); c.Titulo = "Pão"; d.Despesas.AddRange([a, b, c]);
     Igual(1, BuscaDeDespesas.Buscar(d, null, "MEDICA").Count); Igual(2, BuscaDeDespesas.Buscar(d, null, "saude").Count); Igual(1, BuscaDeDespesas.Buscar(d, null, "pao").Count);
@@ -567,7 +567,7 @@ Teste("Search ignores case and accents and combines filters", () =>
 
 // ---- CSV: leitura, exportação e importação de extrato ----
 // Campos entre aspas com separador, aspas duplicadas e quebra de linha; BOM, "sep=" do Excel e linhas vazias.
-Teste("CSV parser handles quotes, newlines, BOM and sep line", () =>
+Teste("Leitor de CSV trata aspas, quebras de linha, BOM e linha sep", () =>
 {
     var t = Csv.Interpretar("\uFEFFa;b;c\r\n1;\"x;y\";\"say \"\"hi\"\"\"\r\n\r\n2;\"two\nlines\";z\r\n");
     Igual(';', t.Delimitador); Igual(3, t.Linhas.Count); Igual("x;y", t.Linhas[1][1]); Igual("say \"hi\"", t.Linhas[1][2]); Igual("two\nlines", t.Linhas[2][1]);
@@ -577,7 +577,7 @@ Teste("CSV parser handles quotes, newlines, BOM and sep line", () =>
 });
 
 // Valores em vários formatos de extrato; texto, mais de 2 casas e ambiguidades ruins são recusados.
-Teste("Statement amounts parse in common formats", () =>
+Teste("Valores de extrato são lidos nos formatos comuns", () =>
 {
     (string Texto, decimal Valor)[] valido = [("1.234,56", 1234.56m), ("1234,56", 1234.56m), ("-1234.56", -1234.56m), ("1,234.56", 1234.56m), ("R$ 12,00", 12m), ("-R$ 12,00", -12m), ("(12,00)", -12m), ("12,00-", -12m), ("1.234", 1234m), ("12,5", 12.5m), ("1.234.567,89", 1234567.89m), ("0,99", 0.99m), ("+7,10", 7.10m), ("3", 3m)];
     foreach (var (texto, valorLido) in valido) { Igual(true, ImportacaoDeExtrato.TentarInterpretarValor(texto, out var interpretadas)); Igual(valorLido, interpretadas); }
@@ -585,7 +585,7 @@ Teste("Statement amounts parse in common formats", () =>
 });
 
 // Datas comuns; a hora depois da data é ignorada; datas impossíveis são recusadas.
-Teste("Statement dates parse in common formats", () =>
+Teste("Datas de extrato são lidas nos formatos comuns", () =>
 {
     foreach (var texto in new[] { "05/11/2026", "5/11/2026", "05/11/26", "2026-11-05", "05-11-2026", "05.11.2026", "2026/11/05", "2026-11-05 10:30:00", "2026-11-05T10:30:00", "05/11/2026 08:00" })
     { Igual(true, ImportacaoDeExtrato.TentarInterpretarData(texto, out var d)); Igual(new DateOnly(2026, 11, 5), d); }
@@ -593,7 +593,7 @@ Teste("Statement dates parse in common formats", () =>
 });
 
 // A exportação usa ; e vírgula decimal, BOM na gravação, e neutraliza fórmulas (=, +, -, @) com apóstrofo.
-Teste("CSV export format and formula protection", () =>
+Teste("Formato do CSV exportado e proteção contra fórmulas", () =>
 {
     var d = Familia(); var a = Conta(d, 1234.5m, ModoDeDivisao.Igual); a.Titulo = "=HYPERLINK(\"http://x\")"; a.Categoria = "Mercado"; a.Paga = true; a.PagaPor = d.Pessoas[0].Id; var b = Conta(d, 10); b.Titulo = "-cmd|calc; \"x\""; b.Vencimento = mes.AddDays(1); d.Despesas.AddRange([a, b]);
     var texto = ExportacaoCsv.Despesas(d); var fileiras = Csv.Interpretar(texto).Linhas;
@@ -605,13 +605,13 @@ Teste("CSV export format and formula protection", () =>
 });
 
 // Células comuns não ganham aspas nem apóstrofo; as perigosas e as com separador sim.
-Teste("CSV cell escaping", () =>
+Teste("Escape de células do CSV", () =>
 {
     Igual("Mercado", Csv.Celula("Mercado")); Igual("\"a;b\"", Csv.Celula("a;b")); Igual("\"a\"\"b\"", Csv.Celula("a\"b")); Igual("'=1+1", Csv.Celula("=1+1")); Igual("'@x", Csv.Celula("@x")); Igual("'+1", Csv.Celula("+1")); Igual("\" x\"", Csv.Celula(" x"));
 });
 
 // O mapeamento é sugerido pelos nomes do cabeçalho ou, sem cabeçalho, pelo conteúdo das colunas.
-Teste("Statement mapping is guessed from headers and from content", () =>
+Teste("Colunas do extrato são sugeridas pelo cabeçalho e pelo conteúdo", () =>
 {
     var comCabecalho = ImportacaoDeExtrato.Adivinhar(Csv.Interpretar("Data;Histórico;Valor;Saldo\n05/11/2026;PIX MERCADO;-45,90;1000,00"));
     Igual(0, comCabecalho.ColunaDaData); Igual(1, comCabecalho.ColunaDaDescricao); Igual(2, comCabecalho.ColunaDoValor); Igual(true, comCabecalho.TemCabecalho);
@@ -622,7 +622,7 @@ Teste("Statement mapping is guessed from headers and from content", () =>
 });
 
 // Negativos são despesas pagas em "Outros", sem pagador; entradas, zero e linhas ilegíveis ficam de fora (com o número da linha).
-Teste("Statement plan creates paid expenses and reports the rest", () =>
+Teste("O plano do extrato cria despesas pagas e relata o restante", () =>
 {
     var d = Familia(); var tabela = Csv.Interpretar("Data;Descrição;Valor\n05/11/2026;PIX  MERCADO ;-45,90\n06/11/2026;SALÁRIO;3000,00\n07/11/2026;ZERO;0,00\nlixo;X;-1,00\n08/11/2026;Y;abc\n09/11/2026;;-5,00");
     var plano = ImportacaoDeExtrato.Planejar(d, tabela, ImportacaoDeExtrato.Adivinhar(tabela), ModoDeDivisao.Individual, [d.Pessoas[0].Id]);
@@ -632,7 +632,7 @@ Teste("Statement plan creates paid expenses and reports the rest", () =>
 });
 
 // Fatura de cartão: positivos são compras e negativos (estornos) são ignorados.
-Teste("Statement plan supports card statements (positive is expense)", () =>
+Teste("O plano do extrato aceita fatura de cartão (positivo é despesa)", () =>
 {
     var d = Familia(); var tabela = Csv.Interpretar("Data;Descrição;Valor\n05/11/2026;LOJA;100,00\n06/11/2026;ESTORNO;-20,00");
     var plano = ImportacaoDeExtrato.Planejar(d, tabela, ImportacaoDeExtrato.Adivinhar(tabela) with { Sinal = SinalDoValor.PositivoEDespesa }, ModoDeDivisao.Igual, d.Pessoas.Select(p => p.Id).ToList());
@@ -640,7 +640,7 @@ Teste("Statement plan supports card statements (positive is expense)", () =>
 });
 
 // Importar o mesmo extrato de novo não duplica nada; duas linhas iguais no arquivo valem como duas compras reais.
-Teste("Statement re-import skips what already exists", () =>
+Teste("Reimportar o extrato pula o que já existe", () =>
 {
     var d = Familia(); var tabela = Csv.Interpretar("Data;Descrição;Valor\n05/11/2026;CAFE;-5,00\n05/11/2026;CAFE;-5,00\n06/11/2026;PAO;-7,00");
     var mapa = ImportacaoDeExtrato.Adivinhar(tabela); var eu = new List<Guid> { d.Pessoas[0].Id };
@@ -650,7 +650,7 @@ Teste("Statement re-import skips what already exists", () =>
 });
 
 // Responsável inválido e arquivos acima dos limites são recusados; a decodificação cai para Latin-1 quando não é UTF-8.
-Teste("Statement import limits and encoding", () =>
+Teste("Limites e codificação da importação de extrato", () =>
 {
     var d = Familia(); var tabela = Csv.Interpretar("Data;Descrição;Valor\n05/11/2026;X;-1,00");
     Rejeitar(() => ImportacaoDeExtrato.Planejar(d, tabela, ImportacaoDeExtrato.Adivinhar(tabela), ModoDeDivisao.Individual, [])); Rejeitar(() => ImportacaoDeExtrato.Planejar(d, tabela, ImportacaoDeExtrato.Adivinhar(tabela), ModoDeDivisao.Individual, d.Pessoas.Select(p => p.Id).ToList())); Rejeitar(() => ImportacaoDeExtrato.Planejar(d, tabela, ImportacaoDeExtrato.Adivinhar(tabela), ModoDeDivisao.Igual, [Guid.NewGuid()]));
@@ -667,7 +667,7 @@ Teste("Statement import limits and encoding", () =>
 
 // ---- Windows e Linux ----
 // A pasta de dados padrão fica na pasta local do usuário em qualquer sistema (%LOCALAPPDATA% no Windows, ~/.local/share no Linux).
-Teste("Default data folder is per-user and portable", () =>
+Teste("A pasta de dados padrão é por usuário e portátil", () =>
 {
     var esperado = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BankManager");
     Igual(esperado, ArmazenamentoLocal.PastaPadrao(null)); Igual(esperado, ArmazenamentoLocal.PastaPadrao("  ")); Igual("/custom", ArmazenamentoLocal.PastaPadrao("/custom"));
@@ -675,7 +675,7 @@ Teste("Default data folder is per-user and portable", () =>
 });
 
 // Pastas com espaços e acentos (comuns em nomes de usuário do Windows) funcionam para dados, configurações e exportação.
-Teste("Data folders with spaces and accents work", () =>
+Teste("Pastas de dados com espaços e acentos funcionam", () =>
 {
     var caminho = Path.Combine(Path.GetTempPath(), "bankmanager test " + Guid.NewGuid() + " João çã");
     try
@@ -688,7 +688,7 @@ Teste("Data folders with spaces and accents work", () =>
 });
 
 // Gráfico da visão geral: seis meses terminando no selecionado, do mais antigo ao mais recente, com zero nos meses vazios.
-Teste("Monthly totals cover the last N months including empty ones", () =>
+Teste("Totais mensais cobrem os últimos N meses, inclusive os vazios", () =>
 {
     var d = Familia(); var paga = Conta(d, 300); paga.Paga = true; d.Despesas.Add(paga); d.Despesas.Add(Conta(d, 200.50m));
     var antigo = Conta(d, 90); antigo.Vencimento = mes.AddMonths(-2).AddDays(14); d.Despesas.Add(antigo);
@@ -697,11 +697,11 @@ Teste("Monthly totals cover the last N months including empty ones", () =>
     Igual(6, totais.Count); Igual(mes.AddMonths(-5), totais[0].Mes); Igual(mes, totais[5].Mes);
     Igual(500.50m, totais[5].Total); Igual(90m, totais[3].Total); Igual(0m, totais[0].Total); Igual(590.50m, totais.Sum(t => t.Total));
     Igual(1, MotorFinanceiro.TotaisMensais(new DadosDoOrcamento(), mes, 1).Count);
-    try { MotorFinanceiro.TotaisMensais(d, mes, 0); throw new Exception("Expected rejection"); } catch (ArgumentOutOfRangeException) { }
+    try { MotorFinanceiro.TotaisMensais(d, mes, 0); throw new Exception("Era esperada uma recusa"); } catch (ArgumentOutOfRangeException) { }
 });
 
 // Últimas movimentações: rendas do mês (dia 1) e despesas pagas do mês, mais recentes primeiro, com limite.
-Teste("Recent movements list incomes and paid expenses, newest first", () =>
+Teste("Movimentações recentes listam rendas e despesas pagas, das mais novas para as mais antigas", () =>
 {
     var d = Familia(3000, 0); d.Rendas.Add(new() { IdDaPessoa = d.Pessoas[0].Id, Mes = mes, Valor = 500, Rotulo = "Extra" });
     d.Rendas.Add(new() { IdDaPessoa = d.Pessoas[0].Id, Mes = mes.AddMonths(1), Valor = 7000 });
@@ -719,7 +719,7 @@ Teste("Recent movements list incomes and paid expenses, newest first", () =>
 
 // Arquivos REAIS gravados pelas versões anteriores (pasta Fixtures): o v1 pelo código da branch main, o v2 pelo BankManager 2.1.
 // Cada um abre sem perda, passa para a versão 3 só em memória e, ao salvar, o arquivo original vira a cópia anterior, byte a byte.
-Teste("Real version 1 and 2 files migrate to version 3 in a chain", () =>
+Teste("Arquivos reais das versões 1 e 2 migram em cadeia para a versão 3", () =>
 {
     foreach (var (nome, versao) in new[] { ("financas-v1.json", 1), ("financas-v2.json", 2) })
     {
@@ -752,7 +752,7 @@ Teste("Real version 1 and 2 files migrate to version 3 in a chain", () =>
 });
 
 // Um arquivo que diz ser v2 (ou v1) mas traz data de pagamento está adulterado; uma versão maior que a do aplicativo é recusada.
-Teste("Older versions with version 3 data and newer versions are rejected", () =>
+Teste("Versões antigas com dados da versão 3 e versões mais novas são recusadas", () =>
 {
     var caminho = Path.GetTempFileName();
     try
@@ -769,7 +769,7 @@ Teste("Older versions with version 3 data and newer versions are rejected", () =
 });
 
 // A data de pagamento só existe em despesa paga, dentro do intervalo de datas aceito; parcelas novas nascem sem ela.
-Teste("Paid date requires a paid expense and a valid date", () =>
+Teste("Data de pagamento exige despesa paga e data válida", () =>
 {
     var d = Familia(); var conta = Conta(d, 100); conta.DataDoPagamento = mes; d.Despesas.Add(conta); Rejeitar(() => RegrasDoOrcamento.Validar(d));
     conta.Paga = true; RegrasDoOrcamento.Validar(d);
@@ -780,7 +780,7 @@ Teste("Paid date requires a paid expense and a valid date", () =>
 });
 
 // Movimentações usam a data do pagamento: a despesa aparece no mês em que foi paga, não no do vencimento.
-Teste("Recent movements follow the paid date into its month", () =>
+Teste("Movimentações seguem a data de pagamento para o mês dela", () =>
 {
     var d = Familia(0, 0);
     Despesa Paga(string titulo, DateOnly vencimento, DateOnly? pagaEm) { var e = Conta(d, 100); e.Titulo = titulo; e.Vencimento = vencimento; e.Paga = true; e.DataDoPagamento = pagaEm; d.Despesas.Add(e); return e; }
@@ -795,7 +795,7 @@ Teste("Recent movements follow the paid date into its month", () =>
 });
 
 // Extrato importado: a data da própria linha vira a data de pagamento; a planilha exportada traz a coluna "Pago em".
-Teste("Statement import sets the paid date and CSV export shows it", () =>
+Teste("Importar extrato define a data de pagamento e o CSV exportado a mostra", () =>
 {
     var d = Familia(); var tabela = Csv.Interpretar("Data;Histórico;Valor\r\n02/10/2026;PADARIA;-12,50\r\n");
     var plano = ImportacaoDeExtrato.Planejar(d, tabela, new MapeamentoDeImportacao(0, 1, 2, true, SinalDoValor.NegativoEDespesa), ModoDeDivisao.Individual, [d.Pessoas[0].Id]);
@@ -828,7 +828,7 @@ DadosDoOrcamento Recebedor()
 string Retrato(DadosDoOrcamento d) => JsonSerializer.Serialize(d, ArmazenamentoLocal.OpcoesJson);
 
 // O arquivo leva só as despesas escolhidas, com pessoas por nome; nunca rendas, metas, acertos ou despesas não selecionadas.
-Teste("Share file contains only the selected expenses", () =>
+Teste("O arquivo de compartilhamento tem só as despesas escolhidas", () =>
 {
     var d = Remetente(); var escolhidas = d.Despesas.Where(e => e.Titulo is "Mercado" or "Ração").Select(e => e.Id).ToList();
     var arquivo = CompartilhamentoDeDespesas.Montar(d, escolhidas, incluirPagamento: false);
@@ -845,7 +845,7 @@ Teste("Share file contains only the selected expenses", () =>
 });
 
 // Importar ADICIONA: mapeia pessoas (existente, nova, ignorada), cria categoria, e não toca em nada que já existia.
-Teste("Import adds expenses with mapped people and categories, touching nothing else", () =>
+Teste("Importar adiciona despesas com pessoas e categorias mapeadas, sem tocar no resto", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor(); var antes = Retrato(recebedor);
     var arquivo = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Mercado" or "Ração" or "Feira").Select(e => e.Id).ToList(), incluirPagamento: true);
@@ -869,7 +869,7 @@ Teste("Import adds expenses with mapped people and categories, touching nothing 
 });
 
 // Pessoa ignorada sai da despesa; se ninguém sobra, é preciso escolher quem assume. Categoria não criada vira "Outros"; opção de divisão igual.
-Teste("Ignored people, fallback, Outros and equal split options", () =>
+Teste("Pessoas ignoradas, responsável padrão, Outros e divisão igual", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor(); var antes = Retrato(recebedor);
     var arquivo = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Mercado" or "Ração").Select(e => e.Id).ToList(), incluirPagamento: true);
@@ -890,7 +890,7 @@ Teste("Ignored people, fallback, Outros and equal split options", () =>
 });
 
 // Importar o mesmo arquivo duas vezes não duplica; "importar mesmo assim" cria cópias com novo Id; parcelas mantêm o vínculo.
-Teste("Duplicates are skipped by origin id and installments stay linked", () =>
+Teste("Duplicadas são puladas pelo id de origem e as parcelas continuam ligadas", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor();
     var arquivo = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Notebook" or "Feira").Select(e => e.Id).ToList(), incluirPagamento: false);
@@ -912,7 +912,7 @@ Teste("Duplicates are skipped by origin id and installments stay linked", () =>
 });
 
 // Erros por despesa: a linha ruim é apontada e pulada, as boas entram; pessoas criadas só para a linha ruim são desfeitas.
-Teste("Per-expense errors are reported and skipped", () =>
+Teste("Erros por despesa são relatados e a despesa é pulada", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor();
     var arquivo = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Mercado" or "Ração").Select(e => e.Id).ToList(), false);
@@ -925,7 +925,7 @@ Teste("Per-expense errors are reported and skipped", () =>
 });
 
 // A prévia recebe uma linha por despesa do arquivo; "importar mesmo assim" vale por despesa; a versão do app viaja no arquivo.
-Teste("Preview lines, per-expense import anyway and app version", () =>
+Teste("Linhas da prévia, importar mesmo assim por despesa e versão do aplicativo", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor();
     var arquivo = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Mercado" or "Ração" or "Feira").Select(e => e.Id).ToList(), false, "2.2");
@@ -944,12 +944,12 @@ Teste("Preview lines, per-expense import anyway and app version", () =>
 });
 
 // Duas pessoas do arquivo não podem virar a mesma pessoa aqui se dividem uma despesa: a divisão mudaria sem aviso.
-Teste("Two file people cannot map to the same person when they share an expense", () =>
+Teste("Duas pessoas do arquivo não viram a mesma pessoa quando dividem uma despesa", () =>
 {
     var remetente = Remetente(); var recebedor = Recebedor(); var antes = Retrato(recebedor); var carla = recebedor.Pessoas[0].Id;
     var ambos = new MapeamentoDoCompartilhamento { Pessoas = new() { ["Ana"] = new(AcaoDaPessoa.Existente, carla), ["Bruno"] = new(AcaoDaPessoa.Existente, carla) } };
     var contaCompartilhada = CompartilhamentoDeDespesas.Montar(remetente, [remetente.Despesas.First(e => e.Titulo == "Mercado").Id], false);
-    try { CompartilhamentoDeDespesas.Importar(recebedor, contaCompartilhada, ambos); throw new Exception("Expected rejection"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("Ana") && ex.Message.Contains("Bruno")); }
+    try { CompartilhamentoDeDespesas.Importar(recebedor, contaCompartilhada, ambos); throw new Exception("Era esperada uma recusa"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("Ana") && ex.Message.Contains("Bruno")); }
     Igual(antes, Retrato(recebedor));
     // Se eles não dividem nenhuma despesa do arquivo, ligar os dois à mesma pessoa é aceito.
     var separadas = CompartilhamentoDeDespesas.Montar(remetente, remetente.Despesas.Where(e => e.Titulo is "Ração" or "Segredo").Select(e => e.Id).ToList(), false);
@@ -957,7 +957,7 @@ Teste("Two file people cannot map to the same person when they share an expense"
 });
 
 // Tipos de arquivo não se misturam, e o arquivo de compartilhamento tem as mesmas proteções do backup.
-Teste("Share and backup files are different kinds and both are guarded", () =>
+Teste("Compartilhamento e backup são tipos diferentes e ambos são protegidos", () =>
 {
     var pasta = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(pasta);
     try
@@ -966,8 +966,8 @@ Teste("Share and backup files are different kinds and both are guarded", () =>
         CompartilhamentoDeDespesas.Salvar(compartilhar, CompartilhamentoDeDespesas.Montar(remetente, [remetente.Despesas[0].Id], false)); ArmazenamentoLocal.Exportar(backup, remetente);
         Igual(1, CompartilhamentoDeDespesas.Ler(compartilhar).Despesas.Count); Igual(0, Directory.GetFiles(pasta, "*.tmp").Length);
         // Backup como compartilhamento e compartilhamento como backup: recusados, com mensagem que diz o que o arquivo é.
-        try { CompartilhamentoDeDespesas.Ler(backup); throw new Exception("Expected rejection"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("backup")); }
-        try { ArmazenamentoLocal.Ler(compartilhar); throw new Exception("Expected rejection"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("compartilhamento")); }
+        try { CompartilhamentoDeDespesas.Ler(backup); throw new Exception("Era esperada uma recusa"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("backup")); }
+        try { ArmazenamentoLocal.Ler(compartilhar); throw new Exception("Era esperada uma recusa"); } catch (ErroDeOrcamento ex) { Igual(true, ex.Message.Contains("compartilhamento")); }
         // Um armazenamento ativo também recusa o compartilhamento como base, sem alterar o que tem.
         using (var armazenamento = new ArmazenamentoLocal(Path.Combine(pasta, "base"))) { armazenamento.Salvar(remetente); var salvo = File.ReadAllText(armazenamento.CaminhoDoArquivo); Rejeitar(() => ArmazenamentoLocal.Ler(compartilhar)); Igual(salvo, File.ReadAllText(armazenamento.CaminhoDoArquivo)); }
         var valido = JsonNode.Parse(File.ReadAllText(compartilhar))!;
@@ -988,7 +988,7 @@ Teste("Share and backup files are different kinds and both are guarded", () =>
 });
 
 // Tudo ou nada no disco: se a base resultante não é válida, nada é gravado e o arquivo atual e a cópia anterior ficam como estavam.
-Teste("Import is atomic: a failure leaves memory and disk untouched", () =>
+Teste("A importação é atômica: uma falha não altera a memória nem o disco", () =>
 {
     var pasta = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
     try
@@ -1012,8 +1012,8 @@ Teste("Import is atomic: a failure leaves memory and disk untouched", () =>
 int falhas = 0;
 foreach (var teste in testes)
 {
-    try { teste.Teste(); Console.WriteLine("PASS " + teste.Nome); }
-    catch (Exception ex) { falhas++; Console.Error.WriteLine("FAIL " + teste.Nome + ": " + ex.Message); }
+    try { teste.Teste(); Console.WriteLine("PASSOU " + teste.Nome); }
+    catch (Exception ex) { falhas++; Console.Error.WriteLine("FALHOU " + teste.Nome + ": " + ex.Message); }
 }
-Console.WriteLine($"\n{testes.Count - falhas}/{testes.Count} tests passed.");
+Console.WriteLine($"\n{testes.Count - falhas}/{testes.Count} testes passaram.");
 return falhas == 0 ? 0 : 1;

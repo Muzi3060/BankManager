@@ -37,13 +37,13 @@ Todos incluem o .NET: não é preciso instalar SDK, Rider ou Visual Studio. Para
 Requer SDK .NET 10 e ambiente gráfico. No Rider, abra `BankManager.sln`, selecione o projeto **BankManager** e execute. Configure o SDK .NET 10 caso a IDE esteja usando uma instalação antiga.
 
 ```bash
-dotnet run --project BankManager
+dotnet run --project codigo/BankManager
 ```
 
-Se o `dotnet` do seu PATH for de uma versão antiga e o SDK 10 estiver instalado em `~/.dotnet`, o iniciador `run.sh` seleciona essa instalação automaticamente:
+Se o `dotnet` do seu PATH for de uma versão antiga e o SDK 10 estiver instalado em `~/.dotnet`, o iniciador `executar.sh` seleciona essa instalação automaticamente:
 
 ```bash
-./run.sh
+./executar.sh
 ```
 
 A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do aplicativo é offline. No Linux, é necessário X11/XWayland e as bibliotecas nativas do Avalonia. Windows e macOS usam os respectivos backends do Avalonia; a execução foi validada somente no Linux.
@@ -178,15 +178,34 @@ Consulte o [guia de leitura do código](docs/GUIA-DO-CODIGO.md) para acompanhar 
 
 ## Estrutura e testes
 
-- `BankManager`: interface Avalonia. Cores (claro e escuro), ícones e estilos em `Styles/*.axaml`; uma página por arquivo em `Pages/`; `MainWindow.cs` guarda o estado e a navegação.
-- `BankManager.Core`: modelos, validações, cálculos e armazenamento, sem dependência da interface.
-- `BankManager.Tests`: executável de testes do domínio e persistência, sem frameworks adicionais.
-- `BankManager.UiTests`: teste de integração com janela real, dados temporários e encerramento automático. Requer display gráfico; não usa a base pessoal.
+```text
+codigo/
+  BankManager/                 interface (Avalonia)
+    Programa.cs, Aplicativo.axaml, JanelaPrincipal.cs, Componentes.cs
+    Paginas/                   uma página por arquivo (Visão geral, Pessoas, Despesas, Previsões, Ajustes)
+    Dialogos/                  diálogos e painéis reaproveitados (metas, acerto, recorrências, CSV, compartilhar)
+    Controles/                 controles próprios (gráfico de barras)
+    Estilos/                   Cores.axaml, Icones.axaml e Controles.axaml
+    Recursos/                  ícone do aplicativo
+  BankManager.Nucleo/          regras, cálculos e arquivos, sem depender da interface
+    Modelos/                   pessoas, rendas, despesas, preferências
+    Regras/                    validação, busca e situação de vencimento
+    Motores/                   rateio, metas, acertos, recorrências, categorias
+    Arquivos/                  gravação e leitura, migrações, CSV, extrato e compartilhamento
+testes/
+  BankManager.Testes/              testes do domínio e da persistência (ArquivosDeTeste/ tem arquivos reais das versões 1 e 2)
+  BankManager.TestesDeInterface/   testes com a janela real, em uma pasta temporária
+instalador/                    instalador do Windows e arquivos do AppImage
+scripts/                       empacotar.py, instaladores.py e gerar-icones.sh
+docs/                          guia do código, glossário, notas de versão e capturas
+```
+
+**Nomes em português.** Tipos, métodos, propriedades, variáveis, classes de estilo e nomes de cores estão em português (`Despesa`, `MotorFinanceiro.Ratear`, `CorPrimaria`). Só os nomes gravados nos arquivos de dados continuam em inglês, por compatibilidade: cada propriedade gravada tem um atributo `[JsonPropertyName("...")]` com o nome antigo. O [glossário](docs/GLOSSARIO.md) lista os nomes antigos e os novos. Nomes do .NET e do Avalonia (`Button`, `Grid`, `List`) não são traduzidos.
 
 ```bash
 dotnet build BankManager.sln -m:1 --disable-build-servers
-dotnet run --project BankManager.Tests
-dotnet run --project BankManager.UiTests
+dotnet run --project testes/BankManager.Testes
+dotnet run --project testes/BankManager.TestesDeInterface
 ```
 
 Os executáveis de teste retornam código diferente de zero se falharem. `dotnet test` não executa essas verificações. O domínio cobre rateio, 1.000 combinações de valores, falta de renda, histórico mensal, parcelas, previsões, validação e arquivos. A interface cobre cadastro (com várias rendas), prévia, gravação, pagamento com quem pagou e acerto de contas, edição inválida, lista de itens, recorrências, categorias, metas, busca, importação de extrato, tema e atalho Ctrl+N. Seletores nativos de arquivos e leitores de tela ainda precisam de testes manuais.
@@ -194,7 +213,7 @@ Os executáveis de teste retornam código diferente de zero se falharem. `dotnet
 Para gerar capturas de todas as telas, nos temas claro e escuro, com dados de demonstração (fictícios):
 
 ```bash
-mkdir -p /tmp/capturas && BANKMANAGER_SCREENSHOTS=/tmp/capturas dotnet run --project BankManager.UiTests
+mkdir -p /tmp/capturas && BANKMANAGER_SCREENSHOTS=/tmp/capturas dotnet run --project testes/BankManager.TestesDeInterface
 ```
 
 ## Referências de projeto
@@ -210,10 +229,10 @@ A implementação de rateio e previsão é própria, com as regras descritas aci
 Requer SDK .NET 10, Python 3.11+ e acesso ao NuGet para obter os runtimes:
 
 ```bash
-python3 scripts/package.py
+python3 scripts/empacotar.py
 # Ou apenas um destino:
-python3 scripts/package.py --runtime linux-x64
-python3 scripts/package.py --runtime win-x64
+python3 scripts/empacotar.py --runtime linux-x64
+python3 scripts/empacotar.py --runtime win-x64
 ```
 
 No Windows, use `python` no lugar de `python3`. O script escolhe o SDK em `~/.dotnet` quando disponível; `BANKMANAGER_DOTNET` permite indicar outro executável. Os arquivos finais ficam em `artifacts/releases/`, com checksums SHA-256, e as pastas publicadas em `artifacts/publish/`. São publicações **self-contained**, sem trimming, para preservar a serialização e os componentes dinâmicos da interface.
@@ -228,20 +247,20 @@ No PowerShell, execute `Get-FileHash .\BankManager-2.2.0-win-x64.zip -Algorithm 
 
 ### Instalador do Windows e AppImage
 
-Depois de `package.py`, o script `scripts/installers.py` gera os pacotes de instalação (cada um sobre a pasta publicada do seu sistema):
+Depois de `empacotar.py`, o script `scripts/instaladores.py` gera os pacotes de instalação (cada um sobre a pasta publicada do seu sistema):
 
 ```bash
-python3 scripts/installers.py windows    # instalador .exe; requer o Inno Setup (winget install JRSoftware.InnoSetup)
-python3 scripts/installers.py appimage   # AppImage + .zsync; requer Linux x86_64
+python3 scripts/instaladores.py windows    # instalador .exe; requer o Inno Setup (winget install JRSoftware.InnoSetup)
+python3 scripts/instaladores.py appimage   # AppImage + .zsync; requer Linux x86_64
 ```
 
-- **Windows (Inno Setup, `installer/windows/BankManager.iss`):** instalação por usuário (sem administrador, em `%LOCALAPPDATA%\Programs\BankManager`; o assistente permite escolher "para todos"), atalho no menu Iniciar, atalho opcional na área de trabalho, desinstalador e atualização no lugar (o `AppId` é fixo). Os dados em `%LOCALAPPDATA%\BankManager` nunca são removidos.
-- **Linux (AppImage, `installer/linux/`):** um arquivo executável com o app, o ícone e o `.desktop`. O `appimagetool` é baixado em versão fixa e o checksum é conferido antes de usá-lo. O arquivo `.zsync` permite atualizar com AppImageUpdate.
+- **Windows (Inno Setup, `instalador/windows/BankManager.iss`):** instalação por usuário (sem administrador, em `%LOCALAPPDATA%\Programs\BankManager`; o assistente permite escolher "para todos"), atalho no menu Iniciar, atalho opcional na área de trabalho, desinstalador e atualização no lugar (o `AppId` é fixo). Os dados em `%LOCALAPPDATA%\BankManager` nunca são removidos.
+- **Linux (AppImage, `instalador/linux/`):** um arquivo executável com o app, o ícone e o `.desktop`. O `appimagetool` é baixado em versão fixa e o checksum é conferido antes de usá-lo. O arquivo `.zsync` permite atualizar com AppImageUpdate.
 - **Por que não Velopack:** ele faria o próprio aplicativo consultar a internet para atualizar, o que contradiz a regra de funcionar 100% offline, e acrescentaria uma dependência. O instalador e o AppImage já cobrem instalação, atalho, ícone e atualização feita pelo usuário. **Flatpak** não foi adotado: exige manifesto, runtime de ~GB e revisão de loja, sem ganho para o público-alvo; fica como opção futura.
 
 O workflow [Build and release](.github/workflows/release.yml) compila, testa e empacota nos runners nativos de Windows e Linux, gera o instalador e o AppImage e faz um teste de fumaça de cada um (instalar/desinstalar no Windows; abrir o AppImage sob Xvfb no Linux). Em pushes na `main`, os arquivos ficam nos artifacts da execução. Para uma nova release:
 
-1. Atualize `Version` em `BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
+1. Atualize `Versao` em `codigo/BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
 2. Faça commit e push dessas mudanças.
 3. Crie e envie uma tag correspondente, por exemplo `git tag v2.2.0` e `git push origin v2.2.0`.
 4. O workflow publica instaladores e pacotes na página Releases somente após todos os jobs passarem.

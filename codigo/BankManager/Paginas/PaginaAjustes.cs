@@ -20,21 +20,21 @@ public sealed partial class JanelaPrincipal
         var temas = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*,12,*") };
         Control[] cartoes = [CartaoDeTema("Claro", "Fundo claro", PreferenciaDeTema.Claro, MiniaturaDoTema(ThemeVariant.Light)), CartaoDeTema("Escuro", "Fundo escuro", PreferenciaDeTema.Escuro, MiniaturaDoTema(ThemeVariant.Dark)), CartaoDeTema("Automático", "Segue o sistema", PreferenciaDeTema.Automatico, MiniaturaDoTemaAutomatico())];
         for (var i = 0; i < cartoes.Length; i++) { Grid.SetColumn(cartoes[i], i * 2); temas.Children.Add(cartoes[i]); }
-        var aparencia = Cartao(Pilha(Texto("Aparência", "section"), Texto("Escolha como o aplicativo aparece. A opção automática acompanha o tema do seu computador.", "muted"), temas));
+        var aparencia = Cartao(Pilha(Texto("Aparência", "secao"), Texto("Escolha como o aplicativo aparece. A opção automática acompanha o tema do seu computador.", "apagado"), temas));
         var quebra = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var botao in new[] { Botao("Exportar backup", () => _ = Executar(Exportar), "ink"), Botao("Importar backup", () => _ = Executar(Importar)), Botao("Recuperar versão anterior", () => _ = Executar(Recuperar)) }) { botao.Margin = new Thickness(0, 0, 8, 8); quebra.Children.Add(botao); }
-        var pastaDosDados = Texto(armazenamento?.CaminhoDaPasta ?? "—", "muted"); pastaDosDados.FontSize = 12;
+        foreach (var botao in new[] { Botao("Exportar backup", () => _ = Executar(Exportar), "escuro"), Botao("Importar backup", () => _ = Executar(Importar)), Botao("Recuperar versão anterior", () => _ = Executar(Recuperar)) }) { botao.Margin = new Thickness(0, 0, 8, 8); quebra.Children.Add(botao); }
+        var pastaDosDados = Texto(armazenamento?.CaminhoDaPasta ?? "—", "apagado"); pastaDosDados.FontSize = 12;
         // Planilhas: exportar as despesas e importar um extrato bancário, ambos em CSV.
         var planilhas = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var botao in new[] { Botao("Exportar despesas (CSV)", () => _ = Executar(ExportarCsv)), Botao("Importar extrato (CSV)", () => _ = Executar(ImportarExtrato)), Botao("Compartilhar despesas", () => { IrPara(2); IniciarSelecao(); }) }) { botao.Margin = new Thickness(0, 0, 8, 8); planilhas.Children.Add(botao); }
-        var importarCompartilhadas = Botao("Importar despesas compartilhadas", () => _ = Executar(ImportarCompartilhadas), icone: "Download"); importarCompartilhadas.HorizontalAlignment = HorizontalAlignment.Left;
-        var seusDados = Cartao(Pilha(Texto("Seus dados", "section"), Texto("Tudo fica salvo só neste computador. Exporte um backup de vez em quando e guarde em outro lugar, como um pendrive.", "muted"), Texto("Pasta dos dados", "muted"), pastaDosDados, quebra,
+        var importarCompartilhadas = Botao("Importar despesas compartilhadas", () => _ = Executar(ImportarCompartilhadas), icone: "Baixar"); importarCompartilhadas.HorizontalAlignment = HorizontalAlignment.Left;
+        var seusDados = Cartao(Pilha(Texto("Seus dados", "secao"), Texto("Tudo fica salvo só neste computador. Exporte um backup de vez em quando e guarde em outro lugar, como um pendrive.", "apagado"), Texto("Pasta dos dados", "apagado"), pastaDosDados, quebra,
             // Separado do backup de propósito: importar um backup SUBSTITUI a base; importar despesas compartilhadas só ADICIONA.
-            Texto("Despesas recebidas de outra pessoa", "muted"), importarCompartilhadas,
-            Texto("Adiciona as despesas de um arquivo de compartilhamento às suas, sem apagar nem trocar nada. Diferente de “Importar backup”, que substitui tudo.", "muted").ComClasse("small"),
-            Texto("Planilhas e compartilhamento", "muted"), planilhas,
-            Texto("Compartilhar abre a lista de despesas para você marcar as que quer enviar; o arquivo leva só as marcadas.", "muted").ComClasse("small")));
-        var ajuda = Cartao(Pilha(Texto("Ajuda", "section"),
+            Texto("Despesas recebidas de outra pessoa", "apagado"), importarCompartilhadas,
+            Texto("Adiciona as despesas de um arquivo de compartilhamento às suas, sem apagar nem trocar nada. Diferente de “Importar backup”, que substitui tudo.", "apagado").ComClasse("pequeno"),
+            Texto("Planilhas e compartilhamento", "apagado"), planilhas,
+            Texto("Compartilhar abre a lista de despesas para você marcar as que quer enviar; o arquivo leva só as marcadas.", "apagado").ComClasse("pequeno")));
+        var ajuda = Cartao(Pilha(Texto("Ajuda", "secao"),
             Recolhivel("Como funciona a divisão", "Individual: uma pessoa paga tudo.\nIgual: o valor é dividido igualmente entre os selecionados.\nProporcional: quem tem mais renda disponível assume uma parcela maior. Despesas individuais, pagas ou em aberto, são descontadas da renda antes da divisão. Todas as despesas proporcionais do mês usam essa mesma base.\n\nExemplo: rendas disponíveis de R$ 3.000 e R$ 1.000 dividem uma conta de R$ 800 em R$ 600 e R$ 200. Quem não tem renda disponível recebe peso zero. Se todos tiverem peso zero, a conta é dividida igualmente, com aviso. Centavos restantes são distribuídos sem alterar o total."),
             Divisoria(),
             Recolhivel("Dívidas, parcelas e listas", "Para uma dívida, informe o valor total já com os juros negociados e o número de parcelas. A primeira data é o primeiro vencimento. O aplicativo distribui o total; não calcula taxas bancárias.\n\nUma lista soma quantidade × preço de cada item. Não cadastre a mesma compra novamente como outra despesa. Marcar como pago quita o lançamento inteiro para todos os responsáveis e guarda a data do pagamento (hoje, ou a que você informar); pagamentos parciais não são registrados nesta versão. Em “Últimas movimentações”, a despesa aparece no mês em que foi paga; as pagas em versões anteriores, sem essa data, aparecem pelo vencimento.\n\nO saldo planejado considera todas as despesas do mês, inclusive as pagas. Parcelas são editadas e excluídas individualmente."),
@@ -49,8 +49,8 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private Control CartaoDeTema(string titulo, string subtitulo, PreferenciaDeTema valorLido, Control previa)
     {
-        var rotulo = Pilha(new TextBlock { Text = titulo, FontWeight = FontWeight.Medium }, Texto(subtitulo, "muted")); rotulo.Spacing = 0;
-        var cartao = new Button { Content = Pilha(previa, rotulo) }; cartao.Classes.Add("themecard"); cartao.Classes.Set("selected", preferencias.Tema == valorLido);
+        var rotulo = Pilha(new TextBlock { Text = titulo, FontWeight = FontWeight.Medium }, Texto(subtitulo, "apagado")); rotulo.Spacing = 0;
+        var cartao = new Button { Content = Pilha(previa, rotulo) }; cartao.Classes.Add("cartao-tema"); cartao.Classes.Set("selecionado", preferencias.Tema == valorLido);
         ((StackPanel)cartao.Content).Spacing = 10;
         AutomationProperties.SetName(cartao, "Tema " + titulo.ToLowerInvariant());
         cartao.Click += (_, _) => { MudarTema(valorLido); Desenhar(); };
@@ -59,18 +59,18 @@ public sealed partial class JanelaPrincipal
     /// <summary>
     /// Miniatura de uma tela (menu, cartão translúcido e cartão escuro sobre o degradê) desenhada no tema pedido, independentemente do tema atual.
     /// </summary>
-    private static Control MiniaturaDoTema(ThemeVariant variante) => new ThemeVariantScope { RequestedThemeVariant = variante, Child = new Border { Child = TelaDaMiniatura(true), Height = 76 }.ComClasse("mini-frame") };
+    private static Control MiniaturaDoTema(ThemeVariant variante) => new ThemeVariantScope { RequestedThemeVariant = variante, Child = new Border { Child = TelaDaMiniatura(true), Height = 76 }.ComClasse("mini-moldura") };
     /// <summary>
     /// Conteúdo da miniatura: fundo em degradê, barras do menu (opcionais) e dois cartões.
     /// </summary>
     private static Control TelaDaMiniatura(bool menu)
     {
-        var barras = new StackPanel { Spacing = 4, Margin = new Thickness(7, 9, 0, 0), Width = 22 }; foreach (var largura in new[] { 16d, 12d, 14d }) barras.Children.Add(BarraDaMiniatura("mini-muted", largura));
-        var cartao = new Border { Child = Pilha(BarraDaMiniatura("mini-text", 26), BarraDaMiniatura("mini-accent", 18)), Padding = new Thickness(6), Margin = new Thickness(0, 0, 5, 0) }.ComClasse("mini-card"); ((StackPanel)cartao.Child!).Spacing = 5;
-        var escuro = new Border().ComClasse("mini-dark"); Grid.SetColumn(escuro, 1);
+        var barras = new StackPanel { Spacing = 4, Margin = new Thickness(7, 9, 0, 0), Width = 22 }; foreach (var largura in new[] { 16d, 12d, 14d }) barras.Children.Add(BarraDaMiniatura("mini-apagado", largura));
+        var cartao = new Border { Child = Pilha(BarraDaMiniatura("mini-texto", 26), BarraDaMiniatura("mini-destaque", 18)), Padding = new Thickness(6), Margin = new Thickness(0, 0, 5, 0) }.ComClasse("mini-cartao"); ((StackPanel)cartao.Child!).Spacing = 5;
+        var escuro = new Border().ComClasse("mini-escuro"); Grid.SetColumn(escuro, 1);
         var cartoes = new Grid { ColumnDefinitions = new ColumnDefinitions("1.7*,*"), Margin = new Thickness(8, 10, 8, 10), Children = { cartao, escuro } }; Grid.SetColumn(cartoes, 1);
         var grade = new Grid { ColumnDefinitions = new ColumnDefinitions(menu ? "Auto,*" : "0,*"), Children = { barras, cartoes } }; barras.IsVisible = menu;
-        return new Border { Child = grade }.ComClasse("mini-bg");
+        return new Border { Child = grade }.ComClasse("mini-fundo");
     }
     /// <summary>
     /// Miniatura do modo automático: metade clara, metade escura.
@@ -80,7 +80,7 @@ public sealed partial class JanelaPrincipal
         var esquerda = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Light, Child = TelaDaMiniatura(true) };
         var direita = new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Dark, Child = TelaDaMiniatura(false) };
         var grade = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") }; Grid.SetColumn(direita, 1); grade.Children.Add(esquerda); grade.Children.Add(direita);
-        return new Border { Child = grade, Height = 76 }.ComClasse("mini-frame");
+        return new Border { Child = grade, Height = 76 }.ComClasse("mini-moldura");
     }
     /// <summary>
     /// Barra arredondada da miniatura; a cor vem da classe ("mini-text", "mini-muted" ou "mini-accent").
@@ -92,7 +92,7 @@ public sealed partial class JanelaPrincipal
     private Control CartaoDeCategorias()
     {
         var padrao = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var nome in RegrasDoOrcamento.Categorias) { var etiqueta = Etiqueta(nome, "status"); etiqueta.Margin = new Thickness(0, 0, 6, 6); padrao.Children.Add(etiqueta); }
+        foreach (var nome in RegrasDoOrcamento.Categorias) { var etiqueta = Etiqueta(nome, "situacao"); etiqueta.Margin = new Thickness(0, 0, 6, 6); padrao.Children.Add(etiqueta); }
         var proprias = new StackPanel();
         foreach (var nome in dados.CategoriasProprias)
         {
@@ -102,19 +102,19 @@ public sealed partial class JanelaPrincipal
             {
                 var renomeado = await Perguntar(this, "Renomear categoria", "Novo nome", nome, MotorDeCategorias.TamanhoMaximo);
                 if (renomeado is not null) Gravar(d => MotorDeCategorias.Renomear(d, nome, renomeado));
-            }), "ghost round", "Edit", soIcone: true);
+            }), "fantasma redondo", "Editar", soIcone: true);
             var remover = Botao("Excluir " + nome, () => _ = Executar(async () =>
             {
                 if (await Confirmar(this, "Excluir categoria?", $"Excluir a categoria “{nome}”? Só é possível se nenhuma despesa ou recorrência a usar.")) Gravar(d => MotorDeCategorias.Remover(d, nome));
-            }), "ghost round danger", "Trash", soIcone: true);
+            }), "fantasma redondo perigo", "Lixeira", soIcone: true);
             var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 4) };
             Grid.SetColumn(renomear, 1); Grid.SetColumn(remover, 2); fileira.Children.Add(rotulo); fileira.Children.Add(renomear); fileira.Children.Add(remover); proprias.Children.Add(fileira);
         }
-        if (dados.CategoriasProprias.Count == 0) proprias.Children.Add(Texto("Você ainda não criou categorias próprias.", "muted"));
+        if (dados.CategoriasProprias.Count == 0) proprias.Children.Add(Texto("Você ainda não criou categorias próprias.", "apagado"));
         var entrada = CampoDeTexto(null, "Nova categoria", MotorDeCategorias.TamanhoMaximo); AutomationProperties.SetName(entrada, "Nova categoria");
-        var adicionar = Botao("Adicionar categoria", () => _ = Executar(() => { Gravar(d => MotorDeCategorias.Adicionar(d, entrada.Text ?? "")); return Task.CompletedTask; }), icone: "Plus");
+        var adicionar = Botao("Adicionar categoria", () => _ = Executar(() => { Gravar(d => MotorDeCategorias.Adicionar(d, entrada.Text ?? "")); return Task.CompletedTask; }), icone: "Mais");
         var formulario = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto") }; Grid.SetColumn(adicionar, 2); formulario.Children.Add(entrada); formulario.Children.Add(adicionar);
-        return Cartao(Pilha(Texto("Categorias", "section"), Texto("As categorias padrão não mudam. Crie as suas para organizar melhor, por exemplo Pets ou Viagens.", "muted"), padrao, proprias, formulario));
+        return Cartao(Pilha(Texto("Categorias", "secao"), Texto("As categorias padrão não mudam. Crie as suas para organizar melhor, por exemplo Pets ou Viagens.", "apagado"), padrao, proprias, formulario));
     }
     /// <summary>
     /// Aplica o tema na hora e o guarda em settings.json. Se o disco falhar, o tema vale na sessão e o usuário é avisado.

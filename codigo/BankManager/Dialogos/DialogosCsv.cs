@@ -47,8 +47,8 @@ public sealed partial class JanelaPrincipal
         // Responsável: uma pessoa (despesa individual) ou, havendo mais de uma pessoa, todas com divisão igual ou pela renda disponível.
         var quem = dados.Pessoas.Select(p => p.Nome).ToList(); if (dados.Pessoas.Count > 1) { quem.Add("Todos, em partes iguais"); quem.Add("Todos, pela renda disponível"); }
         var responsavel = ListaDeOpcoes(quem, 0);
-        var previa = Texto("", "muted"); var erro = Texto("", "error"); Window? dialogo = null; PlanoDeImportacao? plano = null; var montando = true;
-        var importar = Botao("Importar", () => { }, "primary"); importar.IsEnabled = false;
+        var previa = Texto("", "apagado"); var erro = Texto("", "erro"); Window? dialogo = null; PlanoDeImportacao? plano = null; var montando = true;
+        var importar = Botao("Importar", () => { }, "primario"); importar.IsEnabled = false;
         // Recalcula o plano com as escolhas atuais e mostra o resultado; sem despesas a importar, o botão fica desligado.
         void Recalcular()
         {
@@ -78,7 +78,7 @@ public sealed partial class JanelaPrincipal
         AutomationProperties.SetName(data, "Coluna da data"); AutomationProperties.SetName(descricao, "Coluna da descrição"); AutomationProperties.SetName(valor, "Coluna do valor"); AutomationProperties.SetName(responsavel, "Responsável");
         var painel = Pilha(Cabecalho("Importar extrato", $"{Path.GetFileName(caminho)} · {tabela.Linhas.Count} linhas. Confira as colunas: cada saída vira uma despesa já paga."), cabecalho,
             Colunas(Campo("Data", data), Campo("Descrição", descricao)), Colunas(Campo("Valor", valor), Campo("Valores que são despesas", sinal)),
-            Campo("Responsável pelas despesas", responsavel, "Você pode editar cada despesa depois, por exemplo para mudar a categoria."), Texto("O que será importado", "section"), previa, erro);
+            Campo("Responsável pelas despesas", responsavel, "Você pode editar cada despesa depois, por exemplo para mudar a categoria."), Texto("O que será importado", "secao"), previa, erro);
         dialogo = Dialogo("Importar extrato", painel, 760); dialogo.Height = 820;
         importar.Click += (_, _) =>
         {

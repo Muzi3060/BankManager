@@ -22,8 +22,8 @@ public sealed partial class JanelaPrincipal
         {
             if (fileiras.Children.Count > 0) fileiras.Children.Add(Divisoria());
             var detalhe = $"{recorrencia.Categoria} · todo dia {recorrencia.DiaDoMes} · {Dinheiro.Formatar(recorrencia.Valor)} · desde {recorrencia.MesInicial.ToString("MM/yyyy")}";
-            var quem = Pilha(new TextBlock { Text = recorrencia.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Texto(detalhe, "muted").ComClasse("small")); quem.Spacing = 1; quem.VerticalAlignment = VerticalAlignment.Center; quem.Margin = new Thickness(12, 0);
-            Control situacao = recorrencia.MesFinal is { } fim ? Etiqueta($"Encerrada em {fim:MM/yyyy}", "status") : Etiqueta("Ativa", "positive");
+            var quem = Pilha(new TextBlock { Text = recorrencia.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Texto(detalhe, "apagado").ComClasse("pequeno")); quem.Spacing = 1; quem.VerticalAlignment = VerticalAlignment.Center; quem.Margin = new Thickness(12, 0);
+            Control situacao = recorrencia.MesFinal is { } fim ? Etiqueta($"Encerrada em {fim:MM/yyyy}", "situacao") : Etiqueta("Ativa", "positivo");
             situacao.Margin = new Thickness(0, 0, 12, 0);
             var id = recorrencia.Id;
             var acao = recorrencia.MesFinal is null
@@ -36,11 +36,11 @@ public sealed partial class JanelaPrincipal
                 : Botao("Remover", () => _ = agir(async () =>
                 {
                     if (await Confirmar(dono(), "Remover recorrência?", $"Remover “{recorrencia.Titulo}” da lista? Os lançamentos já criados continuam como despesas comuns.")) Gravar(d => MotorDeRecorrencias.Remover(d, id));
-                }), "ghost danger");
+                }), "fantasma perigo");
             var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(0, 10) };
             Grid.SetColumn(quem, 1); Grid.SetColumn(situacao, 2); Grid.SetColumn(acao, 3); fileira.Children.Add(CirculoComIcone(NomeDoIconeDaCategoria(recorrencia.Categoria))); fileira.Children.Add(quem); fileira.Children.Add(situacao); fileira.Children.Add(acao); fileiras.Children.Add(fileira);
         }
-        if (dados.Recorrencias.Count == 0) fileiras.Children.Add(Texto("Nenhuma despesa recorrente ainda. Ao criar uma despesa, marque “Repetir todo mês”.", "muted"));
+        if (dados.Recorrencias.Count == 0) fileiras.Children.Add(Texto("Nenhuma despesa recorrente ainda. Ao criar uma despesa, marque “Repetir todo mês”.", "apagado"));
         return fileiras;
     }
     /// <summary>
@@ -48,7 +48,7 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private async Task GerenciarRecorrencias()
     {
-        var suporte = new ContentControl(); var erro = Texto("", "error");
+        var suporte = new ContentControl(); var erro = Texto("", "erro");
         Window? dialogo = null;
         // Executa a ação, mostra um erro simples no próprio diálogo e atualiza a lista.
         async Task Agir(Func<Task> acao)
@@ -60,7 +60,7 @@ public sealed partial class JanelaPrincipal
         suporte.Content = LinhasDeRecorrencia(() => dialogo!, Agir);
         var painel = Pilha(Cabecalho("Despesas recorrentes", "Contas que se repetem todo mês. Cada mês é uma despesa comum: você pode pagar, editar ou excluir um mês sem afetar os outros."), suporte, erro);
         dialogo = Dialogo("Despesas recorrentes", painel, 720); dialogo.Height = 560;
-        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primary")));
+        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primario")));
         await dialogo.ShowDialog(this);
     }
 }

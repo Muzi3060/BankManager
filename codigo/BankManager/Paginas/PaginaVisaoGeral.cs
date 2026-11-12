@@ -22,12 +22,12 @@ public sealed partial class JanelaPrincipal
         var resultado = Pilha(CabecalhoDaPagina("Seu mês, com clareza", null)); resultado.Spacing = 18;
         if (dados.Pessoas.Count == 0)
         {
-            resultado.Children.Add(Cartao(Pilha(Texto("Vamos organizar suas finanças?", "section"), Texto("1. Cadastre quem faz parte da casa e a renda deste mês.\n2. Adicione despesas individuais ou compartilhadas.\n3. Veja a divisão e acompanhe o pagamento.", "muted"), Botao("Cadastrar primeira pessoa", () => _ = Executar(() => EditarPessoa()), "primary", "Plus"))));
+            resultado.Children.Add(Cartao(Pilha(Texto("Vamos organizar suas finanças?", "secao"), Texto("1. Cadastre quem faz parte da casa e a renda deste mês.\n2. Adicione despesas individuais ou compartilhadas.\n3. Veja a divisão e acompanhe o pagamento.", "apagado"), Botao("Cadastrar primeira pessoa", () => _ = Executar(() => EditarPessoa()), "primario", "Mais"))));
             return resultado;
         }
         // 1. Saldo planejado com o gráfico (1,7) e o cartão escuro de resumo (1).
         var topo = new Grid { ColumnDefinitions = new ColumnDefinitions("1.7*,16,*"), MinHeight = 330 };
-        var resumo = Cartao(PainelDeResumo(renda, total, emAberto), "summary"); Grid.SetColumn(resumo, 2); topo.Children.Add(Cartao(PainelDoSaldo(renda, total))); topo.Children.Add(resumo);
+        var resumo = Cartao(PainelDeResumo(renda, total, emAberto), "resumo"); Grid.SetColumn(resumo, 2); topo.Children.Add(Cartao(PainelDoSaldo(renda, total))); topo.Children.Add(resumo);
         resultado.Children.Add(topo);
         // Registro ausente é diferente de renda explicitamente zero; ambos entram como zero no cálculo.
         var faltando = dados.Pessoas.Where(p => !dados.Rendas.Any(i => i.IdDaPessoa == p.Id && i.Mes == mes)).ToList();
@@ -61,7 +61,7 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private Control PainelDoSaldo(decimal renda, decimal total)
     {
-        var saldo = ValorGrande(renda - total, "hero"); if (renda < total) saldo.Classes.Add("negative");
+        var saldo = ValorGrande(renda - total, "destaque"); if (renda < total) saldo.Classes.Add("negativo");
         var totais = MotorFinanceiro.TotaisMensais(dados, mes, 6);
         // Rótulo curto do mês ("nov"); o .NET devolve "nov." em português, então o ponto final é removido.
         var pontos = totais.Select(t => new PontoDoGrafico(Capitalizar(t.Mes.ToString("MMM", Dinheiro.Cultura).TrimEnd('.')), t.Total, Dinheiro.Formatar(t.Total))).ToList();
@@ -69,7 +69,7 @@ public sealed partial class JanelaPrincipal
         // Texto alternativo: quem usa leitor de tela recebe os mesmos valores que o gráfico mostra.
         AutomationProperties.SetName(grafico, "Despesas dos últimos 6 meses: " + string.Join("; ", totais.Select(t => $"{t.Mes.ToString("MMMM 'de' yyyy", Dinheiro.Cultura)}, {Dinheiro.Formatar(t.Total)}")) + ".");
         ToolTip.SetTip(grafico, "Despesas dos últimos 6 meses. Passe o mouse em uma barra para ver o valor.");
-        var cabeca = Pilha(Texto("Saldo planejado", "strong"), saldo, Texto($"Renda de {Dinheiro.Formatar(renda)} menos despesas de {Dinheiro.Formatar(total)}", "muted").ComClasse("small")); cabeca.Spacing = 2;
+        var cabeca = Pilha(Texto("Saldo planejado", "forte"), saldo, Texto($"Renda de {Dinheiro.Formatar(renda)} menos despesas de {Dinheiro.Formatar(total)}", "apagado").ComClasse("pequeno")); cabeca.Spacing = 2;
         var grade = new Grid { RowDefinitions = new RowDefinitions("Auto,*") }; Grid.SetRow(grafico, 1); grade.Children.Add(cabeca); grade.Children.Add(grafico); return grade;
     }
     /// <summary>
@@ -83,15 +83,15 @@ public sealed partial class JanelaPrincipal
     private Control PainelDeResumo(decimal renda, decimal total, decimal emAberto)
     {
         var comprometido = renda > 0 ? Math.Round(total / renda * 100, MidpointRounding.AwayFromZero) : 0;
-        var barra = new ProgressBar { Value = (double)Math.Min(100, comprometido), Maximum = 100, Height = 6, Margin = new Thickness(0, 8, 0, 2) }; barra.Classes.Add("onsummary");
-        var rotulo = Texto(renda > 0 ? $"{comprometido:0}% da renda comprometida" : "Renda do mês ainda não informada", "muted"); rotulo.Classes.Add("small");
-        var valorLido = Texto(Dinheiro.Formatar(total), "kpi"); valorLido.FontSize = 32; valorLido.FontWeight = FontWeight.SemiBold;
+        var barra = new ProgressBar { Value = (double)Math.Min(100, comprometido), Maximum = 100, Height = 6, Margin = new Thickness(0, 8, 0, 2) }; barra.Classes.Add("sobre-resumo");
+        var rotulo = Texto(renda > 0 ? $"{comprometido:0}% da renda comprometida" : "Renda do mês ainda não informada", "apagado"); rotulo.Classes.Add("pequeno");
+        var valorLido = Texto(Dinheiro.Formatar(total), "indicador"); valorLido.FontSize = 32; valorLido.FontWeight = FontWeight.SemiBold;
         // Rodapé com dois valores lado a lado.
-        Control Par(string nome, decimal valor) { var par = Pilha(Texto(nome, "muted").ComClasse("small"), Texto(Dinheiro.Formatar(valor), "strong")); par.Spacing = 2; return par; }
+        Control Par(string nome, decimal valor) { var par = Pilha(Texto(nome, "apagado").ComClasse("pequeno"), Texto(Dinheiro.Formatar(valor), "forte")); par.Spacing = 2; return par; }
         var rodape = Colunas(Par("Renda", renda), Par("Em aberto", emAberto)); rodape.Margin = new Thickness(0, 14, 0, 0);
-        var inferior = Pilha(Texto("Despesas do mês", "muted"), valorLido, barra, rotulo, rodape); inferior.Spacing = 2; inferior.VerticalAlignment = VerticalAlignment.Bottom; Grid.SetRow(inferior, 1);
-        var nomeDoMes = Texto(Capitalizar(mes.ToString("MMMM", Dinheiro.Cultura)), "muted"); Grid.SetColumn(nomeDoMes, 1);
-        var topo = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Texto("Resumo da casa", "strong"), nomeDoMes } };
+        var inferior = Pilha(Texto("Despesas do mês", "apagado"), valorLido, barra, rotulo, rodape); inferior.Spacing = 2; inferior.VerticalAlignment = VerticalAlignment.Bottom; Grid.SetRow(inferior, 1);
+        var nomeDoMes = Texto(Capitalizar(mes.ToString("MMMM", Dinheiro.Cultura)), "apagado"); Grid.SetColumn(nomeDoMes, 1);
+        var topo = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Texto("Resumo da casa", "forte"), nomeDoMes } };
         return new Grid { RowDefinitions = new RowDefinitions("Auto,*"), Children = { topo, inferior } };
     }
     /// <summary>
@@ -99,7 +99,7 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private static Grid TituloDeSecao(string titulo, Button? acao = null)
     {
-        var tituloDaSecao = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; var rotulo = Texto(titulo, "section"); rotulo.VerticalAlignment = VerticalAlignment.Center; tituloDaSecao.Children.Add(rotulo);
+        var tituloDaSecao = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; var rotulo = Texto(titulo, "secao"); rotulo.VerticalAlignment = VerticalAlignment.Center; tituloDaSecao.Children.Add(rotulo);
         if (acao is not null) { Grid.SetColumn(acao, 1); tituloDaSecao.Children.Add(acao); }
         return tituloDaSecao;
     }
@@ -108,7 +108,7 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private static Control AvisoNaPagina(string texto)
     {
-        var caixa = new Border { Child = Texto(texto, "warn") }; caixa.Classes.Add("notice"); return caixa;
+        var caixa = new Border { Child = Texto(texto, "alerta") }; caixa.Classes.Add("aviso"); return caixa;
     }
     /// <summary>
     /// "Metas do mês": até três cartões lado a lado, começando pelas metas mais próximas (ou acima) do limite.
@@ -120,8 +120,8 @@ public sealed partial class JanelaPrincipal
         var secao = Pilha(TituloDeSecao("Metas do mês", Botao("Ver todas", () => { abaDePrevisoes = 0; IrPara(3); }, "link"))); secao.Spacing = 8;
         if (metas.Count == 0)
         {
-            var criar = Botao("Criar primeira meta", () => _ = Executar(GerenciarMetas), "ink"); criar.HorizontalAlignment = HorizontalAlignment.Left;
-            var vazio = Pilha(Texto("Nenhuma meta ainda", "strong"), Texto("Defina quanto quer gastar por mês em uma categoria, como Mercado ou Lazer. O BankManager avisa quando você chegar perto do limite.", "muted"), criar); vazio.Spacing = 8;
+            var criar = Botao("Criar primeira meta", () => _ = Executar(GerenciarMetas), "escuro"); criar.HorizontalAlignment = HorizontalAlignment.Left;
+            var vazio = Pilha(Texto("Nenhuma meta ainda", "forte"), Texto("Defina quanto quer gastar por mês em uma categoria, como Mercado ou Lazer. O BankManager avisa quando você chegar perto do limite.", "apagado"), criar); vazio.Spacing = 8;
             secao.Children.Add(Cartao(vazio)); return secao;
         }
         // Sempre três colunas: com uma ou duas metas, os cartões mantêm a mesma largura.
@@ -139,15 +139,15 @@ public sealed partial class JanelaPrincipal
         var proximos = despesas.Where(e => !e.Paga).Take(3).ToList();
         if (proximos.Count == 0)
         {
-            var vazio = Pilha(Texto(despesas.Count == 0 ? "Nenhuma despesa neste mês ainda" : "Tudo em dia!", "strong"), Texto(despesas.Count == 0 ? "Use “Nova despesa” para registrar a primeira conta." : "Nenhum pagamento em aberto neste mês.", "muted")); vazio.Spacing = 4; vazio.Margin = new Thickness(0, 12, 0, 0);
+            var vazio = Pilha(Texto(despesas.Count == 0 ? "Nenhuma despesa neste mês ainda" : "Tudo em dia!", "forte"), Texto(despesas.Count == 0 ? "Use “Nova despesa” para registrar a primeira conta." : "Nenhum pagamento em aberto neste mês.", "apagado")); vazio.Spacing = 4; vazio.Margin = new Thickness(0, 12, 0, 0);
             painel.Children.Add(vazio);
         }
         foreach (var e in proximos)
         {
             painel.Children.Add(Divisoria());
-            var titulo = Pilha(new TextBlock { Text = e.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto(SubtituloDaDespesa(e, true), "muted").ComClasse("small")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(12, 0);
-            var etiqueta = EtiquetaDePrazo(e); var valor = Texto(Dinheiro.Formatar(e.Valor), "strong"); valor.TextAlignment = TextAlignment.Right; valor.VerticalAlignment = VerticalAlignment.Center; valor.MinWidth = 100; valor.Margin = new Thickness(12, 0, 4, 0);
-            var mais = Botao("Mais ações", () => { }, "ghost round", "More", soIcone: true); mais.Flyout = MenuDaDespesa(e);
+            var titulo = Pilha(new TextBlock { Text = e.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto(SubtituloDaDespesa(e, true), "apagado").ComClasse("pequeno")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(12, 0);
+            var etiqueta = EtiquetaDePrazo(e); var valor = Texto(Dinheiro.Formatar(e.Valor), "forte"); valor.TextAlignment = TextAlignment.Right; valor.VerticalAlignment = VerticalAlignment.Center; valor.MinWidth = 100; valor.Margin = new Thickness(12, 0, 4, 0);
+            var mais = Botao("Mais ações", () => { }, "fantasma redondo", "Opcoes", soIcone: true); mais.Flyout = MenuDaDespesa(e);
             var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"), Margin = new Thickness(0, 10) };
             Control[] celulas = [CirculoComIcone(NomeDoIconeDaCategoria(e.Categoria)), titulo, etiqueta, valor, mais];
             for (var i = 0; i < celulas.Length; i++) { Grid.SetColumn(celulas[i], i); fileira.Children.Add(celulas[i]); }
@@ -167,17 +167,17 @@ public sealed partial class JanelaPrincipal
         var movimentacoes = MotorFinanceiro.MovimentacoesRecentes(dados, mes, LinhasDeMovimentacao);
         if (movimentacoes.Count == 0)
         {
-            var vazio = Pilha(Texto("Nada por aqui ainda", "strong"), Texto("As rendas do mês (no dia 1) e as despesas pagas neste mês aparecem nesta lista, pela data do pagamento.", "muted")); vazio.Spacing = 4; vazio.Margin = new Thickness(0, 12, 0, 0);
+            var vazio = Pilha(Texto("Nada por aqui ainda", "forte"), Texto("As rendas do mês (no dia 1) e as despesas pagas neste mês aparecem nesta lista, pela data do pagamento.", "apagado")); vazio.Spacing = 4; vazio.Margin = new Thickness(0, 12, 0, 0);
             painel.Children.Add(vazio);
         }
         for (var i = 0; i < movimentacoes.Count; i++)
         {
             var m = movimentacoes[i]; painel.Children.Add(Divisoria());
-            var titulo = Pilha(new TextBlock { Text = m.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto($"{m.Categoria} · {m.Data:dd/MM}", "muted").ComClasse("small")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(12, 0);
+            var titulo = Pilha(new TextBlock { Text = m.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto($"{m.Categoria} · {m.Data:dd/MM}", "apagado").ComClasse("pequeno")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(12, 0);
             // Entradas em verde com "+", saídas em texto normal com "−" (o sinal de menos tipográfico).
-            var valor = Texto((m.Entrada ? "+ " : "− ") + Dinheiro.Formatar(m.Valor), "strong"); if (m.Entrada) valor.Classes.Add("positive"); valor.VerticalAlignment = VerticalAlignment.Center;
+            var valor = Texto((m.Entrada ? "+ " : "− ") + Dinheiro.Formatar(m.Valor), "forte"); if (m.Entrada) valor.Classes.Add("positivo"); valor.VerticalAlignment = VerticalAlignment.Center;
             var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 10) };
-            Grid.SetColumn(titulo, 1); Grid.SetColumn(valor, 2); fileira.Children.Add(CirculoComIcone(m.Entrada ? "ArrowDown" : NomeDoIconeDaCategoria(m.Categoria), m.Entrada)); fileira.Children.Add(titulo); fileira.Children.Add(valor);
+            Grid.SetColumn(titulo, 1); Grid.SetColumn(valor, 2); fileira.Children.Add(CirculoComIcone(m.Entrada ? "SetaParaBaixo" : NomeDoIconeDaCategoria(m.Categoria), m.Entrada)); fileira.Children.Add(titulo); fileira.Children.Add(valor);
             painel.Children.Add(fileira);
         }
         return Cartao(painel);

@@ -24,7 +24,7 @@ public sealed partial class JanelaPrincipal
     private void MostrarSobreposicao(Border cartao, Action aoTeclarEsc, Control foco)
     {
         if (!SobreposicaoAberta) focoDeRetorno = FocusManager?.GetFocusedElement() as Control;
-        camadaDaSobreposicao.Children.Clear(); camadaDaSobreposicao.Children.Add(new Border().ComClasse("scrim")); camadaDaSobreposicao.Children.Add(cartao);
+        camadaDaSobreposicao.Children.Clear(); camadaDaSobreposicao.Children.Add(new Border().ComClasse("camada-escura")); camadaDaSobreposicao.Children.Add(cartao);
         escDaSobreposicao = aoTeclarEsc; camadaDaSobreposicao.IsVisible = true; AjustarSobreposicao();
         // O foco só pode ser dado depois que o cartão entra na árvore visual.
         Dispatcher.UIThread.Post(() => foco.Focus(), DispatcherPriority.Loaded);
@@ -50,9 +50,9 @@ public sealed partial class JanelaPrincipal
     /// <returns>O cartão e o título (para receber o foco).</returns>
     private static (Border Cartao, TextBlock Titulo) CartaoModal(string titulo, string subtitulo, Control corpo, Control rodape, Action fechar, Control? passos = null, double largura = 700)
     {
-        var tituloDaSecao = Texto(titulo, "modal-title"); tituloDaSecao.Focusable = true; AutomationProperties.SetHeadingLevel(tituloDaSecao, 1);
-        var titulos = Pilha(tituloDaSecao, Texto(subtitulo, "modal-sub")); titulos.Spacing = 4;
-        var x = Botao("Fechar", fechar, "close", "Close", soIcone: true); Grid.SetColumn(x, 1);
+        var tituloDaSecao = Texto(titulo, "modal-titulo"); tituloDaSecao.Focusable = true; AutomationProperties.SetHeadingLevel(tituloDaSecao, 1);
+        var titulos = Pilha(tituloDaSecao, Texto(subtitulo, "modal-subtitulo")); titulos.Spacing = 4;
+        var x = Botao("Fechar", fechar, "fechar", "Fechar", soIcone: true); Grid.SetColumn(x, 1);
         var cabecalho = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { titulos, x } };
         var rolagem = new ScrollViewer { Content = corpo, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Margin = new Thickness(0, 18, 0, 0) }; Grid.SetRow(rolagem, 2);
         rodape.Margin = new Thickness(0, 22, 0, 0); Grid.SetRow(rodape, 3);
@@ -80,7 +80,7 @@ public sealed partial class JanelaPrincipal
     private static Border Faixa(string icone, Control conteudo, string? tipo = null)
     {
         var simbolo = Icone(icone, 18); simbolo.VerticalAlignment = VerticalAlignment.Top; simbolo.Margin = new Thickness(0, 1, 12, 0); Grid.SetColumn(conteudo, 1);
-        var faixa = new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Children = { simbolo, conteudo } } }.ComClasse("banner");
+        var faixa = new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Children = { simbolo, conteudo } } }.ComClasse("faixa");
         if (tipo is not null) faixa.Classes.Add(tipo);
         return faixa;
     }
@@ -93,8 +93,8 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private static Control LinhaDeResumo(string rotulo, string valorLido, bool divisoria = true)
     {
-        var nome = Texto(rotulo, "muted"); nome.VerticalAlignment = VerticalAlignment.Center;
-        var valor = Texto(valorLido, "strong"); valor.TextAlignment = Avalonia.Media.TextAlignment.Right; valor.Margin = new Thickness(16, 0, 0, 0); Grid.SetColumn(valor, 1);
+        var nome = Texto(rotulo, "apagado"); nome.VerticalAlignment = VerticalAlignment.Center;
+        var valor = Texto(valorLido, "forte"); valor.TextAlignment = Avalonia.Media.TextAlignment.Right; valor.Margin = new Thickness(16, 0, 0, 0); Grid.SetColumn(valor, 1);
         AutomationProperties.SetName(valor, $"{rotulo}: {valorLido}");
         var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, 10), Children = { nome, valor } };
         if (!divisoria) return fileira;

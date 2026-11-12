@@ -4,19 +4,19 @@
 ; no assistente, quem preferir pode escolher instalar para todos os usuários (pede administrador).
 ; Os dados financeiros ficam em %LOCALAPPDATA%\BankManager, fora da pasta do programa: atualizar ou desinstalar NÃO os apaga.
 
-#ifndef AppVersion
-  #error Informe a versão com /DAppVersion=x.y.z
+#ifndef VersaoDoApp
+  #error Informe a versão com /DVersaoDoApp=x.y.z
 #endif
-#ifndef NumericVersion
-  #define NumericVersion "0.0.0.0"
+#ifndef VersaoNumerica
+  #define VersaoNumerica "0.0.0.0"
 #endif
-#ifndef SourceDir
-  #error Informe a pasta publicada (win-x64) com /DSourceDir=...
+#ifndef PastaDeOrigem
+  #error Informe a pasta publicada (win-x64) com /DPastaDeOrigem=...
 #endif
-#ifndef IconFile
-  #error Informe o ícone (.ico) com /DIconFile=...
+#ifndef ArquivoDoIcone
+  #error Informe o ícone (.ico) com /DArquivoDoIcone=...
 #endif
-#ifndef OutputDir
+#ifndef PastaDeSaida
   #define OutputDir "."
 #endif
 
@@ -24,19 +24,19 @@
 ; O AppId identifica o programa entre versões: instalar uma versão nova sobre a antiga a atualiza no lugar. Não altere este valor.
 AppId={{8A5E1B6C-3D4F-4E27-9C1A-5B7D2F0E9A31}
 AppName=BankManager
-AppVersion={#AppVersion}
-AppVerName=BankManager {#AppVersion}
+AppVersion={#VersaoDoApp}
+AppVerName=BankManager {#VersaoDoApp}
 AppPublisher=Muzi3060
 AppPublisherURL=https://github.com/Muzi3060/BankManager
 AppSupportURL=https://github.com/Muzi3060/BankManager/issues
-VersionInfoVersion={#NumericVersion}
+VersionInfoVersion={#VersaoNumerica}
 VersionInfoDescription=Instalador do BankManager
 DefaultDirName={autopf}\BankManager
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\BankManager.exe
-SetupIconFile={#IconFile}
-OutputDir={#OutputDir}
-OutputBaseFilename=BankManager-{#AppVersion}-win-x64-setup
+SetupIconFile={#ArquivoDoIcone}
+OutputDir={#PastaDeSaida}
+OutputBaseFilename=BankManager-{#VersaoDoApp}-win-x64-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -59,7 +59,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PastaDeOrigem}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\BankManager"; Filename: "{app}\BankManager.exe"; Comment: "Finanças pessoais e familiares"

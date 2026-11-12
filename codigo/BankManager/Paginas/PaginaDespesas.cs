@@ -24,11 +24,11 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private Control PaginaDeDespesas()
     {
-        var busca = CampoDeTexto(filtro, "Buscar uma despesa…"); busca.InnerLeftContent = Icone("Search", 16); busca.Padding = new Thickness(12, 10, 12, 10);
+        var busca = CampoDeTexto(filtro, "Buscar uma despesa…"); busca.InnerLeftContent = Icone("Busca", 16); busca.Padding = new Thickness(12, 10, 12, 10);
         AutomationProperties.SetName(busca, "Buscar despesas");
         var categorias = RegrasDoOrcamento.TodasAsCategorias(dados); var categoria = ListaDeOpcoes(new[] { "Todas as categorias" }.Concat(categorias), filtroDeCategoria); categoria.MinWidth = 190; categoria.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetName(categoria, "Categoria");
-        var resumo = Texto("", "muted"); var tabela = new Border(); tabela.Classes.Add("card"); tabela.Padding = new Thickness(0); tabela.ClipToBounds = true;
+        var resumo = Texto("", "apagado"); var tabela = new Border(); tabela.Classes.Add("cartao"); tabela.Padding = new Thickness(0); tabela.ClipToBounds = true;
         // Despesas visíveis com os filtros atuais; os atalhos de seleção agem só sobre elas.
         List<Despesa> visiveis = [];
         // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
@@ -42,13 +42,13 @@ public sealed partial class JanelaPrincipal
         busca.TextChanged += (_, _) => { filtro = busca.Text ?? ""; Atualizar(); };
         categoria.SelectionChanged += (_, _) => { filtroDeCategoria = categoria.SelectedIndex; Atualizar(); };
         var situacao = Segmentado(["Todas", "Em aberto", "Pagas"], filtroDeSituacao, i => { filtroDeSituacao = i; Atualizar(); });
-        var compartilhar = Botao("Compartilhar", () => { if (selecionando) EncerrarSelecao(); else IniciarSelecao(); }, selecionando ? "toggle active" : "toggle", "Share");
+        var compartilhar = Botao("Compartilhar", () => { if (selecionando) EncerrarSelecao(); else IniciarSelecao(); }, selecionando ? "alternar ativo" : "alternar", "Compartilhar");
         ToolTip.SetTip(compartilhar, selecionando ? "Sair do modo de seleção" : "Escolher despesas para enviar a outra pessoa");
         var filtros = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto,12,Auto") }; Grid.SetColumn(situacao, 2); Grid.SetColumn(categoria, 4); Grid.SetColumn(compartilhar, 6);
         filtros.Children.Add(busca); filtros.Children.Add(situacao); filtros.Children.Add(categoria); filtros.Children.Add(compartilhar);
         Atualizar();
         // Resumo à esquerda e acesso às despesas que se repetem todo mês à direita.
-        var recorrentes = Botao("Recorrentes", () => _ = Executar(GerenciarRecorrencias), "link", "Repeat"); resumo.VerticalAlignment = VerticalAlignment.Center;
+        var recorrentes = Botao("Recorrentes", () => _ = Executar(GerenciarRecorrencias), "link", "Repetir"); resumo.VerticalAlignment = VerticalAlignment.Center;
         // Escopo da busca: o mês selecionado ou todos os meses (a navegação de mês some no modo geral).
         var escopo = Segmentado(["Este mês", "Todos os meses"], todosOsMeses ? 1 : 0, i => { todosOsMeses = i == 1; Desenhar(); });
         var ferramentas = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; ferramentas.Children.Add(escopo); ferramentas.Children.Add(recorrentes); Grid.SetColumn(ferramentas, 1);
@@ -57,18 +57,18 @@ public sealed partial class JanelaPrincipal
         if (selecionando)
         {
             // Faixa de atalhos. Eles marcam só o que está visível com a busca e os filtros atuais.
-            var todas = Botao("Todas deste mês", () => { foreach (var e in visiveis.Where(e => Datas.Mes(e.Vencimento) == mes)) idsSelecionados.Add(e.Id); Atualizar(); AtualizarBarraDeSelecao(); }, "pillbtn");
+            var todas = Botao("Todas deste mês", () => { foreach (var e in visiveis.Where(e => Datas.Mes(e.Vencimento) == mes)) idsSelecionados.Add(e.Id); Atualizar(); AtualizarBarraDeSelecao(); }, "botao-pilula");
             ToolTip.SetTip(todas, "Marca as despesas de " + mes.ToString("MMMM 'de' yyyy", Dinheiro.Cultura) + " que estão na lista");
-            var porCategoria = Botao("Uma categoria…", () => { }, "pillbtn"); var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+            var porCategoria = Botao("Uma categoria…", () => { }, "botao-pilula"); var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
             foreach (var nome in categorias)
             {
                 var item = new MenuItem { Header = nome, Icon = Icone(NomeDoIconeDaCategoria(nome), 16) }; AutomationProperties.SetName(item, nome);
                 item.Click += (_, _) => { foreach (var e in visiveis.Where(e => e.Categoria == nome)) idsSelecionados.Add(e.Id); Atualizar(); AtualizarBarraDeSelecao(); }; menu.Items.Add(item);
             }
             porCategoria.Flyout = menu; ToolTip.SetTip(porCategoria, "Marca as despesas de uma categoria que estão na lista");
-            var limpar = Botao("Limpar seleção", () => { idsSelecionados.Clear(); Atualizar(); AtualizarBarraDeSelecao(); }, "pillbtn");
+            var limpar = Botao("Limpar seleção", () => { idsSelecionados.Clear(); Atualizar(); AtualizarBarraDeSelecao(); }, "botao-pilula");
             var atalhos = Linha(todas, porCategoria, limpar); Grid.SetColumn(atalhos, 1);
-            pagina.Children.Add(new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Texto("Escolha as despesas que quer enviar."), atalhos } } }.ComClasse("selectbanner"));
+            pagina.Children.Add(new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Texto("Escolha as despesas que quer enviar."), atalhos } } }.ComClasse("faixa-selecao"));
         }
         pagina.Children.Add(linhaDoResumo); pagina.Children.Add(tabela);
         // Espaço no fim da página para a barra flutuante não cobrir a última linha.
@@ -100,7 +100,7 @@ public sealed partial class JanelaPrincipal
     private Control DespesasVazias()
     {
         var alguma = todosOsMeses ? dados.Despesas.Count > 0 : MotorFinanceiro.Despesas(dados, mes).Count > 0;
-        var painel = Pilha(Texto(alguma ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Texto(alguma ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar. Se alguém enviou despesas para você, importe o arquivo.", "muted"));
+        var painel = Pilha(Texto(alguma ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "secao"), Texto(alguma ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar. Se alguém enviou despesas para você, importe o arquivo.", "apagado"));
         painel.Spacing = 8; painel.HorizontalAlignment = HorizontalAlignment.Center; painel.Margin = new Thickness(24, 40);
         foreach (var filho in painel.Children.OfType<TextBlock>()) filho.TextAlignment = TextAlignment.Center;
         if (alguma)
@@ -112,7 +112,7 @@ public sealed partial class JanelaPrincipal
         else
         {
             // Quem recebeu um arquivo de outra pessoa pode começar por ele: as despesas são adicionadas, nada é substituído.
-            var acoes = Linha(Botao("Nova despesa", () => _ = Executar(() => EditarDespesa()), "primary", "Plus"), Botao("Importar despesas compartilhadas", () => _ = Executar(ImportarCompartilhadas), icone: "Download")); acoes.HorizontalAlignment = HorizontalAlignment.Center; painel.Children.Add(acoes);
+            var acoes = Linha(Botao("Nova despesa", () => _ = Executar(() => EditarDespesa()), "primario", "Mais"), Botao("Importar despesas compartilhadas", () => _ = Executar(ImportarCompartilhadas), icone: "Baixar")); acoes.HorizontalAlignment = HorizontalAlignment.Center; painel.Children.Add(acoes);
         }
         return painel;
     }
@@ -125,7 +125,7 @@ public sealed partial class JanelaPrincipal
         var fileiras = new StackPanel();
         var cabecalho = new Grid { ColumnDefinitions = new ColumnDefinitions(selecionando ? ColunasDeSelecao : ColunasDeDespesa), Margin = new Thickness(22, 14, 14, 12) };
         string[] titulos = ["Descrição", "Vence", "Divisão", "Situação", "Valor"];
-        for (var i = 0; i < titulos.Length; i++) { var rotulo = Texto(titulos[i], "muted"); rotulo.FontSize = 12; rotulo.FontWeight = FontWeight.Medium; if (i == 4) rotulo.TextAlignment = TextAlignment.Right; Grid.SetColumn(rotulo, selecionando ? i + 1 : i); cabecalho.Children.Add(rotulo); }
+        for (var i = 0; i < titulos.Length; i++) { var rotulo = Texto(titulos[i], "apagado"); rotulo.FontSize = 12; rotulo.FontWeight = FontWeight.Medium; if (i == 4) rotulo.TextAlignment = TextAlignment.Right; Grid.SetColumn(rotulo, selecionando ? i + 1 : i); cabecalho.Children.Add(rotulo); }
         fileiras.Children.Add(cabecalho);
         foreach (var e in lancamentos) { fileiras.Children.Add(Divisoria()); fileiras.Children.Add(LinhaDaDespesa(e)); }
         return fileiras;
@@ -137,23 +137,23 @@ public sealed partial class JanelaPrincipal
     private Control LinhaDaDespesa(Despesa despesa)
     {
         var grade = new Grid { ColumnDefinitions = new ColumnDefinitions(selecionando ? ColunasDeSelecao : ColunasDeDespesa), Margin = new Thickness(22, 10, 14, 10) };
-        var titulo = Pilha(new TextBlock { Text = despesa.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto(SubtituloDaDespesa(despesa, false), "muted").ComClasse("small")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(0, 0, 12, 0);
-        var vencimento = Texto(todosOsMeses ? $"{despesa.Vencimento:dd/MM/yy}" : $"{despesa.Vencimento:dd/MM}", "support"); vencimento.VerticalAlignment = VerticalAlignment.Center;
+        var titulo = Pilha(new TextBlock { Text = despesa.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto(SubtituloDaDespesa(despesa, false), "apagado").ComClasse("pequeno")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(0, 0, 12, 0);
+        var vencimento = Texto(todosOsMeses ? $"{despesa.Vencimento:dd/MM/yy}" : $"{despesa.Vencimento:dd/MM}", "apoio"); vencimento.VerticalAlignment = VerticalAlignment.Center;
         // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
         var cotas = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        foreach (var compartilhar in MotorFinanceiro.Ratear(dados, despesa).Valores) { var linha = Texto($"{dados.Pessoas.First(p => p.Id == compartilhar.Key).Nome} {compartilhar.Value.ToString("N2", Dinheiro.Cultura)}", "muted"); linha.FontSize = 12; cotas.Children.Add(linha); }
+        foreach (var compartilhar in MotorFinanceiro.Ratear(dados, despesa).Valores) { var linha = Texto($"{dados.Pessoas.First(p => p.Id == compartilhar.Key).Nome} {compartilhar.Value.ToString("N2", Dinheiro.Cultura)}", "apagado"); linha.FontSize = 12; cotas.Children.Add(linha); }
         var etiqueta = EtiquetaDeSituacao(despesa);
-        var valor = Texto(Dinheiro.Formatar(despesa.Valor), "strong"); valor.TextAlignment = TextAlignment.Right; valor.VerticalAlignment = VerticalAlignment.Center;
-        var fileira = new Border { Child = grade }.ComClasse("exrow");
+        var valor = Texto(Dinheiro.Formatar(despesa.Valor), "forte"); valor.TextAlignment = TextAlignment.Right; valor.VerticalAlignment = VerticalAlignment.Center;
+        var fileira = new Border { Child = grade }.ComClasse("linha-despesa");
         Control[] celulas;
         if (selecionando)
         {
             var caixaDeMarcar = new CheckBox { IsChecked = idsSelecionados.Contains(despesa.Id), VerticalAlignment = VerticalAlignment.Center, MinWidth = 0 }; AutomationProperties.SetName(caixaDeMarcar, "Selecionar " + despesa.Titulo);
-            fileira.Classes.Add("selectable"); fileira.Classes.Set("selected", caixaDeMarcar.IsChecked == true);
+            fileira.Classes.Add("selecionavel"); fileira.Classes.Set("selecionado", caixaDeMarcar.IsChecked == true);
             caixaDeMarcar.IsCheckedChanged += (_, _) =>
             {
                 if (caixaDeMarcar.IsChecked == true) idsSelecionados.Add(despesa.Id); else idsSelecionados.Remove(despesa.Id);
-                fileira.Classes.Set("selected", caixaDeMarcar.IsChecked == true); AtualizarBarraDeSelecao();
+                fileira.Classes.Set("selecionado", caixaDeMarcar.IsChecked == true); AtualizarBarraDeSelecao();
             };
             // Clique fora da caixa também alterna; o clique na própria caixa já é tratado por ela.
             fileira.PointerPressed += (_, e) => { if (e.Source is Visual fonte && fonte.FindAncestorOfType<CheckBox>(true) is null) { caixaDeMarcar.IsChecked = caixaDeMarcar.IsChecked != true; e.Handled = true; } };
@@ -161,7 +161,7 @@ public sealed partial class JanelaPrincipal
         }
         else
         {
-            var mais = Botao("Mais ações", () => { }, "ghost round", "More", soIcone: true); mais.Flyout = MenuDaDespesa(despesa); mais.HorizontalAlignment = HorizontalAlignment.Right;
+            var mais = Botao("Mais ações", () => { }, "fantasma redondo", "Opcoes", soIcone: true); mais.Flyout = MenuDaDespesa(despesa); mais.HorizontalAlignment = HorizontalAlignment.Right;
             celulas = [titulo, vencimento, cotas, etiqueta, valor, mais];
         }
         for (var i = 0; i < celulas.Length; i++) { Grid.SetColumn(celulas[i], i); grade.Children.Add(celulas[i]); }
@@ -173,9 +173,9 @@ public sealed partial class JanelaPrincipal
     private MenuFlyout MenuDaDespesa(Despesa despesa)
     {
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        menu.Items.Add(AcaoDeMenu(despesa.Paga ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Executar(() => AlternarPagamento(despesa))));
-        menu.Items.Add(AcaoDeMenu("Editar", "Edit", () => _ = Executar(() => EditarDespesa(despesa))));
-        menu.Items.Add(AcaoDeMenu("Excluir", "Trash", () => _ = Executar(async () =>
+        menu.Items.Add(AcaoDeMenu(despesa.Paga ? "Marcar em aberto" : "Marcar como pago", "Visto", () => _ = Executar(() => AlternarPagamento(despesa))));
+        menu.Items.Add(AcaoDeMenu("Editar", "Editar", () => _ = Executar(() => EditarDespesa(despesa))));
+        menu.Items.Add(AcaoDeMenu("Excluir", "Lixeira", () => _ = Executar(async () =>
         {
             var detalhe = despesa.IdDaRecorrencia is not null ? "Apenas este mês será removido e não será criado de novo; a despesa continua nos outros meses. Para parar de vez, use Recorrentes." : "Apenas este lançamento será removido; outras parcelas continuam no histórico.";
             // RemoverDespesa registra o mês como ignorado quando o lançamento vem de uma recorrência.
@@ -188,8 +188,8 @@ public sealed partial class JanelaPrincipal
     /// </summary>
     private static MenuItem AcaoDeMenu(string texto, string icone, Action acao, bool perigo = false)
     {
-        var item = new MenuItem { Header = perigo ? new TextBlock { Text = texto, Classes = { "negative" } } : texto, Icon = Icone(icone, 16) };
-        if (perigo) item.Classes.Add("danger");
+        var item = new MenuItem { Header = perigo ? new TextBlock { Text = texto, Classes = { "negativo" } } : texto, Icon = Icone(icone, 16) };
+        if (perigo) item.Classes.Add("perigo");
         AutomationProperties.SetName(item, texto); item.Click += (_, _) => acao(); return item;
     }
     /// <summary>
@@ -226,10 +226,10 @@ public sealed partial class JanelaPrincipal
         var s = SituacaoDoPrazo.De(despesa, DateOnly.FromDateTime(DateTime.Today));
         return s.Tipo switch
         {
-            TipoDePrazo.Paga => Etiqueta(despesa.DataDoPagamento is { } pagaEm ? "Pago em " + pagaEm.ToString(todosOsMeses ? "dd/MM/yy" : "dd/MM") : "Pago", "positive"),
-            TipoDePrazo.Atrasada => Etiqueta("Em atraso", "negative"),
-            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Vence hoje" : $"Vence em {s.Dias} {(s.Dias == 1 ? "dia" : "dias")}", "warn"),
-            _ => Etiqueta("Em aberto", "status")
+            TipoDePrazo.Paga => Etiqueta(despesa.DataDoPagamento is { } pagaEm ? "Pago em " + pagaEm.ToString(todosOsMeses ? "dd/MM/yy" : "dd/MM") : "Pago", "positivo"),
+            TipoDePrazo.Atrasada => Etiqueta("Em atraso", "negativo"),
+            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Vence hoje" : $"Vence em {s.Dias} {(s.Dias == 1 ? "dia" : "dias")}", "alerta"),
+            _ => Etiqueta("Em aberto", "situacao")
         };
     }
     /// <summary>
@@ -240,8 +240,8 @@ public sealed partial class JanelaPrincipal
         var s = SituacaoDoPrazo.De(despesa, DateOnly.FromDateTime(DateTime.Today)); var dias = Math.Abs(s.Dias); var unidade = dias == 1 ? "dia" : "dias";
         return s.Tipo switch
         {
-            TipoDePrazo.Atrasada => Etiqueta($"Atrasada há {dias} {unidade}", "negative"),
-            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Hoje" : $"Em {dias} {unidade}", "warn"),
+            TipoDePrazo.Atrasada => Etiqueta($"Atrasada há {dias} {unidade}", "negativo"),
+            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Hoje" : $"Em {dias} {unidade}", "alerta"),
             _ => Etiqueta($"Em {dias} {unidade}")
         };
     }
@@ -293,9 +293,9 @@ public sealed partial class JanelaPrincipal
         // Copia os itens do lançamento para que remover/adicionar no formulário não altere o histórico ao cancelar.
         var itens = existente?.Itens.Select(i => i with { }).ToList() ?? [];
         var nomeDoItem = CampoDeTexto(null, "Nome do item", 100); var quantidadeDoItem = CampoDeTexto("1", "Quantidade", 10); var preco = CampoDeTexto(null, "Preço (R$)", 12);
-        var totalDosItens = Texto("", "muted");
-        var erro = Texto("", "error"); 
-        var previa = Texto("", "muted");
+        var totalDosItens = Texto("", "apagado");
+        var erro = Texto("", "erro"); 
+        var previa = Texto("", "apagado");
         // Reconstrói itens e total do rascunho. Com itens, o valor manual fica bloqueado; a prévia antiga é descartada.
         void AtualizarItens()
         {
@@ -324,7 +324,7 @@ public sealed partial class JanelaPrincipal
             }
             catch (Exception ex) { erro.Text = ErroAmigavel(ex); erro.BringIntoView(); }
         });
-        var painelDeItens = Pilha(Texto("Opcional: detalhe cada item da compra", "muted"), listaDeItens,
+        var painelDeItens = Pilha(Texto("Opcional: detalhe cada item da compra", "apagado"), listaDeItens,
             Campo("Produto ou serviço", nomeDoItem), Colunas(Campo("Quantidade", quantidadeDoItem), Campo("Preço unitário (R$)", preco)), adicionarItem, totalDosItens);
         var expansor = new Expander { Header = "Lista de itens da compra", Content = painelDeItens, IsExpanded = itens.Count > 0, HorizontalAlignment = HorizontalAlignment.Stretch };
         if (existente?.TotalDeParcelas > 1) expansor.IsEnabled = false;
@@ -335,7 +335,7 @@ public sealed partial class JanelaPrincipal
             var ligado = repetir.IsChecked == true; if (ligado) parcelas.Text = "1";
             parcelas.IsEnabled = !ligado; expansor.IsEnabled = !ligado;
         };
-        var painelDeRepeticao = existente is null ? Pilha(repetir, Texto($"Para aluguel, internet, assinaturas e contas fixas. Cria a despesa em cada mês, a partir do vencimento, até {MotorDeRecorrencias.MesesDeHorizonte} meses à frente. Para parar depois, use Recorrentes na lista de despesas.", "muted")) : Pilha();
+        var painelDeRepeticao = existente is null ? Pilha(repetir, Texto($"Para aluguel, internet, assinaturas e contas fixas. Cria a despesa em cada mês, a partir do vencimento, até {MotorDeRecorrencias.MesesDeHorizonte} meses à frente. Para parar depois, use Recorrentes na lista de despesas.", "apagado")) : Pilha();
         painelDeRepeticao.Spacing = 6;
         AtualizarItens();
         // Converte os campos em lançamentos candidatos, valida o conjunto completo e não grava nada em disco.
@@ -374,9 +374,9 @@ public sealed partial class JanelaPrincipal
         var painel = Pilha(Cabecalho(existente is null ? "Nova despesa" : "Editar despesa", existente?.TotalDeParcelas > 1 ? $"Alteração apenas da parcela {existente.NumeroDaParcela}/{existente.TotalDeParcelas}." : existente?.IdDaRecorrencia is not null ? "Esta despesa se repete todo mês. A alteração vale só para este mês." : "Preencha os dados e escolha como dividir."),
             Campo("Descrição", titulo), Colunas(Campo("Categoria", categoria), Campo("Vencimento (dd/mm/aaaa)", data)),
             Colunas(Campo(existente?.TotalDeParcelas > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", valor), Campo("Número de parcelas", parcelas)), painelDeRepeticao,
-            Texto("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "muted"), expansor,
-            Campo("Como esta despesa será paga?", divisao), Texto("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), painelDePessoas, paga, campoDoPagador,
-            Texto("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "muted"),
+            Texto("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "apagado"), expansor,
+            Campo("Como esta despesa será paga?", divisao), Texto("Selecione os responsáveis (apenas um para despesas individuais):", "apagado"), painelDePessoas, paga, campoDoPagador,
+            Texto("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "apagado"),
             Botao("Conferir divisão antes de salvar", () =>
             {
                 try
@@ -404,7 +404,7 @@ public sealed partial class JanelaPrincipal
                 }); dialogo.Close();
             }
             catch (Exception ex) { erro.Text = ErroAmigavel(ex); erro.BringIntoView(); }
-        }, "primary")));
+        }, "primario")));
         await dialogo.ShowDialog(this);
     }
 }

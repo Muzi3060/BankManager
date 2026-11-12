@@ -1,4 +1,4 @@
-name: Build and release
+name: Compilar e publicar
 
 # Branches e PRs validam o projeto; tags v* também acionam a publicação da release.
 on:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   package:
-    name: Test and package (${{ matrix.runtime }})
+    name: Testar e empacotar (${{ matrix.runtime }})
     # Falhas em um sistema não cancelam o outro, preservando o diagnóstico dos dois destinos.
     strategy:
       fail-fast: false
@@ -34,19 +34,19 @@ jobs:
         with:
           python-version: '3.12'
       # Impede publicar uma tag cujo número diverge da versão declarada no aplicativo.
-      - name: Verify release version
+      - name: Conferir a versão da release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: python
         run: |
           import os, xml.etree.ElementTree as ET
           version = ET.parse('codigo/BankManager/BankManager.csproj').findtext('./PropertyGroup/Version')
           assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Tag must match csproj Version'
-      - name: Build
+      - name: Compilar
         run: dotnet build BankManager.sln -c Release -m:1 --disable-build-servers
-      - name: Domain and persistence tests
+      - name: Testes de domínio e persistência
         run: dotnet run --project testes/BankManager.Testes -c Release --no-build
       # No runner Linux, Xvfb fornece o display para os testes de janela real.
-      - name: UI integration tests (Linux)
+      - name: Testes de interface (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -55,22 +55,22 @@ jobs:
       # No Windows o runner tem sessão gráfica, então a janela real abre sem Xvfb. Este passo ainda não foi validado em um
       # Windows de verdade: enquanto não tiver ficado verde algumas vezes, uma falha aparece como aviso, sem bloquear a release.
       # Depois de confirmado, remova a linha continue-on-error.
-      - name: UI integration tests (Windows)
+      - name: Testes de interface (Windows)
         if: runner.os == 'Windows'
         continue-on-error: true
         run: dotnet run --project testes/BankManager.TestesDeInterface -c Release --no-build
-      - name: Publish and archive
+      - name: Publicar e compactar
         run: python scripts/empacotar.py --runtime ${{ matrix.runtime }}
       # ---- Windows: instalador (Inno Setup). Instala por usuário, sem administrador, e atualiza por cima da versão anterior. ----
-      - name: Install Inno Setup (Windows)
+      - name: Instalar o Inno Setup (Windows)
         if: runner.os == 'Windows'
         run: choco install innosetup -y --no-progress
-      - name: Windows installer
+      - name: Instalador do Windows
         if: runner.os == 'Windows'
         run: python scripts/instaladores.py windows
       # Instala em silêncio numa pasta temporária, confere o executável e desinstala. Também ainda não validado em um Windows
       # real: um erro aqui aparece como aviso até o passo ser confirmado.
-      - name: Installer smoke test (Windows)
+      - name: Teste rápido do instalador (Windows)
         if: runner.os == 'Windows'
         continue-on-error: true
         shell: pwsh
@@ -87,7 +87,7 @@ jobs:
         if: runner.os == 'Linux'
         run: python scripts/instaladores.py appimage
       # O AppImage precisa abrir de verdade: rodando sob Xvfb por 10 segundos, "continuar vivo até o timeout" (código 124) é sucesso.
-      - name: AppImage smoke test (Linux)
+      - name: Teste rápido do AppImage (Linux)
         if: runner.os == 'Linux'
         run: |
           set +e
@@ -118,7 +118,7 @@ jobs:
           path: release-assets
           merge-multiple: true
       # O token temporário do GitHub é passado via ambiente, sem ser gravado no repositório.
-      - name: Publish packages and installers
+      - name: Publicar pacotes e instaladores
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-

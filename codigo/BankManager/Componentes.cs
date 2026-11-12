@@ -24,8 +24,8 @@ internal static class Componentes
     public static Control Icone(string nome, double tamanho = 18)
     {
         // A geometria não muda com o tema, então basta buscá-la uma vez; só a cor do traço é dinâmica (no estilo).
-        if (Application.Current is null || !Application.Current.TryFindResource("Icon." + nome, out var geometria) || geometria is not Geometry dados) throw new ArgumentException("Ícone desconhecido: " + nome);
-        var caminho = new Avalonia.Controls.Shapes.Path { Data = dados }; caminho.Classes.Add("icon");
+        if (Application.Current is null || !Application.Current.TryFindResource("Icone." + nome, out var geometria) || geometria is not Geometry dados) throw new ArgumentException("Ícone desconhecido: " + nome);
+        var caminho = new Avalonia.Controls.Shapes.Path { Data = dados }; caminho.Classes.Add("icone");
         return new Viewbox { Width = tamanho, Height = tamanho, IsHitTestVisible = false, Child = new Canvas { Width = 24, Height = 24, Children = { caminho } } };
     }
     /// <summary>
@@ -57,7 +57,7 @@ internal static class Componentes
     /// Envolve um conteúdo em um cartão. Estilos: "card" (translúcido, o padrão), "solid" (branco, usado nas metas)
     /// e "summary" (escuro, do resumo da casa).
     /// </summary>
-    public static Border Cartao(Control conteudo, string estilo = "card")
+    public static Border Cartao(Control conteudo, string estilo = "cartao")
     {
         var borda = new Border { Child = conteudo }; borda.Classes.Add(estilo); return borda;
     }
@@ -88,7 +88,7 @@ internal static class Componentes
     {
         AutomationProperties.SetName(entrada, titulo);
         if (dica is not null) AutomationProperties.SetHelpText(entrada, dica);
-        return dica is null ? Pilha(Texto(titulo), entrada) : Pilha(Texto(titulo), entrada, Texto(dica, "muted"));
+        return dica is null ? Pilha(Texto(titulo), entrada) : Pilha(Texto(titulo), entrada, Texto(dica, "apagado"));
     }
     /// <summary>
     /// Distribui controles em colunas de mesma largura, aplicando espaço apenas entre as colunas.
@@ -115,7 +115,7 @@ internal static class Componentes
         Title = titulo, Width = largura, Height = 720, MinWidth = 480, MinHeight = 400, Icon = IconeDoAplicativo,
         WindowStartupLocation = WindowStartupLocation.CenterOwner,
         // A classe "dialog" troca o degradê da janela pela superfície sólida.
-        Classes = { "dialog" },
+        Classes = { "dialogo" },
         Content = new ScrollViewer { Content = new Border { Padding = new Thickness(28), Child = conteudo } }
     };
     /// <summary>
@@ -123,9 +123,9 @@ internal static class Componentes
     /// </summary>
     public static async Task<bool> Confirmar(Window dono, string titulo, string mensagem)
     {
-        var painel = Pilha(Texto(titulo, "section"), Texto(mensagem, "muted"));
+        var painel = Pilha(Texto(titulo, "secao"), Texto(mensagem, "apagado"));
         var dialogo = Dialogo(titulo, painel); dialogo.Height = 320;
-        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close(false)), Botao("Confirmar", () => dialogo.Close(true), "primary")));
+        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close(false)), Botao("Confirmar", () => dialogo.Close(true), "primario")));
         return await dialogo.ShowDialog<bool>(dono);
     }
     /// <summary>
@@ -134,21 +134,21 @@ internal static class Componentes
     public static async Task<string?> Perguntar(Window dono, string titulo, string rotulo, string inicial, int maximo)
     {
         var entrada = CampoDeTexto(inicial, null, maximo); string? resultado = null;
-        var painel = Pilha(Texto(titulo, "section"), Campo(rotulo, entrada));
+        var painel = Pilha(Texto(titulo, "secao"), Campo(rotulo, entrada));
         var dialogo = Dialogo(titulo, painel, 480); dialogo.Height = 300;
-        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close()), Botao("Salvar", () => { resultado = entrada.Text; dialogo.Close(); }, "primary")));
+        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close()), Botao("Salvar", () => { resultado = entrada.Text; dialogo.Close(); }, "primario")));
         await dialogo.ShowDialog(dono); return resultado;
     }
     /// <summary>
     /// Linha divisória fina entre itens de uma lista.
     /// </summary>
-    public static Border Divisoria() { var linha = new Border(); linha.Classes.Add("divider"); return linha; }
+    public static Border Divisoria() { var linha = new Border(); linha.Classes.Add("divisoria"); return linha; }
     /// <summary>
     /// Etiqueta curta de situação. Tons: "warn", "positive", "negative"; sem tom, o chip é neutro.
     /// </summary>
     public static Border Etiqueta(string texto, string? tom = null)
     {
-        var etiqueta = new Border { Child = new TextBlock { Text = texto } }; etiqueta.Classes.Add("chip"); if (tom is not null) etiqueta.Classes.Add(tom); return etiqueta;
+        var etiqueta = new Border { Child = new TextBlock { Text = texto } }; etiqueta.Classes.Add("etiqueta"); if (tom is not null) etiqueta.Classes.Add(tom); return etiqueta;
     }
     /// <summary>
     /// Círculo com a inicial do nome, usado para identificar pessoas. O forte (preto) destaca uma pessoa ao lado de outra.
@@ -156,21 +156,21 @@ internal static class Componentes
     public static Border Avatar(string nome, bool forte = false)
     {
         var inicial = nome.Trim().Length > 0 ? nome.Trim()[..1].ToUpper(Dinheiro.Cultura) : "?";
-        var avatar = new Border { Child = new TextBlock { Text = inicial }, VerticalAlignment = VerticalAlignment.Center }; avatar.Classes.Add("avatar"); avatar.Classes.Set("strong", forte); return avatar;
+        var avatar = new Border { Child = new TextBlock { Text = inicial }, VerticalAlignment = VerticalAlignment.Center }; avatar.Classes.Add("avatar"); avatar.Classes.Set("forte", forte); return avatar;
     }
     /// <summary>
     /// Nome do ícone de uma categoria. As oito categorias padrão têm ícone próprio; as criadas pelo usuário usam a etiqueta.
     /// </summary>
     public static string NomeDoIconeDaCategoria(string categoria) => categoria switch
     {
-        "Moradia" => "Home", "Mercado" => "Cart", "Transporte" => "Car", "Saúde" => "Heart", "Educação" => "Book", "Lazer" => "Smile", "Serviços" => "Zap", _ => "Tag"
+        "Moradia" => "Casa", "Mercado" => "Carrinho", "Transporte" => "Carro", "Saúde" => "Coracao", "Educação" => "Livro", "Lazer" => "Sorriso", "Serviços" => "Raio", _ => "Etiqueta"
     };
     /// <summary>
     /// Círculo de 36 px com um ícone. Com "income", fica verde (entrada de dinheiro).
     /// </summary>
     public static Border CirculoComIcone(string icone, bool renda = false)
     {
-        var circulo = new Border { Child = Icone(icone, 17) }; circulo.Classes.Add("iconcircle"); circulo.Classes.Set("income", renda); return circulo;
+        var circulo = new Border { Child = Icone(icone, 17) }; circulo.Classes.Add("circulo-icone"); circulo.Classes.Set("entrada", renda); return circulo;
     }
     /// <summary>
     /// Controle de opções lado a lado (apenas uma ativa). Atualiza o destaque sozinho e avisa a opção escolhida.
@@ -180,22 +180,22 @@ internal static class Componentes
         var botoes = new List<Button>(); var fileira = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
         for (var i = 0; i < opcoes.Length; i++)
         {
-            var indice = i; var botao = Botao(opcoes[i], () => { for (var j = 0; j < botoes.Count; j++) botoes[j].Classes.Set("active", j == indice); mudou(indice); }, "seg");
-            botao.Classes.Set("active", i == selecionada); botoes.Add(botao); fileira.Children.Add(botao);
+            var indice = i; var botao = Botao(opcoes[i], () => { for (var j = 0; j < botoes.Count; j++) botoes[j].Classes.Set("ativo", j == indice); mudou(indice); }, "segmento");
+            botao.Classes.Set("ativo", i == selecionada); botoes.Add(botao); fileira.Children.Add(botao);
         }
-        var caixa = new Border { Child = fileira, VerticalAlignment = VerticalAlignment.Center }; caixa.Classes.Add("segmented"); return caixa;
+        var caixa = new Border { Child = fileira, VerticalAlignment = VerticalAlignment.Center }; caixa.Classes.Add("segmentado"); return caixa;
     }
     /// <summary>
     /// Seção de ajuda que abre e fecha ao clicar no título, no lugar de um texto longo sempre visível.
     /// </summary>
     public static Control Recolhivel(string titulo, string corpo)
     {
-        var conteudo = Texto(corpo, "muted"); conteudo.IsVisible = false; conteudo.Margin = new Thickness(12, 0, 12, 12);
-        var setinha = Icone("ChevronDown", 16); setinha.RenderTransform = new RotateTransform(-90);
+        var conteudo = Texto(corpo, "apagado"); conteudo.IsVisible = false; conteudo.Margin = new Thickness(12, 0, 12, 12);
+        var setinha = Icone("SetaBaixo", 16); setinha.RenderTransform = new RotateTransform(-90);
         var tituloDaSecao = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var rotulo = new TextBlock { Text = titulo, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center }; setinha.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(setinha, 1);
         tituloDaSecao.Children.Add(rotulo); tituloDaSecao.Children.Add(setinha);
-        var cabecalho = new Button { Content = tituloDaSecao, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch }; cabecalho.Classes.Add("ghost");
+        var cabecalho = new Button { Content = tituloDaSecao, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch }; cabecalho.Classes.Add("fantasma");
         AutomationProperties.SetName(cabecalho, titulo);
         cabecalho.Click += (_, _) => { conteudo.IsVisible = !conteudo.IsVisible; setinha.RenderTransform = new RotateTransform(conteudo.IsVisible ? 0 : -90); };
         var painel = new StackPanel { Spacing = 0 }; painel.Children.Add(cabecalho); painel.Children.Add(conteudo); return painel;
