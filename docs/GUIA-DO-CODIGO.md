@@ -20,7 +20,7 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 14. `BankManager.Core/GoalEngine.cs`: metas mensais por categoria e seu progresso.
 15. `BankManager.Core/ExpenseSearch.cs`: busca e filtros da lista (um mês ou todos).
 16. `BankManager.Core/Csv.cs`, `CsvExport.cs` e `StatementImport.cs`: leitura/escrita de CSV, exportação e importação de extratos.
-17. `BankManager.Core/ExpenseShare.cs`: arquivo de compartilhamento de despesas (exportar as escolhidas, importar adicionando); as telas ficam em `BankManager/Pages/ShareDialogs.cs`.
+17. `BankManager.Core/ExpenseShare.cs`: arquivo de compartilhamento de despesas (exportar as escolhidas, importar adicionando); o modo de seleção fica em `Pages/ExpensesPage.cs`, o diálogo de exportar em `Pages/ShareExport.cs`, o assistente de importação em `Pages/ShareImport.cs` e a base dos diálogos sobrepostos em `BankManager/Overlay.cs`.
 18. `BankManager.Core/DueStatus.cs`: situação de vencimento (Pago, Em aberto, Vence em breve, Em atraso), base dos chips da interface.
 
 Os métodos e tipos C# possuem resumos XML (`///`), exibidos pelo Rider ao inspecionar um símbolo. Comentários `//` dentro dos métodos explicam etapas e decisões locais.
@@ -136,6 +136,8 @@ Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os 
 ### Compartilhar despesas
 
 `ExpenseShare` (Core) cuida de tudo sem tocar na interface. `Build` monta um `ShareFile` com as despesas escolhidas; as pessoas vão pelo nome, porque os Ids de quem envia não existem na base de quem recebe. `Read` e `Validate` aplicam as proteções do backup (tamanho, profundidade, campos desconhecidos, versão) e conferem o campo `Kind`, que distingue o compartilhamento do backup; `LocalStore.Read` faz a conferência inversa. `Suggest` propõe o mapeamento de pessoas e categorias, e `Import` calcula o resultado em uma cópia profunda e valida o orçamento inteiro: serve de prévia e não altera nada. Para gravar, a tela chama `Commit(d => ExpenseShare.Apply(d, ...))`, o mesmo caminho seguro de qualquer edição (cópia, validação, gravação atômica, cópia anterior). Cada despesa importada guarda em `OriginId` o Id que tinha na origem; é por ele que uma segunda importação reconhece as duplicadas.
+
+Na interface, o fluxo tem três partes. O **modo de seleção** (`selecting` e `selectedIds`, na janela) faz a lista de despesas desenhar caixas de marcação e mostra uma barra flutuante que fica fora da área rolável. O **diálogo de exportar** e o **assistente de importação** não são janelas do sistema: são cartões desenhados sobre a própria janela, por `ShowOverlay` (`Overlay.cs`). A camada escura bloqueia cliques no que está atrás, o Tab circula só dentro do cartão, o foco vai para o título ao abrir e volta ao botão de origem ao fechar, e a tecla Esc é entregue ao diálogo. O assistente guarda as escolhas em variáveis locais de `ImportShared` e redesenha cada passo a partir delas; por isso voltar um passo não perde nada. `ExpenseShare.Import` devolve uma `ShareLine` por despesa do arquivo (adicionar, pular ou erro), e é isso que a prévia mostra. Os testes de interface usam `TestSavePath` e `TestOpenPath` no lugar do seletor de arquivos do sistema.
 
 ### Componentes de interface
 

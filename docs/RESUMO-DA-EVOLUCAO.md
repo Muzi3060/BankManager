@@ -73,16 +73,16 @@ O visual inteiro foi trocado pela direção aprovada no protótipo: sai o roxo, 
 | **Data de pagamento** | Marcar como paga guarda o dia (hoje, ou o que você digitar no diálogo "Quem pagou?" ou no formulário). Reabrir apaga. A lista mostra "Pago em dd/MM". |
 | **Últimas movimentações** | Passam a usar a data do pagamento: a despesa aparece no mês em que foi paga. A linha esmaecida foi removida; todas têm opacidade total. |
 | **Esquema versão 3** | Arquivos das versões 1 e 2 abrem e são atualizados em cadeia, sem perda; o arquivo antigo vira a cópia anterior. Despesas já pagas ficam **sem** data de pagamento (o app não inventa uma): vale o vencimento. |
-| **Compartilhar despesas** | Você marca algumas despesas e gera um arquivo `.bmshare.json`. É outro tipo de arquivo, diferente do backup: leva só as despesas marcadas, com as pessoas pelo nome. Nunca leva rendas, metas ou acertos. |
-| **Importar sem substituir** | Quem recebe passa por um assistente: confere o arquivo, diz quem é cada pessoa (existente, nova ou ignorar), decide as categorias que faltam e vê a prévia. As despesas são **adicionadas**; nada é apagado. Importar o mesmo arquivo duas vezes não duplica. Tudo é gravado de uma vez, ou nada. |
+| **Compartilhar despesas** | Na página Despesas, o botão Compartilhar liga um modo de seleção: você marca as despesas na própria lista e gera um arquivo `.bmshare.json`. É outro tipo de arquivo, diferente do backup: leva só as despesas marcadas, com as pessoas pelo nome. Nunca leva rendas, metas ou acertos. |
+| **Importar sem substituir** | Quem recebe passa por um assistente em três passos, desenhado sobre a própria janela: confere o arquivo, diz quem é cada pessoa (existente, nova ou ignorar) e decide as categorias que faltam, e vê a prévia. As despesas são **adicionadas**; nada é apagado. Importar o mesmo arquivo duas vezes não duplica. Tudo é gravado de uma vez, ou nada. |
 
-**Decisões minhas nesta fase:** a seleção para compartilhar fica em uma lista com caixas dentro do assistente (não na lista principal de despesas); o assistente de importação mostra os passos numerados em uma só janela, com a prévia ao vivo; despesas recorrentes viajam como despesas comuns; na divisão proporcional, quem importa escolhe entre manter o modo (recalculado com as rendas de lá) ou dividir igualmente.
+**Decisões minhas nesta fase:** os diálogos de compartilhar e de importar são cartões dentro da janela (não janelas do sistema), para ficarem iguais no Windows e no Linux; os outros diálogos do aplicativo continuam como janelas; o assistente abre o seletor de arquivo antes do passo 1; despesas recorrentes viajam como despesas comuns; na divisão proporcional, quem importa escolhe entre manter o modo (recalculado com as rendas de lá) ou dividir igualmente.
 
 ## Como foi verificado
 
 - Build sem avisos.
-- **95 testes de domínio** (cálculos, validação, recorrências, acerto, CSV, migração com arquivos reais das versões 1 e 2, data de pagamento, compartilhamento: seleção parcial, mapeamentos, duplicatas, parcelas, tipo errado de arquivo, arquivo adulterado e gravação tudo-ou-nada).
-- **54 verificações de interface** com a janela real (cadastro, pagamento com data, acerto, recorrência, categorias, metas, abas, importação de extrato, tema, atalho e o fluxo completo exportar → importar despesas em uma base com dados).
+- **97 testes de domínio** (cálculos, validação, recorrências, acerto, CSV, migração com arquivos reais das versões 1 e 2, data de pagamento, compartilhamento: seleção parcial, mapeamentos, duplicatas, parcelas, tipo errado de arquivo, arquivo adulterado e gravação tudo-ou-nada).
+- **83 verificações de interface** com a janela real (cadastro, pagamento com data, acerto, recorrência, categorias, metas, abas, importação de extrato, tema, atalho e o fluxo completo exportar → importar despesas em uma base com dados).
 - Contraste de pelo menos 4,5:1 entre texto e fundo nos dois temas, conferido por script.
 - Capturas com dados de demonstração (fictícios) comparadas com o protótipo.
 
@@ -114,7 +114,7 @@ O visual inteiro foi trocado pela direção aprovada no protótipo: sai o roxo, 
 | Componentes (chip, avatar, botões...) | `BankManager/Ui.cs` |
 | Testes | `BankManager.Tests/` (domínio) e `BankManager.UiTests/` (janela real) |
 | Gráfico da visão geral | `BankManager/Controls/BarChart.cs` |
-| Compartilhamento de despesas | `BankManager.Core/ExpenseShare.cs` e `BankManager/Pages/ShareDialogs.cs` |
+| Compartilhamento de despesas | `BankManager.Core/ExpenseShare.cs`, `BankManager/Pages/ShareExport.cs`, `ShareImport.cs` e `BankManager/Overlay.cs` |
 | Empacotamento | `scripts/package.py`, `scripts/installers.py`, `installer/` |
 | Explicações mais detalhadas | `README.md` e `docs/GUIA-DO-CODIGO.md` |
 

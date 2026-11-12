@@ -72,8 +72,10 @@ Antes de atualizar, exporte um backup. A versão 2.2 lê os dados das versões a
 salvos pela 2.2.
 
 COMPARTILHAR DESPESAS
-Em Despesas, "Compartilhar" gera um arquivo (.bmshare.json) só com as despesas que você
-marcar. Quem recebe usa "Importar": as despesas são ADICIONADAS às dela, sem substituir
+Em Despesas, "Compartilhar" liga o modo de seleção: marque as despesas na lista e use
+"Compartilhar…" na barra de baixo para gerar um arquivo (.bmshare.json) só com elas.
+Quem recebe usa Ajustes > "Importar despesas compartilhadas": um assistente confere o
+arquivo, pergunta quem é cada pessoa e mostra a prévia. As despesas são ADICIONADAS, sem substituir
 nem apagar nada. O arquivo nunca leva rendas, metas ou acertos, mas é um texto legível
 com informações financeiras: envie só para quem deve recebê-lo. Isso é diferente do
 backup, que leva tudo e substitui a base ao ser importado.

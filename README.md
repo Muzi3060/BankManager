@@ -8,8 +8,10 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 ![Fim da visão geral: próximos pagamentos, acerto de contas e últimas movimentações (dados de demonstração)](docs/visao-geral-2.png)
 ![Metas por categoria em Previsões e metas (dados de demonstração)](docs/metas.png)
 ![Lista de despesas no tema escuro (dados de demonstração)](docs/despesas-escuro.png)
-![Assistente Compartilhar despesas (dados de demonstração)](docs/compartilhar.png)
-![Assistente Importar despesas compartilhadas (dados de demonstração)](docs/importar-compartilhadas.png)
+![Modo de seleção na página Despesas (dados de demonstração)](docs/compartilhar-selecionar.png)
+![Diálogo Compartilhar despesas (dados de demonstração)](docs/compartilhar-exportar.png)
+![Importar despesas compartilhadas: quem é quem (dados de demonstração)](docs/importar-pessoas.png)
+![Importar despesas compartilhadas: prévia (dados de demonstração)](docs/importar-previa.png)
 
 ## Baixar pronto e compartilhar
 
@@ -55,7 +57,7 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 5. Para contas fixas (aluguel, internet, assinaturas), marque **Repetir todo mês** ao criar a despesa. Em **Despesas → Recorrentes** (ou em **Previsões e metas → Despesas recorrentes**) você encerra ou remove cada uma. Na lista de despesas, use o menu **⋯** de cada linha para marcar como paga, editar ou excluir; filtre por busca, situação e categoria e navegue entre meses. **Ctrl+N** abre uma nova despesa em qualquer tela.
 6. Em **Previsões e metas**, um submenu reúne as metas por categoria, a previsão do mês seguinte ao selecionado, as despesas recorrentes e o acerto de contas.
 7. Ao marcar uma despesa como paga, o aplicativo guarda **quem pagou** e a **data do pagamento** (hoje, ou a que você informar). A lista mostra "Pago em dd/MM".
-8. Para mandar algumas despesas a outra pessoa, use **Despesas → Compartilhar**; quem recebe usa **Importar** e as despesas são adicionadas às dela, sem substituir nada (veja [Compartilhar despesas](#compartilhar-despesas)).
+8. Para mandar algumas despesas a outra pessoa, use **Despesas → Compartilhar** e marque as despesas na lista; quem recebe usa **Ajustes → Importar despesas compartilhadas** e as despesas são adicionadas às dela, sem substituir nada (veja [Compartilhar despesas](#compartilhar-despesas)).
 9. Em **Ajustes**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
 
 ## Regras financeiras
@@ -80,21 +82,23 @@ Em **Ajustes → Seus dados → Planilhas**:
 
 Serve para passar **algumas** despesas a outra pessoa que usa o BankManager (por exemplo, as contas da casa para quem divide com você). É diferente do backup: o backup leva tudo e, ao ser importado, **substitui** a base; o compartilhamento leva só o que você marcar e, ao ser importado, **adiciona**.
 
-**Enviar (Despesas → Compartilhar, ou Ajustes → Compartilhar despesas):**
+**Enviar (Despesas → Compartilhar):**
 
-- Marque as despesas nas caixas de seleção ou use os atalhos: **Todas deste mês**, **Marcar uma categoria** e **Completar parcelas** (marca as outras parcelas das compras parceladas já marcadas).
-- A prévia mostra quantas despesas vão, o total e as pessoas citadas. O arquivo tem extensão própria, `.bmshare.json`.
+- O botão **Compartilhar**, ao lado dos filtros, liga o **modo de seleção**: a lista ganha caixas de marcação e uma faixa com os atalhos **Todas deste mês**, **Uma categoria…** e **Limpar seleção**. Clicar em qualquer ponto da linha marca ou desmarca. A busca e os filtros continuam valendo, e os atalhos marcam só o que está visível. **Esc** (ou **Cancelar**) sai do modo.
+- Uma barra flutuante mostra quantas despesas estão marcadas e o total. **Compartilhar…** abre o diálogo com os indicadores (despesas, total, pessoas citadas) e a lista do que vai no arquivo.
+- Duas opções, desligadas por padrão: **Incluir as outras parcelas** de uma compra parcelada marcada e **Incluir situação de pagamento e quem pagou** (desligada, a outra pessoa recebe tudo "em aberto").
+- **Salvar arquivo** abre o seletor do sistema com o nome sugerido `despesas-<mês>-<ano>.bmshare.json`. Depois de salvar, o aplicativo mostra onde o arquivo ficou.
 - Vão no arquivo: descrição, categoria, vencimento, valor, itens da lista de compra, dados de parcela, modo de divisão, os responsáveis **pelo nome** e as categorias próprias usadas. **Nunca vão:** rendas, metas, acertos de contas e despesas não marcadas.
-- Por padrão, todas vão "em aberto". Marque **Incluir a situação de pagamento** para levar também pago/em aberto, a data do pagamento e quem pagou.
 - O arquivo é um texto legível, sem senha, com informações financeiras: envie só para quem deve recebê-lo.
 
-**Receber (Despesas → Importar, ou Ajustes → Importar despesas compartilhadas):**
+**Receber (Ajustes → Seus dados → Importar despesas compartilhadas, ou o botão de mesmo nome quando a lista de despesas está vazia):**
 
-1. O arquivo é validado (tamanho de até 5 MB, até 5.000 despesas, campos desconhecidos e versões mais novas recusados) e resumido.
-2. **Pessoas:** para cada nome do arquivo, escolha uma pessoa já cadastrada, criar um cadastro novo ou ignorar. O aplicativo sugere pelo nome (sem diferenciar maiúsculas e acentos), mas a escolha é sua. Se todas as pessoas de uma despesa forem ignoradas, é preciso escolher quem assume.
-3. **Categorias** próprias que não existem na sua base: criar (até o limite de 40) ou usar "Outros".
-4. **Prévia ao vivo:** o que será adicionado, o que já existe e o que tem erro. Cada despesa carrega um identificador de origem; importar o mesmo arquivo duas vezes **não duplica** nada (as repetidas são puladas, a menos que você marque para importar mesmo assim).
-5. Ao confirmar, tudo é gravado de uma vez (ou nada, se algo falhar), e a versão anterior da base vira a cópia automática. No fim aparece "N despesas adicionadas, M puladas".
+1. **Arquivo:** o arquivo é validado (até 5 MB e 5.000 despesas; campos desconhecidos e versões mais novas são recusados). Um arquivo inválido, ou um backup escolhido por engano, aparece em vermelho com o motivo, e nada é alterado.
+2. **Quem é quem?:** para cada nome do arquivo, escolha uma pessoa já cadastrada, criar uma pessoa nova ou ignorar. O aplicativo sugere pelo nome (sem diferenciar maiúsculas e acentos), mas a escolha é sua. Se todas as pessoas de uma despesa forem ignoradas, é preciso escolher quem assume. Duas pessoas do arquivo que dividem uma despesa não podem virar a mesma pessoa. Categorias próprias que faltam: criar (até o limite de 40) ou usar "Outros".
+3. **Prévia:** o que será adicionado e o que já existe. Cada despesa carrega um identificador de origem; importar o mesmo arquivo duas vezes **não duplica** nada (a repetida é pulada, a menos que você marque **Importar mesmo assim** naquela despesa).
+4. Ao confirmar, tudo é gravado de uma vez (ou nada, se algo falhar), e a versão anterior da base vira a cópia automática. A tela final resume o que entrou e oferece **Ver despesas**.
+
+Voltar um passo não perde as escolhas; **Cancelar**, o **X** e **Esc** fecham sem gravar nada (Esc pede confirmação se você já tiver feito escolhas).
 
 Atenção à **divisão proporcional**: ela depende da renda de cada pessoa na base de quem importa, então o rateio é recalculado com as rendas de lá e pode ser diferente do seu. Quem importa pode manter o modo ou trocar por divisão igual. Despesas recorrentes viajam como despesas comuns (o modelo "todo mês" não é enviado). Um backup escolhido no lugar de um compartilhamento (ou o contrário) é recusado com uma mensagem clara, sem alterar nada.
 

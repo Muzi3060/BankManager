@@ -2,7 +2,7 @@ BankManager 2.2: gestão financeira individual e familiar, em português, com da
 
 ## Novidades da 2.2
 
-- **Compartilhar despesas:** marque algumas despesas, gere um arquivo (`.bmshare.json`) e envie a outra pessoa. Ao importar, as despesas são **adicionadas** às dela, sem substituir nem apagar nada. O assistente mapeia pessoas e categorias, mostra uma prévia e não duplica o que já foi importado. O arquivo nunca leva rendas, metas ou acertos.
+- **Compartilhar despesas:** marque algumas despesas, gere um arquivo (`.bmshare.json`) e envie a outra pessoa. Ao importar, as despesas são **adicionadas** às dela, sem substituir nem apagar nada. Você marca as despesas direto na lista (modo de seleção) e quem recebe passa por um assistente em três passos: arquivo, quem é quem e prévia. Ele não duplica o que já foi importado. O arquivo nunca leva rendas, metas ou acertos.
 - **Data de pagamento:** ao marcar uma despesa como paga, o aplicativo guarda o dia (hoje, ou o que você informar). A lista mostra "Pago em dd/MM" e as **Últimas movimentações** passam a seguir a data do pagamento.
 - **Visual novo ("Estilo C"),** desde a 2.1: verde e tons neutros, fundo em degradê, cartões translúcidos, visão geral com saldo em destaque, gráfico dos últimos 6 meses, metas em cartões e últimas movimentações. **Previsões e metas** reúne metas, previsão, recorrentes e acerto de contas.
 - Extrato importado em CSV usa a data de cada linha como data do pagamento; a planilha exportada ganhou a coluna "Pago em".
