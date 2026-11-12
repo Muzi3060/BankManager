@@ -1,34 +1,35 @@
-BankManager 2.0: gestão financeira individual e familiar, em português, com dados locais e sem internet.
+BankManager 2.1: gestão financeira individual e familiar, em português, com dados locais e sem internet.
 
-## Novidades
+## Novidades da 2.1
 
-- **Novo visual** minimalista, com tema **claro, escuro ou automático** (segue o sistema), ícones próprios e telas redesenhadas.
-- **Despesas recorrentes:** aluguel, internet e assinaturas se repetem todo mês (até 12 meses à frente), com opção de encerrar.
-- **Quem pagou e acerto de contas:** "Bruno deve R$ 383,96 a Ana", com registro de acertos e histórico.
-- **Várias rendas por pessoa** no mês (salário, extra, 13º).
-- **Categorias personalizadas** e **metas mensais por categoria**, com barra de progresso na visão geral.
-- **Busca em todos os meses**, ignorando maiúsculas e acentos.
-- **Planilhas:** exportar despesas em CSV (abre no Excel) e **importar o extrato do banco** com prévia.
-- Atalho **Ctrl+N** para nova despesa e menu **⋯** em cada despesa.
+- **Visual novo ("Estilo C"):** arejado e minimalista, em verde e tons neutros, com fundo em degradê, cartões translúcidos e menu lateral mais estreito. Continua com tema **claro, escuro ou automático**.
+- **Visão geral redesenhada:** saldo planejado em destaque, **gráfico das despesas dos últimos 6 meses**, cartão "Resumo da casa", metas do mês em cartões, próximos pagamentos e acerto de contas.
+- **Últimas movimentações:** nova lista com as rendas do mês e as despesas pagas, das mais recentes para as mais antigas.
+- **Previsões e metas:** a página ganhou um submenu com metas por categoria, previsão do próximo mês, despesas recorrentes e acerto de contas. Tudo continua acessível também de onde já estava.
+- **Pessoas e rendas** mostra quanto cada pessoa assume das despesas do mês e quanto sobra.
+- Ícones por categoria e números com algarismos de mesma largura em todo o aplicativo.
+
+As regras de cálculo e o formato dos dados **não mudaram**: a 2.1 abre os dados da 2.0 e vice-versa.
 
 ## Instalar
 
-**Windows x64:** `BankManager-2.0.0-win-x64-setup.exe` (instalador, sem administrador) ou `BankManager-2.0.0-win-x64.zip` (portátil).
+**Windows x64:** `BankManager-2.1.0-win-x64-setup.exe` (instalador, sem administrador) ou `BankManager-2.1.0-win-x64.zip` (portátil).
 
-**Linux x64:** `BankManager-2.0.0-x86_64.AppImage` (um arquivo; `chmod +x` e abrir) ou `BankManager-2.0.0-linux-x64.tar.gz` (portátil, com `./Instalar-atalho.sh`).
+**Linux x64:** `BankManager-2.1.0-x86_64.AppImage` (um arquivo; `chmod +x` e abrir) ou `BankManager-2.1.0-linux-x64.tar.gz` (portátil, com `./Instalar-atalho.sh`).
 
 Todos incluem o .NET. O arquivo `LEIA-ME.txt` traz as instruções completas.
 
-## Atualizar a partir da 1.x
+## Atualizar
 
-Seus dados são lidos e atualizados sem perda na primeira vez que a versão 2 salvar; o arquivo antigo fica como cópia anterior. **Exporte um backup antes.** O BankManager 1.x não abre dados salvos pela versão 2.
+Da 2.0: basta instalar por cima; nada muda nos dados. Da 1.x: seus dados são lidos e atualizados sem perda na primeira vez que a versão 2 salvar, e o arquivo antigo fica como cópia anterior; **exporte um backup antes**, porque o BankManager 1.x não abre dados salvos pela versão 2.
 
 O aplicativo nunca acessa a internet e não tem atualizador próprio: no Windows, rode o instalador novo; no Linux, baixe o AppImage novo (ou use AppImageUpdate).
 
 ## Limitações conhecidas
 
 - Instaladores e pacotes **sem assinatura digital**: o Windows pode avisar sobre editor não identificado.
-- O fluxo visual no **Windows** (fontes, DPI, instalador) ainda não foi validado em um Windows real; a CI o testa, mas como aviso.
+- O visual no **Windows** (fontes, DPI, degradê, sombras, instalador) ainda não foi validado em um Windows real; a CI o testa, mas como aviso.
+- Em "Últimas movimentações", a despesa paga aparece na data de **vencimento**: o aplicativo não guarda o dia do pagamento.
 - Linux exige X11/XWayland e bibliotecas do sistema; sem ARM nem Alpine/musl. macOS não tem pacote.
 - Os dados não são criptografados.
 

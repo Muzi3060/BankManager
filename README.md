@@ -1,11 +1,13 @@
 # BankManager
 
-Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10 e Avalonia 12.1.4**. Interface em português, com tema claro, escuro ou automático (segue o sistema), menu lateral e armazenamento local. Começa vazio, sem dados fictícios na base do usuário.
+Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10 e Avalonia 12.1.4**. Interface em português, arejada e minimalista (verde e tons neutros), com tema claro, escuro ou automático (segue o sistema), menu lateral e armazenamento local. Começa vazio, sem dados fictícios na base do usuário.
 
 **Sobre o desenvolvimento:** este projeto foi desenvolvido com **vibe coding**, usando o Codex para gerar e ajustar o código a partir de instruções em linguagem natural. A proposta, os requisitos e as decisões de produto foram definidos pelo autor do projeto.
 
-![Visão geral no tema claro, com dados de demonstração](docs/visao-geral.png)
-![Lista de despesas no tema escuro, com dados de demonstração](docs/despesas-escuro.png)
+![Visão geral no tema claro: saldo planejado com gráfico, resumo da casa e metas do mês (dados de demonstração)](docs/visao-geral.png)
+![Fim da visão geral: próximos pagamentos, acerto de contas e últimas movimentações (dados de demonstração)](docs/visao-geral-2.png)
+![Metas por categoria em Previsões e metas (dados de demonstração)](docs/metas.png)
+![Lista de despesas no tema escuro (dados de demonstração)](docs/despesas-escuro.png)
 
 ## Baixar pronto e compartilhar
 
@@ -13,10 +15,10 @@ Aplicativo desktop de gestão financeira individual e familiar em **C# / .NET 10
 
 | Computador | Arquivo | Como usar |
 | --- | --- | --- |
-| Windows 64 bits (Intel/AMD) | `BankManager-2.0.0-win-x64-setup.exe` | **Instalador (recomendado).** Dê dois cliques; instala só para você, sem administrador, com atalho no menu Iniciar |
-| Windows 64 bits (Intel/AMD) | `BankManager-2.0.0-win-x64.zip` | Portátil: extrair **tudo** e abrir `BankManager.exe` |
-| Linux 64 bits (Intel/AMD) | `BankManager-2.0.0-x86_64.AppImage` | **Um arquivo só (recomendado).** `chmod +x` e dois cliques, ou `./BankManager-2.0.0-x86_64.AppImage` |
-| Linux 64 bits (Intel/AMD) | `BankManager-2.0.0-linux-x64.tar.gz` | Portátil: extrair **tudo**, `./Iniciar.sh`; `./Instalar-atalho.sh` cria o atalho e o ícone no menu |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.1.0-win-x64-setup.exe` | **Instalador (recomendado).** Dê dois cliques; instala só para você, sem administrador, com atalho no menu Iniciar |
+| Windows 64 bits (Intel/AMD) | `BankManager-2.1.0-win-x64.zip` | Portátil: extrair **tudo** e abrir `BankManager.exe` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.1.0-x86_64.AppImage` | **Um arquivo só (recomendado).** `chmod +x` e dois cliques, ou `./BankManager-2.1.0-x86_64.AppImage` |
+| Linux 64 bits (Intel/AMD) | `BankManager-2.1.0-linux-x64.tar.gz` | Portátil: extrair **tudo**, `./Iniciar.sh`; `./Instalar-atalho.sh` cria o atalho e o ícone no menu |
 
 Todos incluem o .NET: não é preciso instalar SDK, Rider ou Visual Studio. Para compartilhar, envie o **link da release** ou o arquivo **completo**. Não envie só o executável, nem seus backups financeiros. Veja [as instruções incluídas no pacote](docs/LEIA-ME.txt).
 
@@ -46,8 +48,8 @@ A restauração inicial requer NuGet ou pacotes já presentes no cache. O uso do
 2. Em **Despesas**, adicione descrição, categoria, vencimento, valor e responsáveis. Para uma compra detalhada, expanda **Lista de itens da compra**, preencha quantidade e preço e clique em **Adicionar item** para cada produto.
 3. Escolha divisão **individual**, **igual** ou **proporcional**. Use **Conferir divisão antes de salvar** para ver o resultado.
 4. Para dívidas parceladas, informe o **valor total**, incluindo juros já negociados, e até 120 parcelas. Cada vencimento é criado no mês correspondente. Listas de itens são lançadas à vista.
-5. Para contas fixas (aluguel, internet, assinaturas), marque **Repetir todo mês** ao criar a despesa. Em **Despesas → Recorrentes** você encerra ou remove cada uma. Na lista de despesas, use o menu **⋯** de cada linha para marcar como paga, editar ou excluir; filtre por busca, situação e categoria e navegue entre meses. **Ctrl+N** abre uma nova despesa em qualquer tela.
-6. Em **Previsões**, consulte a estimativa do mês seguinte ao selecionado.
+5. Para contas fixas (aluguel, internet, assinaturas), marque **Repetir todo mês** ao criar a despesa. Em **Despesas → Recorrentes** (ou em **Previsões e metas → Despesas recorrentes**) você encerra ou remove cada uma. Na lista de despesas, use o menu **⋯** de cada linha para marcar como paga, editar ou excluir; filtre por busca, situação e categoria e navegue entre meses. **Ctrl+N** abre uma nova despesa em qualquer tela.
+6. Em **Previsões e metas**, um submenu reúne as metas por categoria, a previsão do mês seguinte ao selecionado, as despesas recorrentes e o acerto de contas.
 7. Em **Ajustes**, escolha o tema (claro, escuro ou automático) e exporte backups para outro local. Importações são validadas e pedem confirmação antes de substituir o histórico.
 
 ## Regras financeiras
@@ -76,9 +78,18 @@ Na lista de despesas, o seletor **Este mês / Todos os meses** amplia a busca ao
 
 As 8 categorias padrão (Moradia, Mercado, Transporte, Saúde, Educação, Lazer, Serviços e Outros) são fixas. Em **Ajustes → Categorias** você cria as suas (até 40, nomes de até 30 caracteres, sem repetir um nome existente, ignorando maiúsculas). Renomear uma categoria atualiza todas as despesas e recorrências que a usam. Excluir só é possível quando nada a usa. Categorias próprias entram nos filtros, no editor e nas previsões.
 
+## Visão geral
+
+De cima para baixo:
+
+- **Saldo planejado:** renda do mês menos todas as despesas do mês (pagas ou em aberto), com um gráfico das despesas dos últimos 6 meses até o mês selecionado. O eixo do gráfico sempre começa em zero, para não exagerar diferenças; passe o mouse em uma barra para ver o valor. Meses sem despesas aparecem com uma barra mínima.
+- **Resumo da casa:** despesas do mês, quanto da renda elas comprometem, renda e valor em aberto.
+- **Metas do mês**, **Próximos pagamentos** (as três contas em aberto mais próximas, com o menu **⋯**) e **Acerto de contas**.
+- **Últimas movimentações:** as rendas do mês e as despesas já marcadas como pagas, das mais recentes para as mais antigas (até 6; "Ver tudo" abre Despesas). Como a renda só tem mês, ela entra com a data do dia 1; a despesa entra pela data de vencimento, porque o aplicativo não guarda o dia do pagamento. Quando há mais itens do que cabem, a última linha fica esmaecida.
+
 ## Metas por categoria
 
-Em **Visão geral → Metas**, defina um limite mensal para cada categoria (campo vazio = sem meta). A meta é única por categoria e vale para todos os meses; mudá-la muda também a leitura dos meses passados. Na visão geral, cada categoria com meta mostra "R$ gasto de R$ meta", e a barra acompanha a meta: cor de destaque abaixo de 80%, âmbar de 80% a 100% e vermelha acima. O gasto considera todas as despesas do mês na categoria, pagas ou em aberto. Renomear uma categoria leva a meta junto; excluir a categoria remove a meta.
+Em **Gerenciar metas** (na Visão geral ou em **Previsões e metas → Metas por categoria**), defina um limite mensal para cada categoria (campo vazio = sem meta). A meta é única por categoria e vale para todos os meses; mudá-la muda também a leitura dos meses passados. Cada meta vira um cartão com o valor gasto, a meta, o percentual usado, o que resta (ou quanto passou) e as despesas da categoria. A barra é verde até 79%, âmbar de 80% a 100% e vermelha acima de 100%. A Visão geral mostra as três metas mais próximas do limite; a lista completa fica em Previsões e metas. O gasto considera todas as despesas do mês na categoria, pagas ou em aberto. Renomear uma categoria leva a meta junto; excluir a categoria remove a meta.
 
 ## Despesas recorrentes
 
@@ -91,7 +102,7 @@ Marcar **Repetir todo mês** guarda um modelo (descrição, categoria, valor, di
 
 ## Quem pagou e acerto de contas
 
-Ao marcar uma despesa como paga, o aplicativo pergunta **quem pagou** (ou "Não informar"). Com uma só pessoa cadastrada, não pergunta. O cartão **Acerto de contas**, na Visão geral, mostra quem deve a quem:
+Ao marcar uma despesa como paga, o aplicativo pergunta **quem pagou** (ou "Não informar"). Com uma só pessoa cadastrada, não pergunta. O cartão **Acerto de contas**, na Visão geral e em **Previsões e metas → Acerto de contas**, mostra quem deve a quem:
 
 - Cada participante diferente de quem pagou deve a sua parte (a mesma da coluna Divisão) a quem pagou. Se a pessoa que pagou não é responsável pela despesa, o responsável deve o valor inteiro.
 - O saldo é **acumulado**, somando todos os meses, e as dívidas de cada par se compensam: Ana pagou R$ 200 por Bruno e Bruno pagou R$ 120 por Ana, então Bruno deve R$ 80 a Ana.
@@ -178,10 +189,10 @@ No Windows, use `python` no lugar de `python3`. O script escolhe o SDK em `~/.do
 Para conferir o download no Linux, no diretório dos arquivos:
 
 ```bash
-sha256sum -c BankManager-2.0.0-linux-x64.tar.gz.sha256
+sha256sum -c BankManager-2.1.0-linux-x64.tar.gz.sha256
 ```
 
-No PowerShell, execute `Get-FileHash .\BankManager-2.0.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
+No PowerShell, execute `Get-FileHash .\BankManager-2.1.0-win-x64.zip -Algorithm SHA256` e compare o resultado com o conteúdo do arquivo `.sha256`.
 
 ### Instalador do Windows e AppImage
 
@@ -200,7 +211,7 @@ O workflow [Build and release](.github/workflows/release.yml) compila, testa e e
 
 1. Atualize `Version` em `BankManager/BankManager.csproj`, as instruções com nomes de arquivos e `docs/RELEASE-NOTES.md`.
 2. Faça commit e push dessas mudanças.
-3. Crie e envie uma tag correspondente, por exemplo `git tag v2.0.1` e `git push origin v2.0.1`.
+3. Crie e envie uma tag correspondente, por exemplo `git tag v2.1.1` e `git push origin v2.1.1`.
 4. O workflow publica instaladores e pacotes na página Releases somente após todos os jobs passarem.
 
 Referências: [publicação desktop do Avalonia no Linux](https://docs.avaloniaui.net/docs/deployment/linux) e [modelos de distribuição do .NET](https://learn.microsoft.com/en-us/dotnet/core/deploying/).

@@ -126,6 +126,9 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                 await Click("Cancelar");
                 exitCode = 0; return;
             }
+            // O eixo do gráfico começa em zero e usa passos "redondos"; sem dados, não há eixo a desenhar além do zero.
+            Check(BankManager.Controls.BarChart.Axis(4600.90m) == (6000m, 2000m) && BankManager.Controls.BarChart.Axis(950m) == (1000m, 500m) && BankManager.Controls.BarChart.Axis(0m) == (0m, 0m)
+                && BankManager.Controls.BarChart.AxisLabel(1500m, Money.Culture) == "1,5 mil" && BankManager.Controls.BarChart.AxisLabel(0m, Money.Culture) == "0", "Chart axis starts at zero with round steps");
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
             await Click("Cadastrar primeira pessoa", main);
             var inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Ana"; inputs.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "3000,00";

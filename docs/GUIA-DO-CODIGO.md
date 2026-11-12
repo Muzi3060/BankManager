@@ -8,11 +8,11 @@ Este guia liga os arquivos aos comportamentos do aplicativo. Os comentários em 
 2. `BankManager/App.axaml.cs`: carrega recursos e cria a janela principal.
 3. `BankManager.Core/Models.cs`: vocabulário do domínio: pessoas, renda mensal, despesas, itens e tipos de divisão.
 4. `BankManager.Core/BudgetRules.cs`: o que um orçamento válido pode conter.
-5. `BankManager.Core/FinanceEngine.cs`: consulta mensal, divisão, saldos e estimativa.
+5. `BankManager.Core/FinanceEngine.cs`: consulta mensal, divisão, saldos, estimativa, totais por mês (gráfico) e últimas movimentações.
 6. `BankManager.Core/LocalStore.cs`: leitura, validação de arquivos, gravação, backup e bloqueio de outra instância.
-7. `BankManager/MainWindow.cs`: estado ativo, navegação, gravação (`Commit`) e tratamento de erros. Cada página é uma parte da mesma classe (`partial class`), em `BankManager/Pages/`: `DashboardPage.cs`, `PeoplePage.cs`, `ExpensesPage.cs`, `ForecastPage.cs` e `SettingsPage.cs`.
+7. `BankManager/MainWindow.cs`: estado ativo, navegação, gravação (`Commit`) e tratamento de erros. Cada página é uma parte da mesma classe (`partial class`), em `BankManager/Pages/`: `DashboardPage.cs`, `PeoplePage.cs`, `ExpensesPage.cs`, `ForecastPage.cs` (Previsões e metas, com o submenu) e `SettingsPage.cs`; os blocos reaproveitados ficam em `GoalPanels.cs`, `SettlementPanels.cs`, `RecurrencesDialog.cs` e `CsvDialogs.cs`.
 8. `BankManager/Ui.cs`: fábricas de controles (`Text`, `Button`, `Icon`, `Card`, `Dialog`…).
-9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos.
+9. `BankManager/Styles/`: `Tokens.axaml` (todas as cores, para os temas claro e escuro), `Icons.axaml` (ícones vetoriais) e `Controls.axaml` (estilos dos controles). `App.axaml` apenas reúne esses arquivos. `BankManager/Controls/BarChart.cs` é o gráfico de barras, desenhado pelo próprio controle.
 10. `BankManager.Core/AppSettings.cs`: preferências do aplicativo (tema) em `settings.json`.
 11. `BankManager.Core/RecurrenceEngine.cs` e `BudgetMigrations.cs`: despesas mensais e atualização de arquivos antigos.
 12. `BankManager.Core/SettlementEngine.cs`: quem deve a quem (acerto de contas).
@@ -124,7 +124,9 @@ Em `Ui.Field`, o rótulo e a ajuda também são registrados nas propriedades de 
 
 ### Temas, cores e ícones
 
-Nenhuma cor aparece no código C#. `Styles/Tokens.axaml` define cada cor com nome (por exemplo `SurfaceBrush`, `AccentBrush`) duas vezes, uma para `Light` e outra para `Dark`, em `ThemeDictionaries`. Os estilos de `Controls.axaml` e o C# só citam esses nomes (`DynamicResource` ou classes como `muted`, `positive`, `negative`), então trocar de tema atualiza tudo ao vivo. Para mudar uma cor, edite apenas o `Tokens.axaml`.
+Nenhuma cor aparece no código C#. `Styles/Tokens.axaml` define cada cor com nome (por exemplo `SurfaceBrush`, `PrimaryBrush`) duas vezes, uma para `Light` e outra para `Dark`, em `ThemeDictionaries`. Os estilos de `Controls.axaml` e o C# só citam esses nomes (`DynamicResource` ou classes como `muted`, `positive`, `negative`), então trocar de tema atualiza tudo ao vivo. Para mudar uma cor, edite apenas o `Tokens.axaml`.
+
+O visual é o "Estilo C": o fundo da janela é um degradê (`BgBrush`, um `LinearGradientBrush`), os cartões comuns são translúcidos (`SurfaceBrush`, branco com opacidade; não há desfoque real nem acrílico, que variam por sistema), os cartões de meta são sólidos (`SolidSurfaceBrush`) e o "Resumo da casa" é um cartão escuro em degradê (`SummaryBrush`). As sombras também são tokens (`CardShadow`, `SolidShadow`, `SummaryShadow`, `NavShadow`), aplicadas com `BoxShadow`. Cada estado tem três cores: a do texto (`PositiveBrush`, `WarnBrush`, `NegativeBrush`), a do fundo suave (`...SoftBrush`, usada em chips e trilhos) e a da barra (`ProgressOkBrush`, `ProgressWarnBrush`, `ProgressOverBrush`). O estilo da janela liga os algarismos tabulares (`FontFeatures="+tnum"`) para o aplicativo inteiro.
 
 A preferência (Automático, Claro ou Escuro) fica em `settings.json`, lida por `SettingsStore` antes de a janela aparecer. `App.ApplyTheme` ajusta `RequestedThemeVariant`; no modo Automático ele volta ao padrão, que acompanha o sistema.
 
@@ -132,7 +134,9 @@ Os ícones são traços vetoriais 24×24 em `Icons.axaml`; `Ui.Icon("Home")` os 
 
 ### Componentes de interface
 
-`Ui.cs` reúne as peças reaproveitadas pelas páginas: `Chip` (etiqueta de situação), `Avatar` (inicial da pessoa), `Segmented` (opções lado a lado), `Collapsible` (seção de ajuda que abre e fecha), `Divider` e `Button` (com ícone, ou só ícone). Cada página monta o próprio cabeçalho com `PageHeader` (título, navegação de mês e, se for o caso, "Nova despesa"). A decisão de "quantos dias faltam" não está na interface: `DueStatus.Of` (Core, com testes) a calcula e a tela só escolhe o texto e a cor do chip.
+`Ui.cs` reúne as peças reaproveitadas pelas páginas: `Chip` (etiqueta de situação), `Avatar` (inicial da pessoa), `Segmented` (opções lado a lado), `Collapsible` (seção de ajuda que abre e fecha), `Divider`, `IconCircle` (círculo com o ícone da categoria, escolhido por `CategoryIconName`), `Card` (estilos `card`, `solid` e `summary`) e `Button` (com ícone, ou só ícone; variantes `primary`, `ink`, `ghost`, `link`). Cada página monta o próprio cabeçalho com `PageHeader` (título, navegação de mês em pílula e "Nova despesa").
+
+O gráfico da visão geral é o controle `BarChart` (`Controls/BarChart.cs`): ele recebe os pontos prontos e desenha tudo em `Render` com `DrawingContext` (linhas pontilhadas, barras, rótulos e balão), sem biblioteca externa. `BarChart.Axis` escolhe o topo e o passo do eixo, que sempre começa em zero. As cores chegam por propriedades preenchidas no estilo de `Controls.axaml`, então o gráfico acompanha o tema. Os dados vêm de `FinanceEngine.MonthlyTotals` e a lista "Últimas movimentações" de `FinanceEngine.RecentMovements`, ambos no Core e com testes. A decisão de "quantos dias faltam" não está na interface: `DueStatus.Of` (Core, com testes) a calcula e a tela só escolhe o texto e a cor do chip.
 
 ### Por que não MVVM (por enquanto)
 
