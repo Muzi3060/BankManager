@@ -129,10 +129,12 @@ public sealed partial class MainWindow
         Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = true; e.PaidBy = payer; });
     }
     /// <summary>
-    /// Linha de apoio sob o título: categoria, parcela ("parcela 3 de 10") e, se pedido, o vencimento.
+    /// Linha de apoio sob o título. Na lista: categoria e parcela ("parcela 3 de 10") ou "mensal". Na forma curta (visão geral):
+    /// "Moradia · 12/11" ou "Parcela 3 de 10 · 15/11", com o vencimento.
     /// </summary>
-    private static string ExpenseSubtitle(Expense expense, bool withDue) =>
-        expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · mensal" : "") + (withDue ? $" · vence {expense.DueDate:dd/MM}" : "");
+    private static string ExpenseSubtitle(Expense expense, bool withDue) => withDue
+        ? (expense.InstallmentCount > 1 ? $"Parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.Category) + $" · {expense.DueDate:dd/MM}"
+        : expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · mensal" : "");
     /// <summary>
     /// Chip de situação da lista: Pago, Em aberto, Vence em N dias ou Em atraso.
     /// </summary>

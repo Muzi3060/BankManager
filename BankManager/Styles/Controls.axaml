@@ -20,14 +20,14 @@
   <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
   <Style Selector="TextBlock.support"><Setter Property="Foreground" Value="{DynamicResource TextSupportBrush}"/></Style>
   <Style Selector="TextBlock.brand"><Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="Bold"/></Style>
-  <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="26"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="24"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
   <Style Selector="TextBlock.section"><Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
   <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="12"/></Style>
   <Style Selector="TextBlock.strong"><Setter Property="FontWeight" Value="SemiBold"/></Style>
   <!-- Valores: "hero" é o número grande da visão geral; "kpi" e "money" são valores de destaque médio. -->
   <Style Selector="TextBlock.hero"><Setter Property="FontSize" Value="48"/><Setter Property="FontWeight" Value="Bold"/></Style>
   <Style Selector="TextBlock.kpi"><Setter Property="FontSize" Value="28"/><Setter Property="FontWeight" Value="Bold"/></Style>
-  <Style Selector="TextBlock.money"><Setter Property="FontSize" Value="22"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style Selector="TextBlock.money"><Setter Property="FontSize" Value="22"/><Setter Property="FontWeight" Value="Medium"/></Style>
   <Style Selector="TextBlock.positive"><Setter Property="Foreground" Value="{DynamicResource PositiveBrush}"/></Style>
   <Style Selector="TextBlock.negative"><Setter Property="Foreground" Value="{DynamicResource NegativeBrush}"/></Style>
   <Style Selector="TextBlock.error"><Setter Property="Foreground" Value="{DynamicResource NegativeBrush}"/></Style>
@@ -58,9 +58,15 @@
   <Style Selector="Button.round"><Setter Property="CornerRadius" Value="999"/></Style>
   <Style Selector="Button.danger"><Setter Property="Foreground" Value="{DynamicResource NegativeBrush}"/></Style>
   <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource NegativeBrush}"/></Style>
-  <!-- Link: botão sem borda, com texto verde. -->
-  <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="10,8"/><Setter Property="Foreground" Value="{DynamicResource PositiveBrush}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
-  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource HoverBrush}"/><Setter Property="Foreground" Value="{DynamicResource PositiveBrush}"/></Style>
+  <!-- Link: botão sem borda, com texto de apoio pequeno ("Ver todas"). -->
+  <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="10,8"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="{DynamicResource TextSupportBrush}"/><Setter Property="FontWeight" Value="Medium"/></Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource HoverBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+  <!-- Nome do mês na pílula: tem cara de botão (fundo suave em repouso, borda ao passar o mouse), porque clicar volta ao mês atual. -->
+  <Style Selector="Button.month"><Setter Property="CornerRadius" Value="999"/><Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="14,4"/><Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Background" Value="{DynamicResource HoverBrush}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.month:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.month:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource NavActiveBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}"/></Style>
+  <!-- Botão quadrado pequeno do menu "⋯" dos cartões de meta. -->
+  <Style Selector="Button.square"><Setter Property="CornerRadius" Value="10"/><Setter Property="MinHeight" Value="40"/><Setter Property="MinWidth" Value="40"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Background" Value="{DynamicResource ChipBrush}"/></Style>
+  <Style Selector="Button.square:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource ChipStatusBrush}"/><Setter Property="BorderBrush" Value="Transparent"/></Style>
   <!-- Item do menu lateral: 44 px de altura, canto 12. O ativo ganha fundo branco com sombra suave. -->
   <Style Selector="Button.nav">
     <Setter Property="MinHeight" Value="44"/><Setter Property="Padding" Value="12,0"/><Setter Property="FontSize" Value="13"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -80,7 +86,6 @@
   <Style Selector="Button.nav.footer Path.icon"><Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}"/></Style>
   <Style Selector="Button.primary Path.icon, Button.primary:pointerover Path.icon"><Setter Property="Stroke" Value="{DynamicResource OnPrimaryBrush}"/></Style>
   <Style Selector="Button.ink Path.icon"><Setter Property="Stroke" Value="{DynamicResource OnInkBrush}"/></Style>
-  <Style Selector="Button.link Path.icon"><Setter Property="Stroke" Value="{DynamicResource PositiveBrush}"/></Style>
   <Style Selector="Button.danger Path.icon"><Setter Property="Stroke" Value="{DynamicResource NegativeBrush}"/></Style>
   <Style Selector="MenuItem Path.icon"><Setter Property="Stroke" Value="{DynamicResource TextBrush}"/></Style>
   <Style Selector="MenuItem.danger Path.icon"><Setter Property="Stroke" Value="{DynamicResource NegativeBrush}"/></Style>
@@ -128,8 +133,9 @@
   <Style Selector="Border.avatar > TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
   <Style Selector="Border.avatar.strong"><Setter Property="Background" Value="{DynamicResource InkBrush}"/></Style>
   <Style Selector="Border.avatar.strong > TextBlock"><Setter Property="Foreground" Value="{DynamicResource OnInkBrush}"/></Style>
+  <Style Selector="Border.avatar.large"><Setter Property="Width" Value="44"/><Setter Property="Height" Value="44"/><Setter Property="CornerRadius" Value="22"/></Style>
   <!-- Círculo de 36 px com o ícone da categoria; "income" (entrada de dinheiro) fica verde. -->
-  <Style Selector="Border.iconcircle"><Setter Property="Background" Value="{DynamicResource ChipStatusBrush}"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style Selector="Border.iconcircle"><Setter Property="Background" Value="{DynamicResource SolidSurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
   <Style Selector="Border.iconcircle Path.icon"><Setter Property="Stroke" Value="{DynamicResource TextBrush}"/></Style>
   <Style Selector="Border.iconcircle.income"><Setter Property="Background" Value="{DynamicResource PositiveSoftBrush}"/></Style>
   <Style Selector="Border.iconcircle.income Path.icon"><Setter Property="Stroke" Value="{DynamicResource PositiveBrush}"/></Style>

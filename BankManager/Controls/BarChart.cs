@@ -41,7 +41,7 @@ public sealed class BarChart : Control
     public IBrush? BalloonBrush { get => GetValue(BalloonBrushProperty); set => SetValue(BalloonBrushProperty, value); }
     public IBrush? BalloonTextBrush { get => GetValue(BalloonTextBrushProperty); set => SetValue(BalloonTextBrushProperty, value); }
     // Espaços reservados: balão acima, rótulos dos meses abaixo e rótulos de valor à esquerda.
-    private const double Top = 34, Bottom = 24, Left = 58, MinBar = 3;
+    private const double Top = 34, Bottom = 24, Left = 68, MinBar = 3;
     private readonly IReadOnlyList<BarPoint> points;
     private readonly int selected;
     // Barra sob o mouse (-1 quando nenhuma); tem prioridade sobre a selecionada para o balão.
@@ -66,15 +66,15 @@ public sealed class BarChart : Control
         var step = (decimal)(factor * power); return (Math.Ceiling(max / step) * step, step);
     }
     /// <summary>
-    /// Rótulo compacto do eixo de valores: "0", "500", "1,5 mil", "2 mi".
+    /// Rótulo compacto do eixo de valores: "R$ 0", "R$ 500", "R$ 1,5 mil", "R$ 2 mi".
     /// </summary>
     public static string AxisLabel(decimal value, CultureInfo culture) =>
-        value >= 1_000_000 ? (value / 1_000_000).ToString("0.#", culture) + " mi" : value >= 1000 ? (value / 1000).ToString("0.#", culture) + " mil" : value.ToString("0.##", culture);
+        "R$ " + (value >= 1_000_000 ? (value / 1_000_000).ToString("0.#", culture) + " mi" : value >= 1000 ? (value / 1000).ToString("0.#", culture) + " mil" : value.ToString("0.##", culture));
     private Rect Plot => new(Left, Top, Math.Max(1, Bounds.Width - Left), Math.Max(1, Bounds.Height - Top - Bottom));
     // Retângulo da barra i dentro da área de desenho; "full" devolve a faixa inteira (usada para detectar o mouse).
     private Rect BarRect(int i, decimal axisTop, bool full = false)
     {
-        var plot = Plot; var slot = plot.Width / points.Count; var width = Math.Min(44, slot * 0.56);
+        var plot = Plot; var slot = plot.Width / points.Count; var width = Math.Min(34, slot * 0.46);
         var height = axisTop <= 0 ? MinBar : Math.Max(MinBar, (double)(points[i].Value / axisTop) * plot.Height);
         var x = plot.X + slot * i + (slot - width) / 2;
         return full ? new Rect(plot.X + slot * i, 0, slot, Bounds.Height) : new Rect(x, plot.Bottom - height, width, height);
@@ -100,7 +100,7 @@ public sealed class BarChart : Control
         for (var i = 0; i < points.Count; i++)
         {
             var bar = BarRect(i, axisTop); var radius = Math.Min(8, bar.Height / 2);
-            context.DrawRectangle(i == selected ? SelectedBrush : BarBrush, null, new RoundedRect(bar, radius, radius, 0, 0));
+            context.DrawRectangle(i == selected ? SelectedBrush : BarBrush, null, new RoundedRect(bar, radius));
             var text = Label(points[i].Label, LabelBrush, 12, i == selected ? FontWeight.SemiBold : FontWeight.Normal);
             context.DrawText(text, new Point(bar.Center.X - text.Width / 2, plot.Bottom + 7));
         }

@@ -57,18 +57,17 @@ public sealed partial class MainWindow
         {
             if (debt != debts[0]) panel.Children.Add(Divider());
             var (debtor, creditor) = (NameOf(debt.DebtorId), NameOf(debt.CreditorId));
-            // Avatares sobrepostos: quem deve em tom neutro e quem recebe em destaque.
-            var second = Avatar(creditor, strong: true); second.Margin = new Thickness(-10, 0, 0, 0);
-            var avatars = new StackPanel { Orientation = Orientation.Horizontal }; avatars.Children.Add(Avatar(debtor)); avatars.Children.Add(second);
-            // Nomes e valor em negrito; o nome de automação traz a frase completa (leitores de tela e testes).
-            var sentence = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 15 };
-            sentence.Inlines!.Add(new Run(debtor) { FontWeight = FontWeight.SemiBold }); sentence.Inlines.Add(new Run(" deve ")); sentence.Inlines.Add(new Run(Money.Format(debt.Amount)) { FontWeight = FontWeight.SemiBold });
-            sentence.Inlines.Add(new Run(" a ")); sentence.Inlines.Add(new Run(creditor) { FontWeight = FontWeight.SemiBold });
+            // Avatares com uma seta entre eles: quem deve (neutro) paga a quem recebe (em destaque).
+            var arrow = Icon("ArrowRight", 18); arrow.Margin = new Thickness(12, 0);
+            var avatars = new StackPanel { Orientation = Orientation.Horizontal }; avatars.Children.Add(Avatar(debtor).WithClass("large")); avatars.Children.Add(arrow); avatars.Children.Add(Avatar(creditor, strong: true).WithClass("large"));
+            // Só o valor em negrito; o nome de automação traz a frase completa (leitores de tela e testes).
+            var sentence = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            sentence.Inlines!.Add(new Run(debtor + " deve ")); sentence.Inlines.Add(new Run(Money.Format(debt.Amount)) { FontWeight = FontWeight.SemiBold }); sentence.Inlines.Add(new Run(" a " + creditor));
             AutomationProperties.SetName(sentence, $"{debtor} deve {Money.Format(debt.Amount)} a {creditor}");
             var settle = Button("Registrar acerto", () => _ = Run(() => RegisterSettlement(debt)), "ink"); settle.HorizontalAlignment = HorizontalAlignment.Left;
-            var block = Stack(avatars, sentence, settle); block.Spacing = 10; panel.Children.Add(block);
+            var block = Stack(avatars, sentence, settle); block.Spacing = 12; settle.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(block);
         }
-        if (debts.Count > 0) panel.Children.Add(Text("Soma as despesas pagas com “quem pagou” informado e os acertos já registrados, de todos os meses.", "muted").WithClass("small"));
+        if (debts.Count > 0) panel.Children.Add(Text("Saldo acumulado de todos os meses, já descontados os acertos registrados.", "muted").WithClass("small"));
         return Card(panel);
     }
     /// <summary>

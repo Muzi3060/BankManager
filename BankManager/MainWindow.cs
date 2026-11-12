@@ -101,14 +101,14 @@ public sealed partial class MainWindow : Window
     /// Cabeçalho comum das páginas: título (e uma linha de apoio) à esquerda; à direita, a navegação de mês em uma pílula
     /// translúcida (‹ mês ›) e o botão primário "Nova despesa". Clicar no nome do mês volta ao mês atual.
     /// </summary>
-    private Control PageHeader(string title, string subtitle, bool monthNavigation = true)
+    private Control PageHeader(string title, string? subtitle, bool monthNavigation = true)
     {
-        var titles = Stack(Text(title, "title"), Text(subtitle, "muted")); titles.Spacing = 2; titles.VerticalAlignment = VerticalAlignment.Center;
+        var titles = subtitle is null ? Stack(Text(title, "title")) : Stack(Text(title, "title"), Text(subtitle, "muted")); titles.Spacing = 2; titles.VerticalAlignment = VerticalAlignment.Center;
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         if (monthNavigation)
         {
-            var label = Button(month.ToString("MMMM 'de' yyyy", Money.Culture), () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }, "ghost round");
-            label.MinWidth = 150; label.HorizontalContentAlignment = HorizontalAlignment.Center; label.FontWeight = FontWeight.SemiBold;
+            var label = Button(month.ToString("MMMM 'de' yyyy", Money.Culture), () => { month = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); Render(); }, "month");
+            label.MinWidth = 150; label.HorizontalContentAlignment = HorizontalAlignment.Center; label.VerticalAlignment = VerticalAlignment.Center;
             AutomationProperties.SetName(label, "Voltar ao mês atual"); ToolTip.SetTip(label, "Voltar ao mês atual");
             var pill = new Border { Child = Row(Button("Mês anterior", () => ChangeMonth(-1), "ghost round", "ChevronLeft", iconOnly: true), label, Button("Próximo mês", () => ChangeMonth(1), "ghost round", "ChevronRight", iconOnly: true)) };
             ((StackPanel)pill.Child).Spacing = 0; pill.Classes.Add("pill"); actions.Children.Add(pill);

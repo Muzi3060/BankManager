@@ -128,7 +128,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             }
             // O eixo do gráfico começa em zero e usa passos "redondos"; sem dados, não há eixo a desenhar além do zero.
             Check(BankManager.Controls.BarChart.Axis(4600.90m) == (6000m, 2000m) && BankManager.Controls.BarChart.Axis(950m) == (1000m, 500m) && BankManager.Controls.BarChart.Axis(0m) == (0m, 0m)
-                && BankManager.Controls.BarChart.AxisLabel(1500m, Money.Culture) == "1,5 mil" && BankManager.Controls.BarChart.AxisLabel(0m, Money.Culture) == "0", "Chart axis starts at zero with round steps");
+                && BankManager.Controls.BarChart.AxisLabel(1500m, Money.Culture) == "R$ 1,5 mil" && BankManager.Controls.BarChart.AxisLabel(0m, Money.Culture) == "R$ 0", "Chart axis starts at zero with round steps");
             // Cenário 1: cadastro de pessoas e rendas pela interface, incluindo o fechamento do modal ao salvar.
             await Click("Cadastrar primeira pessoa", main);
             var inputs = Active().GetVisualDescendants().OfType<TextBox>().ToArray(); inputs.First(i => i.PlaceholderText == "Ex.: Ana").Text = "Ana"; inputs.First(i => i.PlaceholderText == "Ex.: 3000,00").Text = "3000,00";
@@ -161,6 +161,8 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(AutomationProperties.GetName(chart)!.StartsWith("Despesas dos últimos 6 meses") && AutomationProperties.GetName(chart)!.Contains(Money.Format(800m)), "Chart exposes its values as alternative text");
             var texts = main.GetVisualDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
             Check(texts.Contains("− " + Money.Format(800m)) && texts.Contains("+ " + Money.Format(3000m)) && texts.Contains("+ " + Money.Format(1000m)) && texts.IndexOf("− " + Money.Format(800m)) < texts.IndexOf("+ " + Money.Format(3000m)), "Recent movements list paid expenses and incomes, newest first");
+            // Nenhuma linha das movimentações fica esmaecida, e o nome do mês é um botão com nome acessível e dica.
+            Check(main.GetVisualDescendants().OfType<Grid>().All(g => g.Opacity == 1) && ToolTip.GetTip(FindButton(main, "Voltar ao mês atual")) is "Voltar ao mês atual", "Movement rows are fully opaque and the month is a labelled button");
             // Ana pagou 800 (600/200): o cartão de acerto mostra que Bruno deve 200 a Ana.
             var debtText = $"Bruno deve {Money.Format(200m)} a Ana";
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(x => AutomationProperties.GetName(x) == debtText), "Settlement card shows who owes whom");
@@ -254,7 +256,7 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(x => x.Text?.Contains("2 linha(s) repetida(s)") == true) && !FindButton(Active(), "Importar").IsEnabled, "Re-importing the same statement finds only duplicates");
             await Click("Cancelar");
             // Cenário 11: meta de Mercado (R$ 500) abaixo do gasto (R$ 800): salva e a barra aparece em alerta vermelho.
-            await Click("Visão geral", main); await Click("Gerenciar metas", main);
+            await Click("Visão geral", main); await Click("Criar primeira meta", main);
             Active().GetVisualDescendants().OfType<TextBox>().First(i => AutomationProperties.GetName(i) == "Meta de Mercado").Text = "500,00"; await Click("Salvar metas");
             var goalSaved = LocalStore.Read(Path.Combine(directory, "financas.json"));
             Check(goalSaved.Goals.Count == 1 && goalSaved.Goals[0].Category == "Mercado" && goalSaved.Goals[0].Amount == 500m, "Goal is saved from the dialog");
