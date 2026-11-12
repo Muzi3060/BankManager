@@ -118,6 +118,15 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
                 await Click("Despesas", main); await Click("Recorrentes", main); await Task.Delay(250);
                 Shot(Active(), "recorrentes");
                 await Click("Fechar");
+                // Assistentes de compartilhamento: exportar (com o mês marcado) e importar um arquivo vindo de "outra pessoa".
+                // Fora da pasta de dados: o aplicativo recusa gravar arquivos do usuário na pasta interna.
+                var demoDir = Path.Combine(Path.GetTempPath(), "bankmanager-share-" + Guid.NewGuid()); Directory.CreateDirectory(demoDir);
+                var demoShare = Path.Combine(demoDir, "demo" + ShareFile.Extension);
+                _ = ((MainWindow)main).ShareExpenses(demoShare); await Task.Delay(400); await Click("Todas deste mês"); await Task.Delay(200); Shot(Active(), "compartilhar"); await Click("Salvar arquivo");
+                var incoming = Path.Combine(demoDir, "recebido" + ShareFile.Extension);
+                File.WriteAllText(incoming, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(demoShare), "\"OriginId\": \"[0-9a-f-]+\"", _ => $"\"OriginId\": \"{Guid.NewGuid()}\"").Replace("\"Bruno\"", "\"Carla\""));
+                _ = ((MainWindow)main).ImportSharedFromFile(incoming); await Task.Delay(500); Shot(Active(), "importar-compartilhadas"); await Click("Cancelar");
+                try { Directory.Delete(demoDir, true); } catch (IOException) { }
                 // Assistente de importação de extrato, com um arquivo de demonstração (entradas, saídas e uma linha com erro).
                 var demo = Path.Combine(directory, "extrato-demo.csv");
                 File.WriteAllText(demo, "Data;Histórico;Valor\r\n02/11/2026;PIX PADARIA SAO JORGE;-12,50\r\n03/11/2026;SALARIO EMPRESA LTDA;3000,00\r\n04/11/2026;FARMACIA CENTRAL;-87,30\r\n05/11/2026;POSTO IPIRANGA;-210,00\r\n06/11/2026;AMAZON MARKETPLACE;-1.234,56\r\nontem;LINHA RUIM;-1,00\r\n", new System.Text.UTF8Encoding(true));
@@ -275,6 +284,45 @@ AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().AfterSetup(build
             // A mesma meta aparece em lista na aba de metas, com o valor que passou do limite.
             await Click("Previsões e metas", main); await Click("Metas por categoria", main);
             Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Acima da meta") && main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Mercado · meta " + Money.Format(500m)), "Goals tab lists the goal card");
+            await Click("Visão geral", main);
+            // Cenário 12: compartilhar despesas → importar. O arquivo leva só as despesas marcadas; importar ADICIONA, nunca substitui.
+            var dataFile = Path.Combine(directory, "financas.json"); var shareDir = Path.Combine(Path.GetTempPath(), "bankmanager-share-" + Guid.NewGuid()); Directory.CreateDirectory(shareDir);
+            var sharePath = Path.Combine(shareDir, "despesas" + ShareFile.Extension);
+            var beforeShare = LocalStore.Read(dataFile); var monthNow = Dates.Month(DateOnly.FromDateTime(DateTime.Today)); var inMonth = beforeShare.Expenses.Count(e => Dates.Month(e.DueDate) == monthNow);
+            await Click("Despesas", main); _ = ((MainWindow)main).ShareExpenses(sharePath); await Task.Delay(400);
+            Check(!FindButton(Active(), "Salvar arquivo").IsEnabled, "Share wizard starts with nothing selected");
+            await Click("Todas deste mês");
+            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith($"{inMonth} despesas") == true && t.Text.Contains("Pessoas citadas")), "Share wizard previews the selection");
+            await Click("Salvar arquivo");
+            var shared = ExpenseShare.Read(sharePath); var shareText = File.ReadAllText(sharePath);
+            Check(lifetime.Windows.Count == 1 && shared.Expenses.Count == inMonth && shared.Expenses.All(e => !e.Paid) && !shareText.Contains("Incomes") && !shareText.Contains("Goals") && !shareText.Contains("Settlements"), "Share file has only the selected expenses, as open");
+            Check(File.ReadAllBytes(dataFile).SequenceEqual(File.ReadAllBytes(dataFile)) && LocalStore.Read(dataFile).Expenses.Count == beforeShare.Expenses.Count, "Sharing does not change the data");
+            // Importar o próprio arquivo: tudo já existe aqui, nada a adicionar.
+            _ = ((MainWindow)main).ImportSharedFromFile(sharePath); await Task.Delay(500);
+            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("Nenhuma despesa será adicionada") == true && t.Text.Contains("aqui")) && !FindButton(Active(), "Adicionar despesas").IsEnabled, "Importing the same file finds only duplicates");
+            await Click("Cancelar");
+            // O mesmo arquivo vindo de outra pessoa: outras origens e "Carla" no lugar de "Bruno". Carla é sugerida como cadastro novo.
+            var otherPath = Path.Combine(shareDir, "de-outra-pessoa" + ShareFile.Extension);
+            File.WriteAllText(otherPath, System.Text.RegularExpressions.Regex.Replace(shareText, "\"OriginId\": \"[0-9a-f-]+\"", _ => $"\"OriginId\": \"{Guid.NewGuid()}\"").Replace("\"Bruno\"", "\"Carla\""));
+            var bytesBefore = File.ReadAllBytes(dataFile);
+            _ = ((MainWindow)main).ImportSharedFromFile(otherPath); await Task.Delay(500);
+            var carla = Active().GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Pessoa: Carla");
+            Check(carla.SelectedIndex == beforeShare.People.Count && Active().GetVisualDescendants().OfType<ComboBox>().First(c => AutomationProperties.GetName(c) == "Pessoa: Ana").SelectedIndex == 0, "Import wizard suggests the people mapping");
+            Check(Active().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text?.StartsWith($"{inMonth} despesas serão adicionadas") == true && t.Text.Contains("Carla")), "Import wizard previews what will be added");
+            // Nada é gravado até confirmar.
+            Check(bytesBefore.SequenceEqual(File.ReadAllBytes(dataFile)), "Import preview does not save anything");
+            await Click("Adicionar despesas");
+            var afterShare = LocalStore.Read(dataFile);
+            Check(lifetime.Windows.Count == 1 && afterShare.Expenses.Count == beforeShare.Expenses.Count + inMonth && afterShare.People.Select(x => x.Name).SequenceEqual(beforeShare.People.Select(x => x.Name).Append("Carla")), "Import adds the expenses and the new person");
+            Check(afterShare.Incomes.SequenceEqual(beforeShare.Incomes) && afterShare.Goals.SequenceEqual(beforeShare.Goals) && afterShare.Settlements.SequenceEqual(beforeShare.Settlements)
+                && beforeShare.Expenses.All(old => afterShare.Expenses.Any(e => e.Id == old.Id && e.Amount == old.Amount && e.Paid == old.Paid && e.Title == old.Title)), "Import leaves existing incomes, goals, settlements and expenses untouched");
+            Check(afterShare.Expenses.Count(e => e.OriginId is not null) == inMonth && bytesBefore.SequenceEqual(File.ReadAllBytes(Path.Combine(directory, "financas.backup.json"))), "Imported expenses record their origin and the previous file becomes the backup");
+            Check(main.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == $"{inMonth} despesas adicionadas, 0 puladas."), "Import reports how many were added and skipped");
+            // Um backup escolhido no lugar do compartilhamento é recusado com mensagem clara e nada muda.
+            var backupPath = Path.Combine(shareDir, "backup.json"); LocalStore.Export(backupPath, afterShare); var bytesAfter = File.ReadAllBytes(dataFile); var refused = "";
+            try { await ((MainWindow)main).ImportSharedFromFile(backupPath); } catch (BudgetException ex) { refused = ex.Message; }
+            Check(refused.Contains("backup") && lifetime.Windows.Count == 1 && bytesAfter.SequenceEqual(File.ReadAllBytes(dataFile)), "A backup is refused as a share file and nothing changes");
+            try { Directory.Delete(shareDir, true); } catch (IOException) { }
             await Click("Visão geral", main);
             // Captura opcional para documentação; os dados exibidos são exclusivamente os dados sintéticos deste teste.
             var output = Environment.GetEnvironmentVariable("BANKMANAGER_SCREENSHOT");

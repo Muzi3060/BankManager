@@ -28,6 +28,8 @@
   <StreamGeometry x:Key="Icon.Smile">M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01</StreamGeometry>
   <StreamGeometry x:Key="Icon.Zap">M13 3L5 13.5h6L10 21l8-10.5h-6z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Tag">M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Share">M12 15V4M8 8l4-4 4 4M5 13v6h14v-6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Download">M12 4v11M8 11l4 4 4-4M5 15v4h14v-4</StreamGeometry>
   <StreamGeometry x:Key="Icon.ArrowRight">M5 12h14M13 6l6 6-6 6</StreamGeometry>
   <StreamGeometry x:Key="Icon.ArrowDown">M12 5v14M6 13l6 6 6-6</StreamGeometry>
 </ResourceDictionary>

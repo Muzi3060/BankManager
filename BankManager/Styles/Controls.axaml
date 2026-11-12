@@ -111,6 +111,8 @@
   <Style Selector="Border.summary TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource OnSummarySecondaryBrush}"/></Style>
   <Style Selector="Border.notice"><Setter Property="Background" Value="{DynamicResource WarnSoftBrush}"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="14,10"/></Style>
   <Style Selector="Border.notice.positive"><Setter Property="Background" Value="{DynamicResource PositiveSoftBrush}"/></Style>
+  <!-- Caixa com borda para listas de seleção dentro de diálogos. -->
+  <Style Selector="Border.listbox"><Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/><Setter Property="CornerRadius" Value="12"/></Style>
   <!-- Linha divisória fina entre linhas de listas. -->
   <Style Selector="Border.divider"><Setter Property="Height" Value="1"/><Setter Property="Background" Value="{DynamicResource LineBrush}"/></Style>
   <!-- Pílula translúcida da navegação de mês (‹ mês ›), com 44 px de altura. -->

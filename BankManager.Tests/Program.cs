@@ -803,6 +803,179 @@ Test("Statement import sets the paid date and CSV export shows it", () =>
     var rows = Csv.Parse(CsvExport.Expenses(d)).Rows; Equal("Pago em", rows[0][^1]); Equal("02/10/2026", rows[1][^1]);
 });
 
+// ===== Compartilhamento de despesas =====
+// Base de quem envia: Ana e Bruno, com renda, meta, acerto, uma compra parcelada, uma categoria própria e despesas pagas.
+BudgetData Sender()
+{
+    var d = Family(); d.CustomCategories.Add("Pets"); GoalEngine.Set(d, "Mercado", 900);
+    var market = Bill(d, 800); market.Paid = true; market.PaidBy = d.People[0].Id; market.PaidDate = month.AddDays(2); d.Expenses.Add(market);
+    d.Expenses.Add(new Expense { Title = "Ração", Category = "Pets", Amount = 89.90m, DueDate = month.AddDays(8), Split = SplitMode.Individual, Participants = [d.People[1].Id] });
+    d.Expenses.Add(new Expense { Title = "Feira", Category = "Mercado", Amount = 51m, DueDate = month.AddDays(9), Split = SplitMode.Equal, Participants = d.People.Select(p => p.Id).ToList(), Items = [new ExpenseItem { Name = "Arroz", Quantity = 2, UnitPrice = 25.50m }] });
+    d.Expenses.AddRange(BudgetRules.Installments(new Expense { Title = "Notebook", Category = "Educação", Amount = 1000m, DueDate = month.AddDays(14), Split = SplitMode.Equal, Participants = d.People.Select(p => p.Id).ToList() }, 3));
+    d.Expenses.Add(new Expense { Title = "Segredo", Category = "Outros", Amount = 999m, DueDate = month, Split = SplitMode.Individual, Participants = [d.People[0].Id] });
+    d.Settlements.Add(new Settlement { PayerId = d.People[1].Id, ReceiverId = d.People[0].Id, Amount = 50, Date = month.AddDays(5) });
+    BudgetRules.Validate(d); return d;
+}
+// Base de quem recebe: Carla, com renda, meta, uma despesa e um acerto próprios, que nunca podem ser tocados.
+BudgetData Receiver()
+{
+    var d = new BudgetData { People = [new() { Name = "Carla" }, new() { Name = "Érica" }] };
+    d.Incomes.Add(new() { PersonId = d.People[0].Id, Month = month, Amount = 2500 }); GoalEngine.Set(d, "Lazer", 200);
+    d.Expenses.Add(new Expense { Title = "Cinema", Category = "Lazer", Amount = 60, DueDate = month.AddDays(3), Split = SplitMode.Individual, Participants = [d.People[0].Id] });
+    d.Settlements.Add(new Settlement { PayerId = d.People[1].Id, ReceiverId = d.People[0].Id, Amount = 10, Date = month });
+    BudgetRules.Validate(d); return d;
+}
+string Snapshot(BudgetData d) => JsonSerializer.Serialize(d, LocalStore.JsonOptions);
+
+// O arquivo leva só as despesas escolhidas, com pessoas por nome; nunca rendas, metas, acertos ou despesas não selecionadas.
+Test("Share file contains only the selected expenses", () =>
+{
+    var d = Sender(); var chosen = d.Expenses.Where(e => e.Title is "Mercado" or "Ração").Select(e => e.Id).ToList();
+    var file = ExpenseShare.Build(d, chosen, includePayment: false);
+    Equal("share", file.Kind); Equal("BankManager", file.App); Equal(2, file.Expenses.Count); Equal(true, file.People.SequenceEqual(["Ana", "Bruno"])); Equal(true, file.CustomCategories.SequenceEqual(["Pets"]));
+    // Sem a opção, tudo sai em aberto, sem data nem pagador.
+    Equal(true, file.Expenses.All(e => !e.Paid && e.PaidDate is null && e.PaidBy is null));
+    var json = JsonSerializer.Serialize(file, LocalStore.JsonOptions);
+    foreach (var forbidden in new[] { "Segredo", "Notebook", "Incomes", "Goals", "Settlements", "3000", "Recurrences", d.People[0].Id.ToString() }) Equal(false, json.Contains(forbidden));
+    // Com a opção, a situação, a data e quem pagou acompanham; só quem é citado entra na lista de pessoas.
+    var paid = ExpenseShare.Build(d, [d.Expenses.First(e => e.Title == "Mercado").Id], includePayment: true).Expenses.Single();
+    Equal(true, paid.Paid && paid.PaidBy == "Ana" && paid.PaidDate == month.AddDays(2));
+    Equal(true, ExpenseShare.Build(d, [d.Expenses.First(e => e.Title == "Ração").Id], false).People.SequenceEqual(["Bruno"]));
+    Reject(() => ExpenseShare.Build(d, [], false)); Reject(() => ExpenseShare.Build(d, [Guid.NewGuid()], false));
+});
+
+// Importar ADICIONA: mapeia pessoas (existente, nova, ignorada), cria categoria, e não toca em nada que já existia.
+Test("Import adds expenses with mapped people and categories, touching nothing else", () =>
+{
+    var sender = Sender(); var receiver = Receiver(); var before = Snapshot(receiver);
+    var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Mercado" or "Ração" or "Feira").Select(e => e.Id).ToList(), includePayment: true);
+    var suggestion = ExpenseShare.Suggest(receiver, file);
+    Equal(PersonAction.Create, suggestion.People["Ana"].Action); Equal(true, suggestion.CreateCategories["Pets"]);
+    // Ana → Carla (existente), Bruno → cadastro novo.
+    var mapping = suggestion with { People = new() { ["Ana"] = new(PersonAction.Existing, receiver.People[0].Id), ["Bruno"] = new(PersonAction.Create) } };
+    var (next, result) = ExpenseShare.Import(receiver, file, mapping);
+    Equal(before, Snapshot(receiver)); // a base original não muda: a importação trabalha em uma cópia
+    Equal(3, result.Added.Count); Equal(0, result.Duplicates); Equal(0, result.Errors.Count); Equal(true, result.NewPeople.SequenceEqual(["Bruno"])); Equal(true, result.NewCategories.SequenceEqual(["Pets"]));
+    Equal(4, next.Expenses.Count); Equal(3, next.People.Count); Equal(true, next.CustomCategories.SequenceEqual(["Pets"]));
+    // Tudo o que existia continua igual: rendas, metas, acertos e a despesa antiga.
+    Equal(Snapshot(new BudgetData { Incomes = receiver.Incomes, Goals = receiver.Goals, Settlements = receiver.Settlements, Expenses = [receiver.Expenses[0]] }), Snapshot(new BudgetData { Incomes = next.Incomes, Goals = next.Goals, Settlements = next.Settlements, Expenses = [next.Expenses[0]] }));
+    var market = next.Expenses.Single(e => e.Title == "Mercado"); var original = sender.Expenses.First(e => e.Title == "Mercado");
+    Equal(true, market.Id != original.Id && market.OriginId == original.Id && market.Paid && market.PaidBy == receiver.People[0].Id && market.PaidDate == month.AddDays(2) && market.Participants.Count == 2);
+    Equal(1, result.Proportional); Equal(800m, FinanceEngine.Allocate(next, market).Amounts.Values.Sum()); // o rateio fecha com as rendas locais
+    Equal("Pets", next.Expenses.Single(e => e.Title == "Ração").Category); Equal(2m, next.Expenses.Single(e => e.Title == "Feira").Items[0].Quantity);
+    // Nomes iguais sem acento ou maiúsculas são sugeridos como a mesma pessoa.
+    var accents = ExpenseShare.Build(sender, [sender.Expenses.First(e => e.Title == "Ração").Id], false) with { People = ["erica"] }; accents.Expenses[0].Participants = ["erica"];
+    Equal(receiver.People[1].Id, ExpenseShare.Suggest(receiver, accents).People["erica"].PersonId);
+});
+
+// Pessoa ignorada sai da despesa; se ninguém sobra, é preciso escolher quem assume. Categoria não criada vira "Outros"; opção de divisão igual.
+Test("Ignored people, fallback, Outros and equal split options", () =>
+{
+    var sender = Sender(); var receiver = Receiver(); var before = Snapshot(receiver);
+    var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Mercado" or "Ração").Select(e => e.Id).ToList(), includePayment: true);
+    var mapping = new ShareMapping { People = new() { ["Ana"] = new(PersonAction.Existing, receiver.People[0].Id), ["Bruno"] = new(PersonAction.Ignore) }, EqualInsteadOfProportional = true };
+    // "Ração" era só do Bruno: sem escolher quem assume, nada é importado e a base fica intacta.
+    Reject(() => ExpenseShare.Import(receiver, file, mapping)); Equal(before, Snapshot(receiver));
+    var (next, result) = ExpenseShare.Import(receiver, file, mapping with { Fallback = receiver.People[1].Id });
+    Equal(2, result.Added.Count); Equal(0, result.NewPeople.Count); Equal(0, result.NewCategories.Count); Equal(2, next.People.Count);
+    var pet = next.Expenses.Single(e => e.Title == "Ração"); Equal("Outros", pet.Category); Equal(true, pet.Participants.SequenceEqual([receiver.People[1].Id]) && pet.Split == SplitMode.Individual);
+    var market = next.Expenses.Single(e => e.Title == "Mercado"); Equal(true, market.Split == SplitMode.Equal && market.Participants.SequenceEqual([receiver.People[0].Id])); Equal(0, result.Proportional);
+    // Escolha ausente para um nome é um erro claro, não um palpite.
+    Reject(() => ExpenseShare.Import(receiver, file, new ShareMapping { People = new() { ["Ana"] = new(PersonAction.Create) } }));
+    // Limite de 40 categorias próprias: criar além dele falha por inteiro; mandar para "Outros" funciona.
+    var full = Receiver(); for (var i = 0; i < CategoryEngine.MaxCustom; i++) full.CustomCategories.Add("Cat " + i);
+    Equal(false, ExpenseShare.Suggest(full, file).CreateCategories["Pets"]);
+    var create = new ShareMapping { People = new() { ["Ana"] = new(PersonAction.Create), ["Bruno"] = new(PersonAction.Create) }, CreateCategories = new() { ["Pets"] = true } };
+    Reject(() => ExpenseShare.Import(full, file, create)); Equal(2, ExpenseShare.Import(full, file, create with { CreateCategories = [] }).Result.Added.Count);
+});
+
+// Importar o mesmo arquivo duas vezes não duplica; "importar mesmo assim" cria cópias com novo Id; parcelas mantêm o vínculo.
+Test("Duplicates are skipped by origin id and installments stay linked", () =>
+{
+    var sender = Sender(); var receiver = Receiver();
+    var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Notebook" or "Feira").Select(e => e.Id).ToList(), includePayment: false);
+    var mapping = ExpenseShare.Suggest(receiver, file);
+    var (first, added) = ExpenseShare.Import(receiver, file, mapping); Equal(4, added.Added.Count);
+    var parts = first.Expenses.Where(e => e.Title == "Notebook").OrderBy(e => e.InstallmentNumber).ToList();
+    Equal(true, parts.Count == 3 && parts.Select(e => e.InstallmentGroup).Distinct().Count() == 1 && parts[0].InstallmentGroup is not null && parts[0].InstallmentGroup != sender.Expenses.First(e => e.Title == "Notebook").InstallmentGroup);
+    Equal(true, parts.Select(e => e.InstallmentNumber).SequenceEqual([1, 2, 3]) && parts.Sum(e => e.Amount) == 1000m && first.Expenses.Single(e => e.Title == "Feira").InstallmentGroup is null);
+    // Segunda importação: tudo duplicado, nada adicionado. As pessoas criadas na primeira vez são reaproveitadas.
+    var (second, again) = ExpenseShare.Import(first, file, ExpenseShare.Suggest(first, file)); Equal(0, again.Added.Count); Equal(4, again.Duplicates); Equal(Snapshot(first), Snapshot(second));
+    // Importar mesmo assim: novas despesas, novos Ids, mesma origem; uma terceira tentativa continua reconhecendo as duplicadas.
+    var (forced, copy) = ExpenseShare.Import(first, file, ExpenseShare.Suggest(first, file) with { ImportDuplicates = true });
+    Equal(4, copy.Added.Count); Equal(first.Expenses.Count + 4, forced.Expenses.Count); Equal(forced.Expenses.Count, forced.Expenses.Select(e => e.Id).Distinct().Count());
+    Equal(4, ExpenseShare.Import(forced, file, ExpenseShare.Suggest(forced, file)).Result.Duplicates);
+    // Quem enviou importa o próprio arquivo: as despesas já existem aqui pelo Id.
+    Equal(4, ExpenseShare.Import(sender, file, ExpenseShare.Suggest(sender, file)).Result.Duplicates);
+    // Reexportar uma despesa importada preserva a origem inicial.
+    Equal(sender.Expenses.First(e => e.Title == "Feira").Id, ExpenseShare.Build(first, [first.Expenses.Single(e => e.Title == "Feira").Id], false).Expenses[0].OriginId);
+});
+
+// Erros por despesa: a linha ruim é apontada e pulada, as boas entram; pessoas criadas só para a linha ruim são desfeitas.
+Test("Per-expense errors are reported and skipped", () =>
+{
+    var sender = Sender(); var receiver = Receiver();
+    var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Mercado" or "Ração").Select(e => e.Id).ToList(), false);
+    file.Expenses.Single(e => e.Title == "Ração").Amount = -5; // arquivo adulterado depois de gerado
+    var (next, result) = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file));
+    Equal(1, result.Added.Count); Equal(1, result.Errors.Count); Equal(true, result.Errors[0].Contains("Ração")); Equal(0, result.NewCategories.Count); Equal(0, next.CustomCategories.Count);
+    Equal(true, result.NewPeople.OrderBy(n => n).SequenceEqual(["Ana", "Bruno"])); // os dois participam de "Mercado"
+    file.Expenses.Single(e => e.Title == "Mercado").DueDate = new DateOnly(1800, 1, 1);
+    var none = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file)); Equal(0, none.Result.Added.Count); Equal(2, none.Result.Errors.Count); Equal(2, none.Next.People.Count);
+});
+
+// Tipos de arquivo não se misturam, e o arquivo de compartilhamento tem as mesmas proteções do backup.
+Test("Share and backup files are different kinds and both are guarded", () =>
+{
+    var dir = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid()); Directory.CreateDirectory(dir);
+    try
+    {
+        var sender = Sender(); var share = Path.Combine(dir, "despesas" + ShareFile.Extension); var backup = Path.Combine(dir, "backup.json");
+        ExpenseShare.Save(share, ExpenseShare.Build(sender, [sender.Expenses[0].Id], false)); LocalStore.Export(backup, sender);
+        Equal(1, ExpenseShare.Read(share).Expenses.Count); Equal(0, Directory.GetFiles(dir, "*.tmp").Length);
+        // Backup como compartilhamento e compartilhamento como backup: recusados, com mensagem que diz o que o arquivo é.
+        try { ExpenseShare.Read(backup); throw new Exception("Expected rejection"); } catch (BudgetException ex) { Equal(true, ex.Message.Contains("backup")); }
+        try { LocalStore.Read(share); throw new Exception("Expected rejection"); } catch (BudgetException ex) { Equal(true, ex.Message.Contains("compartilhamento")); }
+        // Um armazenamento ativo também recusa o compartilhamento como base, sem alterar o que tem.
+        using (var store = new LocalStore(Path.Combine(dir, "base"))) { store.Save(sender); var saved = File.ReadAllText(store.FilePath); Reject(() => LocalStore.Read(share)); Equal(saved, File.ReadAllText(store.FilePath)); }
+        var good = JsonNode.Parse(File.ReadAllText(share))!;
+        void Tamper(Action<JsonNode> change) { var node = good.DeepClone(); change(node); File.WriteAllText(share, node.ToJsonString()); Reject(() => ExpenseShare.Read(share)); }
+        Tamper(n => n["Kind"] = "backup"); Tamper(n => n["App"] = "Outro"); Tamper(n => n["FormatVersion"] = 2); Tamper(n => n["FormatVersion"] = 0); Tamper(n => n["Unknown"] = true);
+        Tamper(n => n["Expenses"] = new JsonArray()); Tamper(n => n["Expenses"]![0]!["Participants"] = new JsonArray("Desconhecido")); Tamper(n => n["Expenses"]![0]!["OriginId"] = Guid.Empty.ToString());
+        Tamper(n => n["Expenses"]![0]!["Extra"] = 1); Tamper(n => n["People"] = new JsonArray("Ana", "ana")); Tamper(n => n["Expenses"]![0]!["Category"] = "Inexistente");
+        Tamper(n => n["Expenses"]!.AsArray().Add(n["Expenses"]![0]!.DeepClone())); // identificador de origem repetido
+        Tamper(n => { var deep = new JsonObject(); var cursor = deep; for (var i = 0; i < 40; i++) { var inner = new JsonObject(); cursor["x"] = inner; cursor = inner; } n["People"] = deep; });
+        foreach (var raw in new[] { "{", "null", "[]", "" }) { File.WriteAllText(share, raw); Reject(() => ExpenseShare.Read(share)); }
+        using (var stream = File.OpenWrite(share)) stream.SetLength(6 * 1024 * 1024);
+        Reject(() => ExpenseShare.Read(share));
+        // Quantidade acima do limite também é recusada.
+        var many = ExpenseShare.Build(sender, [sender.Expenses[0].Id], false); for (var i = 0; i < ExpenseShare.MaxExpenses; i++) many.Expenses.Add(many.Expenses[0] with { OriginId = Guid.NewGuid() });
+        Reject(() => ExpenseShare.Validate(many));
+    }
+    finally { Directory.Delete(dir, true); }
+});
+
+// Tudo ou nada no disco: se a base resultante não é válida, nada é gravado e o arquivo atual e a cópia anterior ficam como estavam.
+Test("Import is atomic: a failure leaves memory and disk untouched", () =>
+{
+    var dir = Path.Combine(Path.GetTempPath(), "bankmanager-test-" + Guid.NewGuid());
+    try
+    {
+        var sender = Sender(); var receiver = Receiver();
+        using var store = new LocalStore(dir); store.Save(receiver); var disk = File.ReadAllText(store.FilePath); var memory = Snapshot(receiver);
+        var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title != "Segredo").Select(e => e.Id).ToList(), true);
+        // A última despesa do arquivo fica sem responsável (Bruno ignorado, sem escolha de quem assume): as anteriores já tinham sido
+        // montadas na cópia de trabalho, mas a falha descarta tudo.
+        var broken = new ShareMapping { People = new() { ["Ana"] = new(PersonAction.Create), ["Bruno"] = new(PersonAction.Ignore) } };
+        Reject(() => { var (next, _) = ExpenseShare.Import(receiver, file, broken); store.Save(next); });
+        Equal(memory, Snapshot(receiver)); Equal(disk, File.ReadAllText(store.FilePath)); Equal(false, File.Exists(store.BackupPath));
+        // Com o mapeamento completo, salva de uma vez e a versão anterior vira a cópia automática.
+        var (ok, result) = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file)); store.Save(ok);
+        Equal(6, result.Added.Count); Equal(disk, File.ReadAllText(store.BackupPath)); Equal(7, store.Load().Expenses.Count); Equal(2500m, store.Load().Incomes.Single().Amount);
+    }
+    finally { Directory.Delete(dir, true); }
+});
+
 // Executa toda a bateria, apresenta as falhas e produz um código de saída consumido pelo CI.
 int failed = 0;
 foreach (var test in tests)
