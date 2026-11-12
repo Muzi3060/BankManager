@@ -924,6 +924,38 @@ Test("Per-expense errors are reported and skipped", () =>
     var none = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file)); Equal(0, none.Result.Added.Count); Equal(2, none.Result.Errors.Count); Equal(2, none.Next.People.Count);
 });
 
+// A prévia recebe uma linha por despesa do arquivo; "importar mesmo assim" vale por despesa; a versão do app viaja no arquivo.
+Test("Preview lines, per-expense import anyway and app version", () =>
+{
+    var sender = Sender(); var receiver = Receiver();
+    var file = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Mercado" or "Ração" or "Feira").Select(e => e.Id).ToList(), false, "2.2");
+    Equal("2.2", file.AppVersion); file.AppVersion = "2.2<script>"; Reject(() => ExpenseShare.Validate(file)); file.AppVersion = "2.2";
+    var (first, _) = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file));
+    var feira = file.Expenses.Single(e => e.Title == "Feira").OriginId;
+    // Tudo já existe: três linhas puladas, na ordem do arquivo.
+    var all = ExpenseShare.Import(first, file, ExpenseShare.Suggest(first, file)).Result;
+    Equal(true, all.Lines.Count == 3 && all.Lines.All(l => l.Status == ShareLineStatus.Skipped && l.Existing) && all.Lines.Select(l => l.Source.Title).SequenceEqual(file.Expenses.Select(e => e.Title)));
+    // Só a "Feira" é importada mesmo assim: uma adicionada (marcada como já existente), duas puladas.
+    var one = ExpenseShare.Import(first, file, ExpenseShare.Suggest(first, file) with { ImportAnyway = new HashSet<Guid> { feira } });
+    Equal(1, one.Result.Added.Count); Equal(2, one.Result.Duplicates); Equal(first.Expenses.Count + 1, one.Next.Expenses.Count);
+    var line = one.Result.Lines.Single(l => l.Status == ShareLineStatus.Added); Equal(true, line.Existing && line.Expense!.Title == "Feira" && line.Expense.Id != feira);
+    // Uma linha com erro aparece como erro, com a explicação.
+    file.Expenses[0].Amount = 0; var broken = ExpenseShare.Import(receiver, file, ExpenseShare.Suggest(receiver, file)).Result.Lines[0]; Equal(true, broken.Status == ShareLineStatus.Error && broken.Error is not null);
+});
+
+// Duas pessoas do arquivo não podem virar a mesma pessoa aqui se dividem uma despesa: a divisão mudaria sem aviso.
+Test("Two file people cannot map to the same person when they share an expense", () =>
+{
+    var sender = Sender(); var receiver = Receiver(); var before = Snapshot(receiver); var carla = receiver.People[0].Id;
+    var both = new ShareMapping { People = new() { ["Ana"] = new(PersonAction.Existing, carla), ["Bruno"] = new(PersonAction.Existing, carla) } };
+    var sharedBill = ExpenseShare.Build(sender, [sender.Expenses.First(e => e.Title == "Mercado").Id], false);
+    try { ExpenseShare.Import(receiver, sharedBill, both); throw new Exception("Expected rejection"); } catch (BudgetException ex) { Equal(true, ex.Message.Contains("Ana") && ex.Message.Contains("Bruno")); }
+    Equal(before, Snapshot(receiver));
+    // Se eles não dividem nenhuma despesa do arquivo, ligar os dois à mesma pessoa é aceito.
+    var separate = ExpenseShare.Build(sender, sender.Expenses.Where(e => e.Title is "Ração" or "Segredo").Select(e => e.Id).ToList(), false);
+    Equal(2, ExpenseShare.Import(receiver, separate, both).Result.Added.Count);
+});
+
 // Tipos de arquivo não se misturam, e o arquivo de compartilhamento tem as mesmas proteções do backup.
 Test("Share and backup files are different kinds and both are guarded", () =>
 {

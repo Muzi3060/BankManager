@@ -24,6 +24,8 @@ public sealed record ShareFile
     public string App { get; set; } = AppName;
     /// <summary>Versão do formato; um número maior que o conhecido pelo aplicativo é recusado.</summary>
     public int FormatVersion { get; set; } = CurrentFormat;
+    /// <summary>Versão do aplicativo que gerou o arquivo (por exemplo "2.2"); só informativa, pode vir vazia.</summary>
+    public string AppVersion { get; set; } = "";
     /// <summary>Nomes das pessoas citadas pelas despesas (responsáveis e, se incluído, quem pagou).</summary>
     public List<string> People { get; set; } = [];
     /// <summary>Categorias próprias usadas pelas despesas do arquivo.</summary>
@@ -86,9 +88,32 @@ public sealed record ShareMapping
     public Guid? Fallback { get; init; }
     /// <summary>Importa as despesas proporcionais à renda como divisão igual.</summary>
     public bool EqualInsteadOfProportional { get; init; }
-    /// <summary>Importa também as despesas que já existem aqui (como despesas novas, com outro Id).</summary>
+    /// <summary>Importa também TODAS as despesas que já existem aqui (como despesas novas, com outro Id).</summary>
     public bool ImportDuplicates { get; init; }
+    /// <summary>Identificadores de origem das despesas já existentes que devem ser importadas mesmo assim, uma a uma.</summary>
+    public IReadOnlySet<Guid> ImportAnyway { get; init; } = new HashSet<Guid>();
 }
+/// <summary>
+/// O que acontece com uma despesa do arquivo na importação.
+/// </summary>
+public enum ShareLineStatus
+{
+    /// <summary>Será (ou foi) adicionada.</summary>
+    Added,
+    /// <summary>Já existe aqui e será pulada.</summary>
+    Skipped,
+    /// <summary>Tem um erro e não pode ser importada.</summary>
+    Error
+}
+/// <summary>
+/// Uma despesa do arquivo e o seu destino, na ordem do arquivo; alimenta a lista da prévia.
+/// </summary>
+/// <param name="Source">A despesa como veio no arquivo.</param>
+/// <param name="Status">Se será adicionada, pulada ou se tem erro.</param>
+/// <param name="Existing">Verdadeiro quando a despesa já existe aqui (mesmo que tenha sido importada mesmo assim).</param>
+/// <param name="Expense">A despesa local criada, quando adicionada.</param>
+/// <param name="Error">A explicação do erro, quando houver.</param>
+public sealed record ShareLine(SharedExpense Source, ShareLineStatus Status, bool Existing, Expense? Expense = null, string? Error = null);
 /// <summary>
 /// Resultado de uma importação (ou da sua prévia).
 /// </summary>
@@ -98,7 +123,8 @@ public sealed record ShareMapping
 /// <param name="NewPeople">Nomes das pessoas cadastradas pela importação.</param>
 /// <param name="NewCategories">Categorias próprias criadas pela importação.</param>
 /// <param name="Proportional">Quantas despesas adicionadas usam a divisão proporcional à renda (recalculada com as rendas locais).</param>
-public sealed record ShareResult(List<Expense> Added, int Duplicates, List<string> Errors, List<string> NewPeople, List<string> NewCategories, int Proportional);
+/// <param name="Lines">Uma linha por despesa do arquivo, na ordem do arquivo, com o destino de cada uma.</param>
+public sealed record ShareResult(List<Expense> Added, int Duplicates, List<string> Errors, List<string> NewPeople, List<string> NewCategories, int Proportional, List<ShareLine> Lines);
 /// <summary>
 /// Exporta despesas escolhidas para um arquivo de compartilhamento e importa esse arquivo ADICIONANDO despesas, sem substituir
 /// nem remover nada. Trabalha sobre os dados recebidos; só <see cref="Save"/> e <see cref="Read"/> tocam o disco.
@@ -113,14 +139,15 @@ public static class ExpenseShare
     /// Monta o conteúdo do arquivo com as despesas indicadas. Sem <paramref name="includePayment"/>, todas saem "em aberto",
     /// sem data de pagamento e sem quem pagou. O vínculo com recorrências não é levado: cada despesa vai como despesa comum.
     /// </summary>
-    public static ShareFile Build(BudgetData data, IReadOnlyCollection<Guid> ids, bool includePayment)
+    /// <param name="appVersion">Versão do aplicativo, gravada só para informar quem recebe (por exemplo "2.2").</param>
+    public static ShareFile Build(BudgetData data, IReadOnlyCollection<Guid> ids, bool includePayment, string appVersion = "")
     {
         if (ids.Count == 0) throw new BudgetException("Selecione pelo menos uma despesa para compartilhar.");
         if (ids.Count > MaxExpenses) throw new BudgetException($"Compartilhe até {MaxExpenses} despesas por arquivo.");
         var wanted = ids.ToHashSet(); var chosen = data.Expenses.Where(e => wanted.Contains(e.Id)).OrderBy(e => e.DueDate).ThenBy(e => e.Title).ToList();
         if (chosen.Count != wanted.Count) throw new BudgetException("Uma das despesas selecionadas não existe mais. Atualize a lista e tente de novo.");
         var names = data.People.ToDictionary(p => p.Id, p => p.Name);
-        var file = new ShareFile();
+        var file = new ShareFile { AppVersion = appVersion };
         foreach (var e in chosen)
         {
             var paid = includePayment && e.Paid;
@@ -147,6 +174,7 @@ public static class ExpenseShare
         if (file.Kind != ShareFile.ShareKind || file.App != ShareFile.AppName) throw new BudgetException("Este arquivo não é um compartilhamento de despesas do BankManager.");
         if (file.FormatVersion > ShareFile.CurrentFormat) throw new BudgetException("Este arquivo foi criado por uma versão mais nova do BankManager. Atualize o aplicativo para importá-lo.");
         if (file.FormatVersion < 1) throw new BudgetException("Versão do arquivo de compartilhamento inválida.");
+        if (file.AppVersion is null || file.AppVersion.Length > 20 || file.AppVersion.Any(c => !char.IsAsciiDigit(c) && c != '.')) throw new BudgetException("O arquivo de compartilhamento traz uma versão do aplicativo inválida.");
         if (file.People is null || file.CustomCategories is null || file.Expenses is null || file.People.Count > 200 || file.CustomCategories.Count > CategoryEngine.MaxCustom || file.Expenses.Count > MaxExpenses)
             throw new BudgetException("Arquivo de compartilhamento inválido ou com registros demais.");
         if (file.Expenses.Count == 0) throw new BudgetException("O arquivo de compartilhamento não tem nenhuma despesa.");
@@ -275,12 +303,17 @@ public static class ExpenseShare
         }
         // Já existe aqui: mesmo Id (a despesa nasceu nesta base) ou mesma origem (já foi importada antes).
         var known = data.Expenses.Select(e => e.Id).Concat(data.Expenses.Where(e => e.OriginId is not null).Select(e => e.OriginId!.Value)).ToHashSet();
-        var groups = new Dictionary<Guid, Guid>(); var added = new List<Expense>(); var errors = new List<string>(); var duplicates = 0; var proportional = 0;
+        var groups = new Dictionary<Guid, Guid>(); var added = new List<Expense>(); var errors = new List<string>(); var lines = new List<ShareLine>(); var duplicates = 0; var proportional = 0;
         for (var index = 0; index < file.Expenses.Count; index++)
         {
             var shared = file.Expenses[index];
-            if (known.Contains(shared.OriginId) && !mapping.ImportDuplicates) { duplicates++; continue; }
-            var participants = shared.Participants.Select(Resolve).Where(id => id is not null).Select(id => id!.Value).Distinct().ToList();
+            var exists = known.Contains(shared.OriginId);
+            if (exists && !mapping.ImportDuplicates && !mapping.ImportAnyway.Contains(shared.OriginId)) { duplicates++; lines.Add(new ShareLine(shared, ShareLineStatus.Skipped, true)); continue; }
+            var resolved = shared.Participants.Select(name => (Name: name, Id: Resolve(name))).Where(p => p.Id is not null).ToList();
+            // Duas pessoas do arquivo ligadas à mesma pessoa daqui mudariam a divisão sem avisar: quem importa precisa escolher de novo.
+            var merged = resolved.GroupBy(p => p.Id).FirstOrDefault(g => g.Count() > 1);
+            if (merged is not null) throw new BudgetException($"“{merged.First().Name}” e “{merged.Last().Name}” foram ligados à mesma pessoa, mas dividem a despesa “{shared.Title}”. Escolha pessoas diferentes ou ignore uma delas.");
+            var participants = resolved.Select(p => p.Id!.Value).ToList();
             if (participants.Count == 0)
             {
                 // Todos os responsáveis foram ignorados: a despesa precisa de alguém, e essa escolha é de quem importa.
@@ -299,13 +332,13 @@ public static class ExpenseShare
             };
             // Confere a despesa sozinha, com as pessoas e categorias locais: um erro vira uma linha na prévia e as outras seguem.
             try { BudgetRules.Validate(new BudgetData { People = data.People, CustomCategories = data.CustomCategories, Expenses = [expense] }); }
-            catch (BudgetException ex) { errors.Add($"Despesa {index + 1} ({(string.IsNullOrWhiteSpace(shared.Title) ? "sem descrição" : shared.Title.Trim())}): {ex.Message}"); continue; }
-            data.Expenses.Add(expense); added.Add(expense); if (split == SplitMode.AvailableIncome) proportional++;
+            catch (BudgetException ex) { errors.Add($"Despesa {index + 1} ({(string.IsNullOrWhiteSpace(shared.Title) ? "sem descrição" : shared.Title.Trim())}): {ex.Message}"); lines.Add(new ShareLine(shared, ShareLineStatus.Error, exists, Error: ex.Message)); continue; }
+            data.Expenses.Add(expense); added.Add(expense); lines.Add(new ShareLine(shared, ShareLineStatus.Added, exists, expense)); if (split == SplitMode.AvailableIncome) proportional++;
         }
         // Cadastros e categorias criados para despesas que acabaram não entrando são desfeitos.
         var usedPeople = added.SelectMany(e => e.PaidBy is { } p ? e.Participants.Append(p) : e.Participants).ToHashSet();
         foreach (var (name, person) in createdPeople.Where(c => !usedPeople.Contains(c.Value.Id)).ToList()) { data.People.Remove(person); createdPeople.Remove(name); }
         foreach (var name in createdCategories.Where(c => added.All(e => e.Category != c)).ToList()) { data.CustomCategories.Remove(name); createdCategories.Remove(name); }
-        return new ShareResult(added, duplicates, errors, createdPeople.Values.Select(p => p.Name).ToList(), createdCategories, proportional);
+        return new ShareResult(added, duplicates, errors, createdPeople.Values.Select(p => p.Name).ToList(), createdCategories, proportional, lines);
     }
 }
