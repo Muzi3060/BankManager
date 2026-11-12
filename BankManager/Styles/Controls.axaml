@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ctl="using:BankManager.Controls">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ctl="using:BankManager.Controles">
   <!--
     Estilos dos controles ("Estilo C"). Nenhuma cor é escrita aqui: tudo vem dos tokens de Tokens.axaml via
     DynamicResource. As classes aplicadas por Ui.cs e pelas páginas selecionam os estilos abaixo.
@@ -230,9 +230,9 @@
   <Style Selector="Button.bargo Path.icon"><Setter Property="Stroke" Value="{DynamicResource OnBarActionBrush}"/></Style>
 
   <!-- Gráfico de barras: o controle desenha a si mesmo e recebe as cores do tema por aqui. -->
-  <Style Selector="ctl|BarChart">
-    <Setter Property="BarBrush" Value="{DynamicResource ChartBarBrush}"/><Setter Property="SelectedBrush" Value="{DynamicResource ChartSelectedBrush}"/>
-    <Setter Property="GridBrush" Value="{DynamicResource ChartGridBrush}"/><Setter Property="LabelBrush" Value="{DynamicResource TextSecondaryBrush}"/>
-    <Setter Property="BalloonBrush" Value="{DynamicResource ChartBalloonBrush}"/><Setter Property="BalloonTextBrush" Value="{DynamicResource ChartBalloonTextBrush}"/>
+  <Style Selector="ctl|GraficoDeBarras">
+    <Setter Property="CorDaBarra" Value="{DynamicResource ChartBarBrush}"/><Setter Property="CorDaSelecionada" Value="{DynamicResource ChartSelectedBrush}"/>
+    <Setter Property="CorDaGrade" Value="{DynamicResource ChartGridBrush}"/><Setter Property="CorDoRotulo" Value="{DynamicResource TextSecondaryBrush}"/>
+    <Setter Property="CorDoBalao" Value="{DynamicResource ChartBalloonBrush}"/><Setter Property="CorDoTextoDoBalao" Value="{DynamicResource ChartBalloonTextBrush}"/>
   </Style>
 </Styles>

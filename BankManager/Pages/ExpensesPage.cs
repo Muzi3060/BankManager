@@ -5,406 +5,406 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
-using BankManager.Core;
-using static BankManager.Ui;
+using BankManager.Nucleo;
+using static BankManager.Componentes;
 
 namespace BankManager;
 // Página "Despesas": lista em linhas com filtros e menu de ações, mais o editor de despesas (compra, itens e parcelas).
-public sealed partial class MainWindow
+public sealed partial class JanelaPrincipal
 {
     // Larguras das colunas da lista: descrição (flexível), vencimento, divisão, situação, valor e menu "⋯".
-    private const string ExpenseColumns = "*,84,170,140,120,48";
+    private const string ColunasDeDespesa = "*,84,170,140,120,48";
     // No modo de seleção, a primeira coluna é a caixa de marcação e o menu "⋯" some.
-    private const string SelectColumns = "40,*,84,170,140,120";
+    private const string ColunasDeSelecao = "40,*,84,170,140,120";
     // Máximo de linhas desenhadas ao buscar em todos os meses; o resumo continua contando todas as encontradas.
-    private const int MaxRows = 200;
+    private const int MaximoDeLinhas = 200;
     /// <summary>
     /// Monta o cabeçalho, a busca e os filtros; ao mudar um filtro, só as linhas são reconstruídas (o campo de busca mantém o foco).
     /// O botão "Compartilhar" liga o modo de seleção: caixas de marcação na lista, faixa de atalhos e barra flutuante.
     /// </summary>
-    private Control ExpensesPage()
+    private Control PaginaDeDespesas()
     {
-        var search = Input(filter, "Buscar uma despesa…"); search.InnerLeftContent = Icon("Search", 16); search.Padding = new Thickness(12, 10, 12, 10);
-        AutomationProperties.SetName(search, "Buscar despesas");
-        var categories = BudgetRules.AllCategories(data); var category = Combo(new[] { "Todas as categorias" }.Concat(categories), categoryFilter); category.MinWidth = 190; category.VerticalAlignment = VerticalAlignment.Center;
-        AutomationProperties.SetName(category, "Categoria");
-        var summary = Text("", "muted"); var table = new Border(); table.Classes.Add("card"); table.Padding = new Thickness(0); table.ClipToBounds = true;
+        var busca = CampoDeTexto(filtro, "Buscar uma despesa…"); busca.InnerLeftContent = Icone("Search", 16); busca.Padding = new Thickness(12, 10, 12, 10);
+        AutomationProperties.SetName(busca, "Buscar despesas");
+        var categorias = RegrasDoOrcamento.TodasAsCategorias(dados); var categoria = ListaDeOpcoes(new[] { "Todas as categorias" }.Concat(categorias), filtroDeCategoria); categoria.MinWidth = 190; categoria.VerticalAlignment = VerticalAlignment.Center;
+        AutomationProperties.SetName(categoria, "Categoria");
+        var resumo = Texto("", "muted"); var tabela = new Border(); tabela.Classes.Add("card"); tabela.Padding = new Thickness(0); tabela.ClipToBounds = true;
         // Despesas visíveis com os filtros atuais; os atalhos de seleção agem só sobre elas.
-        List<Expense> visible = [];
+        List<Despesa> visiveis = [];
         // Função local: captura os filtros e refaz resumo e linhas, sem recriar a página inteira.
-        void Refresh()
+        void Atualizar()
         {
-            var entries = ExpenseSearch.Run(data, allMonths ? null : month, filter, statusFilter == 0 ? null : statusFilter == 2, categoryFilter == 0 ? null : categories[categoryFilter - 1]);
-            visible = entries.Take(MaxRows).ToList();
-            summary.Text = $"{entries.Count} {(entries.Count == 1 ? "despesa" : "despesas")} · Total {Money.Format(entries.Sum(e => e.Amount))} · Em aberto {Money.Format(entries.Where(e => !e.Paid).Sum(e => e.Amount))}" + (entries.Count > MaxRows ? $" · mostrando as {MaxRows} mais recentes" : "");
-            table.Child = entries.Count == 0 ? EmptyExpenses() : ExpenseTable(visible);
+            var lancamentos = BuscaDeDespesas.Buscar(dados, todosOsMeses ? null : mes, filtro, filtroDeSituacao == 0 ? null : filtroDeSituacao == 2, filtroDeCategoria == 0 ? null : categorias[filtroDeCategoria - 1]);
+            visiveis = lancamentos.Take(MaximoDeLinhas).ToList();
+            resumo.Text = $"{lancamentos.Count} {(lancamentos.Count == 1 ? "despesa" : "despesas")} · Total {Dinheiro.Formatar(lancamentos.Sum(e => e.Valor))} · Em aberto {Dinheiro.Formatar(lancamentos.Where(e => !e.Paga).Sum(e => e.Valor))}" + (lancamentos.Count > MaximoDeLinhas ? $" · mostrando as {MaximoDeLinhas} mais recentes" : "");
+            tabela.Child = lancamentos.Count == 0 ? DespesasVazias() : TabelaDeDespesas(visiveis);
         }
-        search.TextChanged += (_, _) => { filter = search.Text ?? ""; Refresh(); };
-        category.SelectionChanged += (_, _) => { categoryFilter = category.SelectedIndex; Refresh(); };
-        var status = Segmented(["Todas", "Em aberto", "Pagas"], statusFilter, i => { statusFilter = i; Refresh(); });
-        var share = Button("Compartilhar", () => { if (selecting) StopSelecting(); else StartSelecting(); }, selecting ? "toggle active" : "toggle", "Share");
-        ToolTip.SetTip(share, selecting ? "Sair do modo de seleção" : "Escolher despesas para enviar a outra pessoa");
-        var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto,12,Auto") }; Grid.SetColumn(status, 2); Grid.SetColumn(category, 4); Grid.SetColumn(share, 6);
-        filters.Children.Add(search); filters.Children.Add(status); filters.Children.Add(category); filters.Children.Add(share);
-        Refresh();
+        busca.TextChanged += (_, _) => { filtro = busca.Text ?? ""; Atualizar(); };
+        categoria.SelectionChanged += (_, _) => { filtroDeCategoria = categoria.SelectedIndex; Atualizar(); };
+        var situacao = Segmentado(["Todas", "Em aberto", "Pagas"], filtroDeSituacao, i => { filtroDeSituacao = i; Atualizar(); });
+        var compartilhar = Botao("Compartilhar", () => { if (selecionando) EncerrarSelecao(); else IniciarSelecao(); }, selecionando ? "toggle active" : "toggle", "Share");
+        ToolTip.SetTip(compartilhar, selecionando ? "Sair do modo de seleção" : "Escolher despesas para enviar a outra pessoa");
+        var filtros = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,Auto,12,Auto,12,Auto") }; Grid.SetColumn(situacao, 2); Grid.SetColumn(categoria, 4); Grid.SetColumn(compartilhar, 6);
+        filtros.Children.Add(busca); filtros.Children.Add(situacao); filtros.Children.Add(categoria); filtros.Children.Add(compartilhar);
+        Atualizar();
         // Resumo à esquerda e acesso às despesas que se repetem todo mês à direita.
-        var recurring = Button("Recorrentes", () => _ = Run(ManageRecurrences), "link", "Repeat"); summary.VerticalAlignment = VerticalAlignment.Center;
+        var recorrentes = Botao("Recorrentes", () => _ = Executar(GerenciarRecorrencias), "link", "Repeat"); resumo.VerticalAlignment = VerticalAlignment.Center;
         // Escopo da busca: o mês selecionado ou todos os meses (a navegação de mês some no modo geral).
-        var scope = Segmented(["Este mês", "Todos os meses"], allMonths ? 1 : 0, i => { allMonths = i == 1; Render(); });
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; tools.Children.Add(scope); tools.Children.Add(recurring); Grid.SetColumn(tools, 1);
-        var summaryRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; summaryRow.Children.Add(summary); summaryRow.Children.Add(tools);
-        var page = Stack(PageHeader("Despesas", allMonths ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", monthNavigation: !allMonths), filters); page.Spacing = 16;
-        if (selecting)
+        var escopo = Segmentado(["Este mês", "Todos os meses"], todosOsMeses ? 1 : 0, i => { todosOsMeses = i == 1; Desenhar(); });
+        var ferramentas = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 }; ferramentas.Children.Add(escopo); ferramentas.Children.Add(recorrentes); Grid.SetColumn(ferramentas, 1);
+        var linhaDoResumo = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; linhaDoResumo.Children.Add(resumo); linhaDoResumo.Children.Add(ferramentas);
+        var pagina = Pilha(CabecalhoDaPagina("Despesas", todosOsMeses ? "Busca em todos os meses, do mais recente ao mais antigo." : "Contas, compras e parcelas do mês.", navegacaoDeMes: !todosOsMeses), filtros); pagina.Spacing = 16;
+        if (selecionando)
         {
             // Faixa de atalhos. Eles marcam só o que está visível com a busca e os filtros atuais.
-            var all = Button("Todas deste mês", () => { foreach (var e in visible.Where(e => Dates.Month(e.DueDate) == month)) selectedIds.Add(e.Id); Refresh(); UpdateSelectionBar(); }, "pillbtn");
-            ToolTip.SetTip(all, "Marca as despesas de " + month.ToString("MMMM 'de' yyyy", Money.Culture) + " que estão na lista");
-            var byCategory = Button("Uma categoria…", () => { }, "pillbtn"); var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-            foreach (var name in categories)
+            var todas = Botao("Todas deste mês", () => { foreach (var e in visiveis.Where(e => Datas.Mes(e.Vencimento) == mes)) idsSelecionados.Add(e.Id); Atualizar(); AtualizarBarraDeSelecao(); }, "pillbtn");
+            ToolTip.SetTip(todas, "Marca as despesas de " + mes.ToString("MMMM 'de' yyyy", Dinheiro.Cultura) + " que estão na lista");
+            var porCategoria = Botao("Uma categoria…", () => { }, "pillbtn"); var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+            foreach (var nome in categorias)
             {
-                var item = new MenuItem { Header = name, Icon = Icon(CategoryIconName(name), 16) }; AutomationProperties.SetName(item, name);
-                item.Click += (_, _) => { foreach (var e in visible.Where(e => e.Category == name)) selectedIds.Add(e.Id); Refresh(); UpdateSelectionBar(); }; menu.Items.Add(item);
+                var item = new MenuItem { Header = nome, Icon = Icone(NomeDoIconeDaCategoria(nome), 16) }; AutomationProperties.SetName(item, nome);
+                item.Click += (_, _) => { foreach (var e in visiveis.Where(e => e.Categoria == nome)) idsSelecionados.Add(e.Id); Atualizar(); AtualizarBarraDeSelecao(); }; menu.Items.Add(item);
             }
-            byCategory.Flyout = menu; ToolTip.SetTip(byCategory, "Marca as despesas de uma categoria que estão na lista");
-            var clear = Button("Limpar seleção", () => { selectedIds.Clear(); Refresh(); UpdateSelectionBar(); }, "pillbtn");
-            var shortcuts = Row(all, byCategory, clear); Grid.SetColumn(shortcuts, 1);
-            page.Children.Add(new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Text("Escolha as despesas que quer enviar."), shortcuts } } }.WithClass("selectbanner"));
+            porCategoria.Flyout = menu; ToolTip.SetTip(porCategoria, "Marca as despesas de uma categoria que estão na lista");
+            var limpar = Botao("Limpar seleção", () => { idsSelecionados.Clear(); Atualizar(); AtualizarBarraDeSelecao(); }, "pillbtn");
+            var atalhos = Linha(todas, porCategoria, limpar); Grid.SetColumn(atalhos, 1);
+            pagina.Children.Add(new Border { Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { Texto("Escolha as despesas que quer enviar."), atalhos } } }.ComClasse("selectbanner"));
         }
-        page.Children.Add(summaryRow); page.Children.Add(table);
+        pagina.Children.Add(linhaDoResumo); pagina.Children.Add(tabela);
         // Espaço no fim da página para a barra flutuante não cobrir a última linha.
-        if (selecting) page.Children.Add(new Border { Height = 64 });
-        return page;
+        if (selecionando) pagina.Children.Add(new Border { Height = 64 });
+        return pagina;
     }
     /// <summary>
     /// Liga o modo de seleção, começando sem nada marcado.
     /// </summary>
-    private void StartSelecting() { selecting = true; selectedIds.Clear(); Render(); }
+    private void IniciarSelecao() { selecionando = true; idsSelecionados.Clear(); Desenhar(); }
     /// <summary>
     /// Sai do modo de seleção e esquece o que estava marcado.
     /// </summary>
-    private void StopSelecting() { if (!selecting) return; selecting = false; selectedIds.Clear(); Render(); }
+    private void EncerrarSelecao() { if (!selecionando) return; selecionando = false; idsSelecionados.Clear(); Desenhar(); }
     /// <summary>
     /// Atualiza a barra flutuante: quantas despesas estão marcadas e o total delas. Sem nenhuma, "Compartilhar…" fica desligado.
     /// </summary>
-    private void UpdateSelectionBar()
+    private void AtualizarBarraDeSelecao()
     {
-        selectionBar.IsVisible = selecting && ready && currentPage == 2;
+        barraDeSelecao.IsVisible = selecionando && pronto && paginaAtual == 2;
         // Despesas excluídas depois de marcadas saem da conta.
-        var chosen = data.Expenses.Where(e => selectedIds.Contains(e.Id)).ToList();
-        selectionCount.Text = chosen.Count == 1 ? "1 selecionada" : $"{chosen.Count} selecionadas"; selectionTotal.Text = "Total " + Money.Format(chosen.Sum(e => e.Amount));
-        if (selectionGo is not null) selectionGo.IsEnabled = chosen.Count > 0;
+        var escolhidas = dados.Despesas.Where(e => idsSelecionados.Contains(e.Id)).ToList();
+        textoDaQuantidade.Text = escolhidas.Count == 1 ? "1 selecionada" : $"{escolhidas.Count} selecionadas"; textoDoTotal.Text = "Total " + Dinheiro.Formatar(escolhidas.Sum(e => e.Valor));
+        if (botaoCompartilhar is not null) botaoCompartilhar.IsEnabled = escolhidas.Count > 0;
     }
     /// <summary>
     /// Estado vazio amigável: explica por que a lista está vazia e o que fazer em seguida.
     /// </summary>
-    private Control EmptyExpenses()
+    private Control DespesasVazias()
     {
-        var any = allMonths ? data.Expenses.Count > 0 : FinanceEngine.Expenses(data, month).Count > 0;
-        var panel = Stack(Text(any ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Text(any ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar. Se alguém enviou despesas para você, importe o arquivo.", "muted"));
-        panel.Spacing = 8; panel.HorizontalAlignment = HorizontalAlignment.Center; panel.Margin = new Thickness(24, 40);
-        foreach (var child in panel.Children.OfType<TextBlock>()) child.TextAlignment = TextAlignment.Center;
-        if (any)
+        var alguma = todosOsMeses ? dados.Despesas.Count > 0 : MotorFinanceiro.Despesas(dados, mes).Count > 0;
+        var painel = Pilha(Texto(alguma ? "Nenhuma despesa encontrada" : "Nenhuma despesa neste mês", "section"), Texto(alguma ? "Tente outra busca ou mude os filtros." : "Registre uma conta, uma compra ou uma dívida parcelada para começar. Se alguém enviou despesas para você, importe o arquivo.", "muted"));
+        painel.Spacing = 8; painel.HorizontalAlignment = HorizontalAlignment.Center; painel.Margin = new Thickness(24, 40);
+        foreach (var filho in painel.Children.OfType<TextBlock>()) filho.TextAlignment = TextAlignment.Center;
+        if (alguma)
         {
-            var clear = Button("Limpar filtros", () => { filter = ""; statusFilter = 0; categoryFilter = 0; Render(); }, "link"); clear.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(clear);
+            var limpar = Botao("Limpar filtros", () => { filtro = ""; filtroDeSituacao = 0; filtroDeCategoria = 0; Desenhar(); }, "link"); limpar.HorizontalAlignment = HorizontalAlignment.Center; painel.Children.Add(limpar);
             // Quem não achou no mês talvez procure em outro: oferece ampliar a busca em um clique.
-            if (!allMonths && filter.Length > 0) { var everywhere = Button("Buscar em todos os meses", () => { allMonths = true; Render(); }, "link"); everywhere.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(everywhere); }
+            if (!todosOsMeses && filtro.Length > 0) { var emTodoLugar = Botao("Buscar em todos os meses", () => { todosOsMeses = true; Desenhar(); }, "link"); emTodoLugar.HorizontalAlignment = HorizontalAlignment.Center; painel.Children.Add(emTodoLugar); }
         }
         else
         {
             // Quem recebeu um arquivo de outra pessoa pode começar por ele: as despesas são adicionadas, nada é substituído.
-            var actions = Row(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"), Button("Importar despesas compartilhadas", () => _ = Run(ImportShared), icon: "Download")); actions.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(actions);
+            var acoes = Linha(Botao("Nova despesa", () => _ = Executar(() => EditarDespesa()), "primary", "Plus"), Botao("Importar despesas compartilhadas", () => _ = Executar(ImportarCompartilhadas), icone: "Download")); acoes.HorizontalAlignment = HorizontalAlignment.Center; painel.Children.Add(acoes);
         }
-        return panel;
+        return painel;
     }
     /// <summary>
     /// Tabela de despesas em linhas: descrição, vencimento, divisão por pessoa, situação, valor e menu de ações
     /// (no modo de seleção, uma caixa de marcação no lugar do menu).
     /// </summary>
-    private Control ExpenseTable(IReadOnlyList<Expense> entries)
+    private Control TabelaDeDespesas(IReadOnlyList<Despesa> lancamentos)
     {
-        var rows = new StackPanel();
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions(selecting ? SelectColumns : ExpenseColumns), Margin = new Thickness(22, 14, 14, 12) };
-        string[] titles = ["Descrição", "Vence", "Divisão", "Situação", "Valor"];
-        for (var i = 0; i < titles.Length; i++) { var label = Text(titles[i], "muted"); label.FontSize = 12; label.FontWeight = FontWeight.Medium; if (i == 4) label.TextAlignment = TextAlignment.Right; Grid.SetColumn(label, selecting ? i + 1 : i); header.Children.Add(label); }
-        rows.Children.Add(header);
-        foreach (var e in entries) { rows.Children.Add(Divider()); rows.Children.Add(ExpenseRow(e)); }
-        return rows;
+        var fileiras = new StackPanel();
+        var cabecalho = new Grid { ColumnDefinitions = new ColumnDefinitions(selecionando ? ColunasDeSelecao : ColunasDeDespesa), Margin = new Thickness(22, 14, 14, 12) };
+        string[] titulos = ["Descrição", "Vence", "Divisão", "Situação", "Valor"];
+        for (var i = 0; i < titulos.Length; i++) { var rotulo = Texto(titulos[i], "muted"); rotulo.FontSize = 12; rotulo.FontWeight = FontWeight.Medium; if (i == 4) rotulo.TextAlignment = TextAlignment.Right; Grid.SetColumn(rotulo, selecionando ? i + 1 : i); cabecalho.Children.Add(rotulo); }
+        fileiras.Children.Add(cabecalho);
+        foreach (var e in lancamentos) { fileiras.Children.Add(Divisoria()); fileiras.Children.Add(LinhaDaDespesa(e)); }
+        return fileiras;
     }
     /// <summary>
     /// Uma linha da lista. As ações ficam no menu "⋯" para manter a linha limpa. No modo de seleção, o menu dá lugar a uma caixa de
     /// marcação: clicar em qualquer ponto da linha (ou a barra de espaço, com o foco na caixa) alterna a marcação.
     /// </summary>
-    private Control ExpenseRow(Expense expense)
+    private Control LinhaDaDespesa(Despesa despesa)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(selecting ? SelectColumns : ExpenseColumns), Margin = new Thickness(22, 10, 14, 10) };
-        var title = Stack(new TextBlock { Text = expense.Title, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Text(ExpenseSubtitle(expense, false), "muted").WithClass("small")); title.Spacing = 1; title.VerticalAlignment = VerticalAlignment.Center; title.Margin = new Thickness(0, 0, 12, 0);
-        var due = Text(allMonths ? $"{expense.DueDate:dd/MM/yy}" : $"{expense.DueDate:dd/MM}", "support"); due.VerticalAlignment = VerticalAlignment.Center;
+        var grade = new Grid { ColumnDefinitions = new ColumnDefinitions(selecionando ? ColunasDeSelecao : ColunasDeDespesa), Margin = new Thickness(22, 10, 14, 10) };
+        var titulo = Pilha(new TextBlock { Text = despesa.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Texto(SubtituloDaDespesa(despesa, false), "muted").ComClasse("small")); titulo.Spacing = 1; titulo.VerticalAlignment = VerticalAlignment.Center; titulo.Margin = new Thickness(0, 0, 12, 0);
+        var vencimento = Texto(todosOsMeses ? $"{despesa.Vencimento:dd/MM/yy}" : $"{despesa.Vencimento:dd/MM}", "support"); vencimento.VerticalAlignment = VerticalAlignment.Center;
         // Divisão sem o símbolo R$ (a coluna Valor já mostra a moeda), um nome por linha, números alinhados.
-        var shares = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        foreach (var share in FinanceEngine.Allocate(data, expense).Amounts) { var line = Text($"{data.People.First(p => p.Id == share.Key).Name} {share.Value.ToString("N2", Money.Culture)}", "muted"); line.FontSize = 12; shares.Children.Add(line); }
-        var chip = StatusChip(expense);
-        var amount = Text(Money.Format(expense.Amount), "strong"); amount.TextAlignment = TextAlignment.Right; amount.VerticalAlignment = VerticalAlignment.Center;
-        var row = new Border { Child = grid }.WithClass("exrow");
-        Control[] cells;
-        if (selecting)
+        var cotas = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        foreach (var compartilhar in MotorFinanceiro.Ratear(dados, despesa).Valores) { var linha = Texto($"{dados.Pessoas.First(p => p.Id == compartilhar.Key).Nome} {compartilhar.Value.ToString("N2", Dinheiro.Cultura)}", "muted"); linha.FontSize = 12; cotas.Children.Add(linha); }
+        var etiqueta = EtiquetaDeSituacao(despesa);
+        var valor = Texto(Dinheiro.Formatar(despesa.Valor), "strong"); valor.TextAlignment = TextAlignment.Right; valor.VerticalAlignment = VerticalAlignment.Center;
+        var fileira = new Border { Child = grade }.ComClasse("exrow");
+        Control[] celulas;
+        if (selecionando)
         {
-            var check = new CheckBox { IsChecked = selectedIds.Contains(expense.Id), VerticalAlignment = VerticalAlignment.Center, MinWidth = 0 }; AutomationProperties.SetName(check, "Selecionar " + expense.Title);
-            row.Classes.Add("selectable"); row.Classes.Set("selected", check.IsChecked == true);
-            check.IsCheckedChanged += (_, _) =>
+            var caixaDeMarcar = new CheckBox { IsChecked = idsSelecionados.Contains(despesa.Id), VerticalAlignment = VerticalAlignment.Center, MinWidth = 0 }; AutomationProperties.SetName(caixaDeMarcar, "Selecionar " + despesa.Titulo);
+            fileira.Classes.Add("selectable"); fileira.Classes.Set("selected", caixaDeMarcar.IsChecked == true);
+            caixaDeMarcar.IsCheckedChanged += (_, _) =>
             {
-                if (check.IsChecked == true) selectedIds.Add(expense.Id); else selectedIds.Remove(expense.Id);
-                row.Classes.Set("selected", check.IsChecked == true); UpdateSelectionBar();
+                if (caixaDeMarcar.IsChecked == true) idsSelecionados.Add(despesa.Id); else idsSelecionados.Remove(despesa.Id);
+                fileira.Classes.Set("selected", caixaDeMarcar.IsChecked == true); AtualizarBarraDeSelecao();
             };
             // Clique fora da caixa também alterna; o clique na própria caixa já é tratado por ela.
-            row.PointerPressed += (_, e) => { if (e.Source is Visual source && source.FindAncestorOfType<CheckBox>(true) is null) { check.IsChecked = check.IsChecked != true; e.Handled = true; } };
-            amount.Margin = new Thickness(0, 0, 8, 0); cells = [check, title, due, shares, chip, amount];
+            fileira.PointerPressed += (_, e) => { if (e.Source is Visual fonte && fonte.FindAncestorOfType<CheckBox>(true) is null) { caixaDeMarcar.IsChecked = caixaDeMarcar.IsChecked != true; e.Handled = true; } };
+            valor.Margin = new Thickness(0, 0, 8, 0); celulas = [caixaDeMarcar, titulo, vencimento, cotas, etiqueta, valor];
         }
         else
         {
-            var more = Button("Mais ações", () => { }, "ghost round", "More", iconOnly: true); more.Flyout = ExpenseMenu(expense); more.HorizontalAlignment = HorizontalAlignment.Right;
-            cells = [title, due, shares, chip, amount, more];
+            var mais = Botao("Mais ações", () => { }, "ghost round", "More", soIcone: true); mais.Flyout = MenuDaDespesa(despesa); mais.HorizontalAlignment = HorizontalAlignment.Right;
+            celulas = [titulo, vencimento, cotas, etiqueta, valor, mais];
         }
-        for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], i); grid.Children.Add(cells[i]); }
-        return row;
+        for (var i = 0; i < celulas.Length; i++) { Grid.SetColumn(celulas[i], i); grade.Children.Add(celulas[i]); }
+        return fileira;
     }
     /// <summary>
     /// Menu "⋯" de uma despesa: marcar como paga (ou em aberto), editar e excluir.
     /// </summary>
-    private MenuFlyout ExpenseMenu(Expense expense)
+    private MenuFlyout MenuDaDespesa(Despesa despesa)
     {
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        menu.Items.Add(MenuAction(expense.Paid ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Run(() => TogglePaid(expense))));
-        menu.Items.Add(MenuAction("Editar", "Edit", () => _ = Run(() => EditExpense(expense))));
-        menu.Items.Add(MenuAction("Excluir", "Trash", () => _ = Run(async () =>
+        menu.Items.Add(AcaoDeMenu(despesa.Paga ? "Marcar em aberto" : "Marcar como pago", "Check", () => _ = Executar(() => AlternarPagamento(despesa))));
+        menu.Items.Add(AcaoDeMenu("Editar", "Edit", () => _ = Executar(() => EditarDespesa(despesa))));
+        menu.Items.Add(AcaoDeMenu("Excluir", "Trash", () => _ = Executar(async () =>
         {
-            var detail = expense.RecurrenceId is not null ? "Apenas este mês será removido e não será criado de novo; a despesa continua nos outros meses. Para parar de vez, use Recorrentes." : "Apenas este lançamento será removido; outras parcelas continuam no histórico.";
-            // RemoveExpense registra o mês como ignorado quando o lançamento vem de uma recorrência.
-            if (await Confirm(this, "Excluir despesa?", $"Excluir “{expense.Title}” de {Money.Format(expense.Amount)}? {detail}")) Commit(d => RecurrenceEngine.RemoveExpense(d, expense.Id));
-        }), danger: true));
+            var detalhe = despesa.IdDaRecorrencia is not null ? "Apenas este mês será removido e não será criado de novo; a despesa continua nos outros meses. Para parar de vez, use Recorrentes." : "Apenas este lançamento será removido; outras parcelas continuam no histórico.";
+            // RemoverDespesa registra o mês como ignorado quando o lançamento vem de uma recorrência.
+            if (await Confirmar(this, "Excluir despesa?", $"Excluir “{despesa.Titulo}” de {Dinheiro.Formatar(despesa.Valor)}? {detalhe}")) Gravar(d => MotorDeRecorrencias.RemoverDespesa(d, despesa.Id));
+        }), perigo: true));
         return menu;
     }
     /// <summary>
     /// Item de menu com ícone. O nome de automação guarda o rótulo (usado por leitores de tela e testes); o item perigoso usa o tom negativo.
     /// </summary>
-    private static MenuItem MenuAction(string text, string icon, Action action, bool danger = false)
+    private static MenuItem AcaoDeMenu(string texto, string icone, Action acao, bool perigo = false)
     {
-        var item = new MenuItem { Header = danger ? new TextBlock { Text = text, Classes = { "negative" } } : text, Icon = Icon(icon, 16) };
-        if (danger) item.Classes.Add("danger");
-        AutomationProperties.SetName(item, text); item.Click += (_, _) => action(); return item;
+        var item = new MenuItem { Header = perigo ? new TextBlock { Text = texto, Classes = { "negative" } } : texto, Icon = Icone(icone, 16) };
+        if (perigo) item.Classes.Add("danger");
+        AutomationProperties.SetName(item, texto); item.Click += (_, _) => acao(); return item;
     }
     /// <summary>
     /// Alterna a situação de pagamento. Ao marcar como paga, pergunta quem pagou (alimenta o acerto de contas) e grava a data do
     /// pagamento (hoje, ou a informada no diálogo); ao reabrir, esquece o pagador e a data.
     /// </summary>
-    private async Task TogglePaid(Expense expense)
+    private async Task AlternarPagamento(Despesa despesa)
     {
-        if (expense.Paid) { Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = false; e.PaidBy = null; e.PaidDate = null; }); return; }
-        var (ok, payer, paidOn) = await AskPayer(expense); if (!ok) return;
-        Commit(d => { var e = d.Expenses.First(x => x.Id == expense.Id); e.Paid = true; e.PaidBy = payer; e.PaidDate = paidOn; });
+        if (despesa.Paga) { Gravar(d => { var e = d.Despesas.First(x => x.Id == despesa.Id); e.Paga = false; e.PagaPor = null; e.DataDoPagamento = null; }); return; }
+        var (ok, pagador, pagaEm) = await PerguntarQuemPagou(despesa); if (!ok) return;
+        Gravar(d => { var e = d.Despesas.First(x => x.Id == despesa.Id); e.Paga = true; e.PagaPor = pagador; e.DataDoPagamento = pagaEm; });
     }
     /// <summary>
     /// Lê uma data digitada no formato dd/mm/aaaa e recusa datas inválidas ou fora do intervalo aceito pelo aplicativo.
     /// </summary>
-    private static DateOnly ParseDate(string? text, string label)
+    private static DateOnly InterpretarData(string? texto, string rotulo)
     {
-        if (!DateOnly.TryParseExact(text?.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) throw new BudgetException($"{label}: informe uma data válida no formato dd/mm/aaaa.");
-        BudgetRules.Date(date); return date;
+        if (!DateOnly.TryParseExact(texto?.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)) throw new ErroDeOrcamento($"{rotulo}: informe uma data válida no formato dd/mm/aaaa.");
+        RegrasDoOrcamento.Data(data); return data;
     }
     /// <summary>
     /// Linha de apoio sob o título. Na lista: categoria e parcela ("parcela 3 de 10") ou "mensal". Na forma curta (visão geral):
     /// "Moradia · 12/11" ou "Parcela 3 de 10 · 15/11", com o vencimento.
     /// </summary>
-    private static string ExpenseSubtitle(Expense expense, bool withDue) => withDue
-        ? (expense.InstallmentCount > 1 ? $"Parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.Category) + $" · {expense.DueDate:dd/MM}"
-        : expense.Category + (expense.InstallmentCount > 1 ? $" · parcela {expense.InstallmentNumber} de {expense.InstallmentCount}" : expense.RecurrenceId is not null ? " · recorrente" : "");
+    private static string SubtituloDaDespesa(Despesa despesa, bool comVencimento) => comVencimento
+        ? (despesa.TotalDeParcelas > 1 ? $"Parcela {despesa.NumeroDaParcela} de {despesa.TotalDeParcelas}" : despesa.Categoria) + $" · {despesa.Vencimento:dd/MM}"
+        : despesa.Categoria + (despesa.TotalDeParcelas > 1 ? $" · parcela {despesa.NumeroDaParcela} de {despesa.TotalDeParcelas}" : despesa.IdDaRecorrencia is not null ? " · recorrente" : "");
     /// <summary>
     /// Chip de situação da lista: "Pago em dd/MM" (ou só "Pago", quando a data do pagamento não foi informada), Em aberto,
     /// Vence em N dias ou Em atraso.
     /// </summary>
-    private Border StatusChip(Expense expense)
+    private Border EtiquetaDeSituacao(Despesa despesa)
     {
-        var s = DueStatus.Of(expense, DateOnly.FromDateTime(DateTime.Today));
-        return s.Kind switch
+        var s = SituacaoDoPrazo.De(despesa, DateOnly.FromDateTime(DateTime.Today));
+        return s.Tipo switch
         {
-            DueKind.Paid => Chip(expense.PaidDate is { } paidOn ? "Pago em " + paidOn.ToString(allMonths ? "dd/MM/yy" : "dd/MM") : "Pago", "positive"),
-            DueKind.Overdue => Chip("Em atraso", "negative"),
-            DueKind.DueSoon => Chip(s.Days == 0 ? "Vence hoje" : $"Vence em {s.Days} {(s.Days == 1 ? "dia" : "dias")}", "warn"),
-            _ => Chip("Em aberto", "status")
+            TipoDePrazo.Paga => Etiqueta(despesa.DataDoPagamento is { } pagaEm ? "Pago em " + pagaEm.ToString(todosOsMeses ? "dd/MM/yy" : "dd/MM") : "Pago", "positive"),
+            TipoDePrazo.Atrasada => Etiqueta("Em atraso", "negative"),
+            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Vence hoje" : $"Vence em {s.Dias} {(s.Dias == 1 ? "dia" : "dias")}", "warn"),
+            _ => Etiqueta("Em aberto", "status")
         };
     }
     /// <summary>
     /// Chip de prazo dos próximos pagamentos: "Em 1 dia", "Em 7 dias", "Hoje" ou "Atrasada há N dias".
     /// </summary>
-    private static Border UpcomingChip(Expense expense)
+    private static Border EtiquetaDePrazo(Despesa despesa)
     {
-        var s = DueStatus.Of(expense, DateOnly.FromDateTime(DateTime.Today)); var days = Math.Abs(s.Days); var unit = days == 1 ? "dia" : "dias";
-        return s.Kind switch
+        var s = SituacaoDoPrazo.De(despesa, DateOnly.FromDateTime(DateTime.Today)); var dias = Math.Abs(s.Dias); var unidade = dias == 1 ? "dia" : "dias";
+        return s.Tipo switch
         {
-            DueKind.Overdue => Chip($"Atrasada há {days} {unit}", "negative"),
-            DueKind.DueSoon => Chip(s.Days == 0 ? "Hoje" : $"Em {days} {unit}", "warn"),
-            _ => Chip($"Em {days} {unit}")
+            TipoDePrazo.Atrasada => Etiqueta($"Atrasada há {dias} {unidade}", "negative"),
+            TipoDePrazo.VenceEmBreve => Etiqueta(s.Dias == 0 ? "Hoje" : $"Em {dias} {unidade}", "warn"),
+            _ => Etiqueta($"Em {dias} {unidade}")
         };
     }
     /// <summary>
     /// Abre o editor com um rascunho local, itens e responsáveis; prévia e salvamento compartilham a mesma validação.
     /// </summary>
-    private async Task EditExpense(Expense? existing = null)
+    private async Task EditarDespesa(Despesa? existente = null)
     {
-        if (data.People.Count == 0) { currentPage = 1; Render(); throw new BudgetException("Cadastre pelo menos uma pessoa antes de adicionar despesas."); }
-        var title = Input(existing?.Title, "Ex.: Compra do mercado", 120);
-        var categories = BudgetRules.AllCategories(data); var category = Combo(categories, existing is null ? 1 : categories.IndexOf(existing.Category));
-        var date = Input((existing?.DueDate ?? (month == Dates.Month(DateOnly.FromDateTime(DateTime.Today)) ? DateOnly.FromDateTime(DateTime.Today) : month)).ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
-        var amount = Input(existing?.Amount.ToString("0.00", Money.Culture), "Ex.: 1000,00", 12);
-        var installments = Input((existing?.InstallmentCount ?? 1).ToString(), "1", 3); installments.IsEnabled = existing is null;
-        var split = Combo(["Individual · uma pessoa", "Igual · partes iguais", "Proporcional · renda disponível"], (int)(existing?.Split ?? (data.People.Count == 1 ? SplitMode.Individual : SplitMode.AvailableIncome)));
-        var paid = new CheckBox { Content = "Esta despesa já foi paga", IsChecked = existing?.Paid ?? false };
+        if (dados.Pessoas.Count == 0) { paginaAtual = 1; Desenhar(); throw new ErroDeOrcamento("Cadastre pelo menos uma pessoa antes de adicionar despesas."); }
+        var titulo = CampoDeTexto(existente?.Titulo, "Ex.: Compra do mercado", 120);
+        var categorias = RegrasDoOrcamento.TodasAsCategorias(dados); var categoria = ListaDeOpcoes(categorias, existente is null ? 1 : categorias.IndexOf(existente.Categoria));
+        var data = CampoDeTexto((existente?.Vencimento ?? (mes == Datas.Mes(DateOnly.FromDateTime(DateTime.Today)) ? DateOnly.FromDateTime(DateTime.Today) : mes)).ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        var valor = CampoDeTexto(existente?.Valor.ToString("0.00", Dinheiro.Cultura), "Ex.: 1000,00", 12);
+        var parcelas = CampoDeTexto((existente?.TotalDeParcelas ?? 1).ToString(), "1", 3); parcelas.IsEnabled = existente is null;
+        var divisao = ListaDeOpcoes(["Individual · uma pessoa", "Igual · partes iguais", "Proporcional · renda disponível"], (int)(existente?.Divisao ?? (dados.Pessoas.Count == 1 ? ModoDeDivisao.Individual : ModoDeDivisao.RendaDisponivel)));
+        var paga = new CheckBox { Content = "Esta despesa já foi paga", IsChecked = existente?.Paga ?? false };
         // "Quem pagou" só aparece com a despesa marcada como paga. Com uma única pessoa cadastrada, ela é o padrão.
-        var payer = Combo(new[] { "Não informar" }.Concat(data.People.Select(p => p.Name)), existing?.PaidBy is { } known ? data.People.FindIndex(p => p.Id == known) + 1 : data.People.Count == 1 ? 1 : 0);
+        var pagador = ListaDeOpcoes(new[] { "Não informar" }.Concat(dados.Pessoas.Select(p => p.Nome)), existente?.PagaPor is { } conhecidas ? dados.Pessoas.FindIndex(p => p.Id == conhecidas) + 1 : dados.Pessoas.Count == 1 ? 1 : 0);
         // Data do pagamento: hoje ao marcar como paga; vazia em despesas pagas antes de essa informação existir (vale o vencimento).
-        var paidDate = Input(existing?.PaidDate?.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
-        var payerField = Columns(Field("Quem pagou", payer, "Sem informar, a despesa não entra no acerto de contas."), Field("Data do pagamento (dd/mm/aaaa)", paidDate, "Em branco, o vencimento é usado como referência.")); payerField.IsVisible = paid.IsChecked == true;
-        var participants = data.People.Select((p, i) => (Person: p, Check: new CheckBox { Content = p.Name, IsChecked = existing?.Participants.Contains(p.Id) ?? true })).ToList();
+        var dataDoPagamento = CampoDeTexto(existente?.DataDoPagamento?.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        var campoDoPagador = Colunas(Campo("Quem pagou", pagador, "Sem informar, a despesa não entra no acerto de contas."), Campo("Data do pagamento (dd/mm/aaaa)", dataDoPagamento, "Em branco, o vencimento é usado como referência.")); campoDoPagador.IsVisible = paga.IsChecked == true;
+        var participantes = dados.Pessoas.Select((p, i) => (Pessoa: p, Verificar: new CheckBox { Content = p.Nome, IsChecked = existente?.Participantes.Contains(p.Id) ?? true })).ToList();
         // No modo individual, as caixas funcionam como uma escolha exclusiva; nos demais, permitem várias pessoas.
-        foreach (var participant in participants)
-            participant.Check.IsCheckedChanged += (_, _) =>
+        foreach (var participante in participantes)
+            participante.Verificar.IsCheckedChanged += (_, _) =>
             {
-                if (split.SelectedIndex == 0 && participant.Check.IsChecked == true)
-                    foreach (var other in participants.Where(p => p.Person.Id != participant.Person.Id)) other.Check.IsChecked = false;
+                if (divisao.SelectedIndex == 0 && participante.Verificar.IsChecked == true)
+                    foreach (var outra in participantes.Where(p => p.Pessoa.Id != participante.Pessoa.Id)) outra.Verificar.IsChecked = false;
             };
-        split.SelectionChanged += (_, _) =>
+        divisao.SelectionChanged += (_, _) =>
         {
-            if (split.SelectedIndex == 0)
+            if (divisao.SelectedIndex == 0)
             {
-                var first = participants.FirstOrDefault(p => p.Check.IsChecked == true).Check ?? participants[0].Check;
-                foreach (var p in participants) p.Check.IsChecked = p.Check == first;
+                var primeiro = participantes.FirstOrDefault(p => p.Verificar.IsChecked == true).Verificar ?? participantes[0].Verificar;
+                foreach (var p in participantes) p.Verificar.IsChecked = p.Verificar == primeiro;
             }
         };
         // Ao marcar como paga uma despesa de uma só pessoa responsável, sugere essa pessoa como quem pagou.
-        paid.IsCheckedChanged += (_, _) =>
+        paga.IsCheckedChanged += (_, _) =>
         {
-            payerField.IsVisible = paid.IsChecked == true;
-            if (paid.IsChecked == true && string.IsNullOrWhiteSpace(paidDate.Text) && existing?.Paid != true) paidDate.Text = DateTime.Today.ToString("dd/MM/yyyy");
-            var chosen = participants.Where(p => p.Check.IsChecked == true).ToList();
-            if (paid.IsChecked == true && payer.SelectedIndex == 0 && chosen.Count == 1) payer.SelectedIndex = data.People.FindIndex(p => p.Id == chosen[0].Person.Id) + 1;
+            campoDoPagador.IsVisible = paga.IsChecked == true;
+            if (paga.IsChecked == true && string.IsNullOrWhiteSpace(dataDoPagamento.Text) && existente?.Paga != true) dataDoPagamento.Text = DateTime.Today.ToString("dd/MM/yyyy");
+            var escolhidas = participantes.Where(p => p.Verificar.IsChecked == true).ToList();
+            if (paga.IsChecked == true && pagador.SelectedIndex == 0 && escolhidas.Count == 1) pagador.SelectedIndex = dados.Pessoas.FindIndex(p => p.Id == escolhidas[0].Pessoa.Id) + 1;
         };
-        var peoplePanel = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var p in participants) { p.Check.Margin = new Thickness(0, 0, 20, 6); peoplePanel.Children.Add(p.Check); }
-        var itemList = new StackPanel { Spacing = 8 };
+        var painelDePessoas = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var p in participantes) { p.Verificar.Margin = new Thickness(0, 0, 20, 6); painelDePessoas.Children.Add(p.Verificar); }
+        var listaDeItens = new StackPanel { Spacing = 8 };
         // Copia os itens do lançamento para que remover/adicionar no formulário não altere o histórico ao cancelar.
-        var items = existing?.Items.Select(i => i with { }).ToList() ?? [];
-        var itemName = Input(null, "Nome do item", 100); var quantity = Input("1", "Quantidade", 10); var price = Input(null, "Preço (R$)", 12);
-        var itemTotal = Text("", "muted");
-        var error = Text("", "error"); 
-        var preview = Text("", "muted");
+        var itens = existente?.Itens.Select(i => i with { }).ToList() ?? [];
+        var nomeDoItem = CampoDeTexto(null, "Nome do item", 100); var quantidadeDoItem = CampoDeTexto("1", "Quantidade", 10); var preco = CampoDeTexto(null, "Preço (R$)", 12);
+        var totalDosItens = Texto("", "muted");
+        var erro = Texto("", "error"); 
+        var previa = Texto("", "muted");
         // Reconstrói itens e total do rascunho. Com itens, o valor manual fica bloqueado; a prévia antiga é descartada.
-        void RefreshItems()
+        void AtualizarItens()
         {
-            itemList.Children.Clear();
-            foreach (var item in items)
+            listaDeItens.Children.Clear();
+            foreach (var item in itens)
             {
-                var line = new DockPanel(); var remove = Button("Remover", () => { items.Remove(item); RefreshItems(); }); DockPanel.SetDock(remove, Dock.Right); line.Children.Add(remove);
-                line.Children.Add(Text($"{item.Name} · {item.Quantity.ToString(Money.Culture)} × {Money.Format(item.UnitPrice)} = {Money.Format(item.Total)}")); itemList.Children.Add(line);
+                var linha = new DockPanel(); var remover = Botao("Remover", () => { itens.Remove(item); AtualizarItens(); }); DockPanel.SetDock(remover, Dock.Right); linha.Children.Add(remover);
+                linha.Children.Add(Texto($"{item.Nome} · {item.Quantidade.ToString(Dinheiro.Cultura)} × {Dinheiro.Formatar(item.PrecoUnitario)} = {Dinheiro.Formatar(item.Total)}")); listaDeItens.Children.Add(linha);
             }
-            amount.IsEnabled = items.Count == 0;
-            if (items.Count > 0) amount.Text = items.Sum(i => i.Total).ToString("0.00", Money.Culture);
-            itemTotal.Text = items.Count == 0 ? "Sem itens: informe o valor total diretamente." : $"{items.Count} item(ns) · Total: {Money.Format(items.Sum(i => i.Total))}";
-            preview.Text = "";
+            valor.IsEnabled = itens.Count == 0;
+            if (itens.Count > 0) valor.Text = itens.Sum(i => i.Total).ToString("0.00", Dinheiro.Cultura);
+            totalDosItens.Text = itens.Count == 0 ? "Sem itens: informe o valor total diretamente." : $"{itens.Count} item(ns) · Total: {Dinheiro.Formatar(itens.Sum(i => i.Total))}";
+            previa.Text = "";
         }
         // O item só entra na lista após validação de quantidade, preço e total acumulado.
-        var addItem = Button("+ Adicionar item", () =>
+        var adicionarItem = Botao("+ Adicionar item", () =>
         {
             try
             {
-                BudgetRules.Text(itemName.Text?.Trim(), "Nome do item", 100);
-                if (!System.Text.RegularExpressions.Regex.IsMatch(quantity.Text ?? "", @"^\d{1,6}(,\d{1,3})?$") || !decimal.TryParse(quantity.Text, NumberStyles.AllowDecimalPoint, Money.Culture, out var units) || units <= 0 || units > 100_000) throw new BudgetException("Quantidade: use um número entre 0,001 e 100.000, com vírgula para frações.");
-                if (items.Count >= 500) throw new BudgetException("A lista permite até 500 itens.");
-                var item = new ExpenseItem { Name = itemName.Text!.Trim(), Quantity = units, UnitPrice = Money.Parse(price.Text, "Preço", true) };
-                Money.Validate(item.Total, "Total do item", true); Money.Validate(items.Sum(i => i.Total) + item.Total, "Total da lista", true);
-                items.Add(item); itemName.Text = ""; quantity.Text = "1"; price.Text = ""; error.Text = ""; RefreshItems();
+                RegrasDoOrcamento.Texto(nomeDoItem.Text?.Trim(), "Nome do item", 100);
+                if (!System.Text.RegularExpressions.Regex.IsMatch(quantidadeDoItem.Text ?? "", @"^\d{1,6}(,\d{1,3})?$") || !decimal.TryParse(quantidadeDoItem.Text, NumberStyles.AllowDecimalPoint, Dinheiro.Cultura, out var unidades) || unidades <= 0 || unidades > 100_000) throw new ErroDeOrcamento("Quantidade: use um número entre 0,001 e 100.000, com vírgula para frações.");
+                if (itens.Count >= 500) throw new ErroDeOrcamento("A lista permite até 500 itens.");
+                var item = new ItemDaDespesa { Nome = nomeDoItem.Text!.Trim(), Quantidade = unidades, PrecoUnitario = Dinheiro.Interpretar(preco.Text, "Preço", true) };
+                Dinheiro.Validar(item.Total, "Total do item", true); Dinheiro.Validar(itens.Sum(i => i.Total) + item.Total, "Total da lista", true);
+                itens.Add(item); nomeDoItem.Text = ""; quantidadeDoItem.Text = "1"; preco.Text = ""; erro.Text = ""; AtualizarItens();
             }
-            catch (Exception ex) { error.Text = FriendlyError(ex); error.BringIntoView(); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); erro.BringIntoView(); }
         });
-        var itemPanel = Stack(Text("Opcional: detalhe cada item da compra", "muted"), itemList,
-            Field("Produto ou serviço", itemName), Columns(Field("Quantidade", quantity), Field("Preço unitário (R$)", price)), addItem, itemTotal);
-        var expander = new Expander { Header = "Lista de itens da compra", Content = itemPanel, IsExpanded = items.Count > 0, HorizontalAlignment = HorizontalAlignment.Stretch };
-        if (existing?.InstallmentCount > 1) expander.IsEnabled = false;
+        var painelDeItens = Pilha(Texto("Opcional: detalhe cada item da compra", "muted"), listaDeItens,
+            Campo("Produto ou serviço", nomeDoItem), Colunas(Campo("Quantidade", quantidadeDoItem), Campo("Preço unitário (R$)", preco)), adicionarItem, totalDosItens);
+        var expansor = new Expander { Header = "Lista de itens da compra", Content = painelDeItens, IsExpanded = itens.Count > 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+        if (existente?.TotalDeParcelas > 1) expansor.IsEnabled = false;
         // "Repetir todo mês" só existe no cadastro: cria um modelo e os lançamentos dos próximos meses. Não combina com parcelas nem itens.
-        var repeat = new CheckBox { Content = "Repetir todo mês", IsChecked = false }; AutomationProperties.SetName(repeat, "Repetir todo mês");
-        repeat.IsCheckedChanged += (_, _) =>
+        var repetir = new CheckBox { Content = "Repetir todo mês", IsChecked = false }; AutomationProperties.SetName(repetir, "Repetir todo mês");
+        repetir.IsCheckedChanged += (_, _) =>
         {
-            var on = repeat.IsChecked == true; if (on) installments.Text = "1";
-            installments.IsEnabled = !on; expander.IsEnabled = !on;
+            var ligado = repetir.IsChecked == true; if (ligado) parcelas.Text = "1";
+            parcelas.IsEnabled = !ligado; expansor.IsEnabled = !ligado;
         };
-        var repeatPanel = existing is null ? Stack(repeat, Text($"Para aluguel, internet, assinaturas e contas fixas. Cria a despesa em cada mês, a partir do vencimento, até {RecurrenceEngine.HorizonMonths} meses à frente. Para parar depois, use Recorrentes na lista de despesas.", "muted")) : Stack();
-        repeatPanel.Spacing = 6;
-        RefreshItems();
+        var painelDeRepeticao = existente is null ? Pilha(repetir, Texto($"Para aluguel, internet, assinaturas e contas fixas. Cria a despesa em cada mês, a partir do vencimento, até {MotorDeRecorrencias.MesesDeHorizonte} meses à frente. Para parar depois, use Recorrentes na lista de despesas.", "muted")) : Pilha();
+        painelDeRepeticao.Spacing = 6;
+        AtualizarItens();
         // Converte os campos em lançamentos candidatos, valida o conjunto completo e não grava nada em disco.
-        (List<Expense> Entries, Recurrence? Recurrence, BudgetData Candidate) BuildEntries()
+        (List<Despesa> Lancamentos, Recorrencia? Recorrencia, DadosDoOrcamento Candidato) MontarLancamentos()
         {
             // Evita perder um item digitado que ainda não foi confirmado pelo botão Adicionar item.
-            if (!string.IsNullOrWhiteSpace(itemName.Text) || !string.IsNullOrWhiteSpace(price.Text)) throw new BudgetException("Há um item não adicionado. Clique em “Adicionar item” ou limpe seus campos antes de salvar.");
-            var due = ParseDate(date.Text, "Vencimento");
+            if (!string.IsNullOrWhiteSpace(nomeDoItem.Text) || !string.IsNullOrWhiteSpace(preco.Text)) throw new ErroDeOrcamento("Há um item não adicionado. Clique em “Adicionar item” ou limpe seus campos antes de salvar.");
+            var vencimento = InterpretarData(data.Text, "Vencimento");
             // A data do pagamento é opcional, mas, se preenchida, precisa ser uma data válida.
-            DateOnly? paidOn = paid.IsChecked == true && !string.IsNullOrWhiteSpace(paidDate.Text) ? ParseDate(paidDate.Text, "Data do pagamento") : null;
-            if (!int.TryParse(installments.Text, out var count) || count is < 1 or > 120) throw new BudgetException("Use de 1 a 120 parcelas.");
-            if (count > 1 && paid.IsChecked == true && existing is null) throw new BudgetException("Crie as parcelas em aberto e marque cada parcela paga na lista de despesas.");
-            var isRepeat = repeat.IsChecked == true && existing is null;
-            if (isRepeat && (count > 1 || items.Count > 0)) throw new BudgetException("Despesas que se repetem todo mês não usam parcelas nem lista de itens.");
-            if (isRepeat && paid.IsChecked == true) throw new BudgetException("Crie a despesa recorrente em aberto e marque cada mês como pago na lista de despesas.");
-            var entry = new Expense
+            DateOnly? pagaEm = paga.IsChecked == true && !string.IsNullOrWhiteSpace(dataDoPagamento.Text) ? InterpretarData(dataDoPagamento.Text, "Data do pagamento") : null;
+            if (!int.TryParse(parcelas.Text, out var quantidade) || quantidade is < 1 or > 120) throw new ErroDeOrcamento("Use de 1 a 120 parcelas.");
+            if (quantidade > 1 && paga.IsChecked == true && existente is null) throw new ErroDeOrcamento("Crie as parcelas em aberto e marque cada parcela paga na lista de despesas.");
+            var repete = repetir.IsChecked == true && existente is null;
+            if (repete && (quantidade > 1 || itens.Count > 0)) throw new ErroDeOrcamento("Despesas que se repetem todo mês não usam parcelas nem lista de itens.");
+            if (repete && paga.IsChecked == true) throw new ErroDeOrcamento("Crie a despesa recorrente em aberto e marque cada mês como pago na lista de despesas.");
+            var lancamento = new Despesa
             {
-                Id = existing?.Id ?? Guid.NewGuid(), Title = title.Text?.Trim() ?? "", Category = categories[category.SelectedIndex], DueDate = due,
-                Amount = items.Count > 0 ? items.Sum(i => i.Total) : Money.Parse(amount.Text, "Valor", true), Paid = paid.IsChecked == true, PaidBy = paid.IsChecked == true && payer.SelectedIndex > 0 ? data.People[payer.SelectedIndex - 1].Id : null, PaidDate = paidOn, OriginId = existing?.OriginId,
-                Split = (SplitMode)split.SelectedIndex, Participants = participants.Where(p => p.Check.IsChecked == true).Select(p => p.Person.Id).ToList(), Items = [..items],
-                InstallmentGroup = existing?.InstallmentGroup, InstallmentCount = existing?.InstallmentCount ?? 1, InstallmentNumber = existing?.InstallmentNumber ?? 1,
+                Id = existente?.Id ?? Guid.NewGuid(), Titulo = titulo.Text?.Trim() ?? "", Categoria = categorias[categoria.SelectedIndex], Vencimento = vencimento,
+                Valor = itens.Count > 0 ? itens.Sum(i => i.Total) : Dinheiro.Interpretar(valor.Text, "Valor", true), Paga = paga.IsChecked == true, PagaPor = paga.IsChecked == true && pagador.SelectedIndex > 0 ? dados.Pessoas[pagador.SelectedIndex - 1].Id : null, DataDoPagamento = pagaEm, IdDeOrigem = existente?.IdDeOrigem,
+                Divisao = (ModoDeDivisao)divisao.SelectedIndex, Participantes = participantes.Where(p => p.Verificar.IsChecked == true).Select(p => p.Pessoa.Id).ToList(), Itens = [..itens],
+                GrupoDeParcelas = existente?.GrupoDeParcelas, TotalDeParcelas = existente?.TotalDeParcelas ?? 1, NumeroDaParcela = existente?.NumeroDaParcela ?? 1,
                 // Editar um mês de uma recorrência preserva o vínculo (e o mês de origem) para ela não recriá-lo.
-                RecurrenceId = existing?.RecurrenceId, RecurrenceMonth = existing?.RecurrenceMonth
+                IdDaRecorrencia = existente?.IdDaRecorrencia, MesDaRecorrencia = existente?.MesDaRecorrencia
             };
-            if (isRepeat)
+            if (repete)
             {
-                var recurrence = new Recurrence { Title = entry.Title, Category = entry.Category, Amount = entry.Amount, DayOfMonth = due.Day, Split = entry.Split, Participants = [.. entry.Participants], StartMonth = Dates.Month(due) };
-                var plan = LocalStore.Clone(data); plan.Recurrences.Add(recurrence); RecurrenceEngine.Generate(plan, DateOnly.FromDateTime(DateTime.Today)); BudgetRules.Validate(plan);
-                return (plan.Expenses.Where(e => e.RecurrenceId == recurrence.Id).OrderBy(e => e.DueDate).ToList(), recurrence, plan);
+                var recorrencia = new Recorrencia { Titulo = lancamento.Titulo, Categoria = lancamento.Categoria, Valor = lancamento.Valor, DiaDoMes = vencimento.Day, Divisao = lancamento.Divisao, Participantes = [.. lancamento.Participantes], MesInicial = Datas.Mes(vencimento) };
+                var plano = ArmazenamentoLocal.Clonar(dados); plano.Recorrencias.Add(recorrencia); MotorDeRecorrencias.Gerar(plano, DateOnly.FromDateTime(DateTime.Today)); RegrasDoOrcamento.Validar(plano);
+                return (plano.Despesas.Where(e => e.IdDaRecorrencia == recorrencia.Id).OrderBy(e => e.Vencimento).ToList(), recorrencia, plano);
             }
             // Cadastro pode expandir uma compra em parcelas; edição preserva a identidade de um lançamento existente.
-            var entries = existing is null ? BudgetRules.Installments(entry, count) : [entry];
-            var candidate = LocalStore.Clone(data); if (existing is not null) candidate.Expenses.RemoveAll(e => e.Id == existing.Id); candidate.Expenses.AddRange(entries); BudgetRules.Validate(candidate);
-            return (entries, null, candidate);
+            var lancamentos = existente is null ? RegrasDoOrcamento.Parcelar(lancamento, quantidade) : [lancamento];
+            var candidato = ArmazenamentoLocal.Clonar(dados); if (existente is not null) candidato.Despesas.RemoveAll(e => e.Id == existente.Id); candidato.Despesas.AddRange(lancamentos); RegrasDoOrcamento.Validar(candidato);
+            return (lancamentos, null, candidato);
         }
-        var panel = Stack(Heading(existing is null ? "Nova despesa" : "Editar despesa", existing?.InstallmentCount > 1 ? $"Alteração apenas da parcela {existing.InstallmentNumber}/{existing.InstallmentCount}." : existing?.RecurrenceId is not null ? "Esta despesa se repete todo mês. A alteração vale só para este mês." : "Preencha os dados e escolha como dividir."),
-            Field("Descrição", title), Columns(Field("Categoria", category), Field("Vencimento (dd/mm/aaaa)", date)),
-            Columns(Field(existing?.InstallmentCount > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", amount), Field("Número de parcelas", installments)), repeatPanel,
-            Text("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "muted"), expander,
-            Field("Como esta despesa será paga?", split), Text("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), peoplePanel, paid, payerField,
-            Text("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "muted"),
-            Button("Conferir divisão antes de salvar", () =>
+        var painel = Pilha(Cabecalho(existente is null ? "Nova despesa" : "Editar despesa", existente?.TotalDeParcelas > 1 ? $"Alteração apenas da parcela {existente.NumeroDaParcela}/{existente.TotalDeParcelas}." : existente?.IdDaRecorrencia is not null ? "Esta despesa se repete todo mês. A alteração vale só para este mês." : "Preencha os dados e escolha como dividir."),
+            Campo("Descrição", titulo), Colunas(Campo("Categoria", categoria), Campo("Vencimento (dd/mm/aaaa)", data)),
+            Colunas(Campo(existente?.TotalDeParcelas > 1 ? "Valor desta parcela (R$)" : "Valor total da compra / dívida (R$)", valor), Campo("Número de parcelas", parcelas)), painelDeRepeticao,
+            Texto("Em dívidas, inclua os juros negociados no valor total. Listas de itens são lançadas à vista.", "muted"), expansor,
+            Campo("Como esta despesa será paga?", divisao), Texto("Selecione os responsáveis (apenas um para despesas individuais):", "muted"), painelDePessoas, paga, campoDoPagador,
+            Texto("A divisão considera a renda do mês do vencimento. Editar uma despesa individual também recalcula as despesas proporcionais desse mês.", "muted"),
+            Botao("Conferir divisão antes de salvar", () =>
             {
                 try
                 {
                     // A prévia usa uma cópia já contendo a edição, pois despesas individuais alteram a base do rateio.
-                    var (entries, recurrence, candidate) = BuildEntries();
-                    var allocation = FinanceEngine.Allocate(candidate, entries[0]);
-                    var heading = recurrence is not null ? $"Repete todo mês no dia {recurrence.DayOfMonth}: {entries.Count} lançamentos, até {entries[^1].RecurrenceMonth:MM/yyyy}. Valor mensal: {Money.Format(entries[0].Amount)}\n" : entries.Count > 1 ? $"Primeira de {entries.Count} parcelas: {Money.Format(entries[0].Amount)}\n" : "";
-                    preview.Text = heading + string.Join("\n", allocation.Amounts.Select(a => $"{data.People.First(p => p.Id == a.Key).Name}: {Money.Format(a.Value)}")) + (allocation.Warning is null ? "" : "\n" + allocation.Warning); error.Text = "";
+                    var (lancamentos, recorrencia, candidato) = MontarLancamentos();
+                    var rateio = MotorFinanceiro.Ratear(candidato, lancamentos[0]);
+                    var tituloDaSecao = recorrencia is not null ? $"Repete todo mês no dia {recorrencia.DiaDoMes}: {lancamentos.Count} lançamentos, até {lancamentos[^1].MesDaRecorrencia:MM/yyyy}. Valor mensal: {Dinheiro.Formatar(lancamentos[0].Valor)}\n" : lancamentos.Count > 1 ? $"Primeira de {lancamentos.Count} parcelas: {Dinheiro.Formatar(lancamentos[0].Valor)}\n" : "";
+                    previa.Text = tituloDaSecao + string.Join("\n", rateio.Valores.Select(a => $"{dados.Pessoas.First(p => p.Id == a.Key).Nome}: {Dinheiro.Formatar(a.Value)}")) + (rateio.Aviso is null ? "" : "\n" + rateio.Aviso); erro.Text = "";
                 }
-                catch (Exception ex) { error.Text = FriendlyError(ex); preview.Text = ""; error.BringIntoView(); }
-            }), preview, error);
-        var dialog = Dialog("Despesa", panel, 760); dialog.Height = 800;
-        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar despesa", () =>
+                catch (Exception ex) { erro.Text = ErroAmigavel(ex); previa.Text = ""; erro.BringIntoView(); }
+            }), previa, erro);
+        var dialogo = Dialogo("Despesa", painel, 760); dialogo.Height = 800;
+        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close()), Botao("Salvar despesa", () =>
         {
             try
             {
                 // Repete a validação no salvamento: a prévia não substitui a conferência dos campos atuais.
-                var (entries, recurrence, _) = BuildEntries();
-                Commit(d =>
+                var (lancamentos, recorrencia, _) = MontarLancamentos();
+                Gravar(d =>
                 {
                     // Recorrência: guarda o modelo e deixa o motor criar os meses; caso contrário, grava os lançamentos montados.
-                    if (recurrence is not null) { d.Recurrences.Add(recurrence); RecurrenceEngine.Generate(d, DateOnly.FromDateTime(DateTime.Today)); return; }
-                    if (existing is not null) d.Expenses.RemoveAll(e => e.Id == existing.Id); d.Expenses.AddRange(entries);
-                }); dialog.Close();
+                    if (recorrencia is not null) { d.Recorrencias.Add(recorrencia); MotorDeRecorrencias.Gerar(d, DateOnly.FromDateTime(DateTime.Today)); return; }
+                    if (existente is not null) d.Despesas.RemoveAll(e => e.Id == existente.Id); d.Despesas.AddRange(lancamentos);
+                }); dialogo.Close();
             }
-            catch (Exception ex) { error.Text = FriendlyError(ex); error.BringIntoView(); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); erro.BringIntoView(); }
         }, "primary")));
-        await dialog.ShowDialog(this);
+        await dialogo.ShowDialog(this);
     }
 }

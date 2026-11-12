@@ -1,54 +1,54 @@
-namespace BankManager.Core;
+namespace BankManager.Nucleo;
 
 /// <summary>
-/// Gerencia as categorias criadas pelo usuário. As categorias padrão (<see cref="BudgetRules.Categories"/>) são fixas e
+/// Gerencia as categorias criadas pelo usuário. As categorias padrão (<see cref="RegrasDoOrcamento.Categorias"/>) são fixas e
 /// nunca são alteradas aqui. Trabalha sobre os dados recebidos e não acessa disco.
 /// </summary>
-public static class CategoryEngine
+public static class MotorDeCategorias
 {
     /// <summary>Quantidade máxima de categorias próprias.</summary>
-    public const int MaxCustom = 40;
+    public const int MaximoDeProprias = 40;
     /// <summary>Tamanho máximo do nome de uma categoria.</summary>
-    public const int MaxLength = 30;
+    public const int TamanhoMaximo = 30;
     /// <summary>
     /// Cria uma categoria. Rejeita nome vazio, longo, com caracteres de controle ou já existente (ignorando maiúsculas e minúsculas).
     /// </summary>
-    public static void Add(BudgetData data, string name)
+    public static void Adicionar(DadosDoOrcamento dados, string nome)
     {
-        name = Clean(name);
-        if (Exists(data, name)) throw new BudgetException("Já existe uma categoria com esse nome.");
-        if (data.CustomCategories.Count >= MaxCustom) throw new BudgetException($"Você já tem {MaxCustom} categorias próprias. Exclua alguma antes de criar outra.");
-        data.CustomCategories.Add(name);
+        nome = Normalizar(nome);
+        if (Existe(dados, nome)) throw new ErroDeOrcamento("Já existe uma categoria com esse nome.");
+        if (dados.CategoriasProprias.Count >= MaximoDeProprias) throw new ErroDeOrcamento($"Você já tem {MaximoDeProprias} categorias próprias. Exclua alguma antes de criar outra.");
+        dados.CategoriasProprias.Add(nome);
     }
     /// <summary>
     /// Renomeia uma categoria própria e atualiza, de uma vez, todas as despesas e recorrências que a usam.
     /// Trocar só maiúsculas e minúsculas (por exemplo "pets" para "Pets") é permitido.
     /// </summary>
-    public static void Rename(BudgetData data, string oldName, string newName)
+    public static void Renomear(DadosDoOrcamento dados, string nomeAntigo, string nomeNovo)
     {
-        var index = data.CustomCategories.IndexOf(oldName);
-        if (index < 0) throw new BudgetException("As categorias padrão não podem ser renomeadas.");
-        newName = Clean(newName);
-        if (!string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase) && Exists(data, newName)) throw new BudgetException("Já existe uma categoria com esse nome.");
-        data.CustomCategories[index] = newName;
-        foreach (var expense in data.Expenses.Where(e => e.Category == oldName)) expense.Category = newName;
-        foreach (var recurrence in data.Recurrences.Where(r => r.Category == oldName)) recurrence.Category = newName;
-        foreach (var goal in data.Goals.Where(g => g.Category == oldName)) goal.Category = newName;
+        var indice = dados.CategoriasProprias.IndexOf(nomeAntigo);
+        if (indice < 0) throw new ErroDeOrcamento("As categorias padrão não podem ser renomeadas.");
+        nomeNovo = Normalizar(nomeNovo);
+        if (!string.Equals(nomeAntigo, nomeNovo, StringComparison.OrdinalIgnoreCase) && Existe(dados, nomeNovo)) throw new ErroDeOrcamento("Já existe uma categoria com esse nome.");
+        dados.CategoriasProprias[indice] = nomeNovo;
+        foreach (var despesa in dados.Despesas.Where(e => e.Categoria == nomeAntigo)) despesa.Categoria = nomeNovo;
+        foreach (var recorrencia in dados.Recorrencias.Where(r => r.Categoria == nomeAntigo)) recorrencia.Categoria = nomeNovo;
+        foreach (var meta in dados.Metas.Where(g => g.Categoria == nomeAntigo)) meta.Categoria = nomeNovo;
     }
     /// <summary>
     /// Exclui uma categoria própria, desde que nenhuma despesa nem recorrência a use.
     /// </summary>
-    public static void Remove(BudgetData data, string name)
+    public static void Remover(DadosDoOrcamento dados, string nome)
     {
-        if (!data.CustomCategories.Contains(name)) throw new BudgetException("As categorias padrão não podem ser excluídas.");
-        var expenses = data.Expenses.Count(e => e.Category == name); var recurrences = data.Recurrences.Count(r => r.Category == name);
-        if (expenses + recurrences > 0) throw new BudgetException($"Esta categoria é usada por {expenses} despesa(s) e {recurrences} recorrência(s). Mude a categoria delas antes de excluí-la.");
+        if (!dados.CategoriasProprias.Contains(nome)) throw new ErroDeOrcamento("As categorias padrão não podem ser excluídas.");
+        var despesas = dados.Despesas.Count(e => e.Categoria == nome); var recorrencias = dados.Recorrencias.Count(r => r.Categoria == nome);
+        if (despesas + recorrencias > 0) throw new ErroDeOrcamento($"Esta categoria é usada por {despesas} despesa(s) e {recorrencias} recorrência(s). Mude a categoria delas antes de excluí-la.");
         // A meta de uma categoria excluída perde o sentido e sai junto.
-        data.CustomCategories.Remove(name); data.Goals.RemoveAll(g => g.Category == name);
+        dados.CategoriasProprias.Remove(nome); dados.Metas.RemoveAll(g => g.Categoria == nome);
     }
-    private static string Clean(string? name)
+    private static string Normalizar(string? nome)
     {
-        name = name?.Trim() ?? ""; BudgetRules.Text(name, "Nome da categoria", MaxLength); return name;
+        nome = nome?.Trim() ?? ""; RegrasDoOrcamento.Texto(nome, "Nome da categoria", TamanhoMaximo); return nome;
     }
-    private static bool Exists(BudgetData data, string name) => BudgetRules.AllCategories(data).Any(c => string.Equals(c, name, StringComparison.OrdinalIgnoreCase));
+    private static bool Existe(DadosDoOrcamento dados, string nome) => RegrasDoOrcamento.TodasAsCategorias(dados).Any(c => string.Equals(c, nome, StringComparison.OrdinalIgnoreCase));
 }

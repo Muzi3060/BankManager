@@ -1,4 +1,4 @@
-<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="BankManager.App">
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="BankManager.Aplicativo">
   <!--
     O tema NÃO é fixo: RequestedThemeVariant fica no padrão (acompanha o sistema) e App.ApplyTheme o ajusta
     conforme a preferência salva. Cores em Styles/Tokens.axaml, ícones em Styles/Icons.axaml,

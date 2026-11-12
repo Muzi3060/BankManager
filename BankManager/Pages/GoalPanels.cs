@@ -3,82 +3,82 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using BankManager.Core;
-using static BankManager.Ui;
+using BankManager.Nucleo;
+using static BankManager.Componentes;
 
 namespace BankManager;
 // Metas por categoria: o cartão de meta (usado na visão geral e em Previsões e metas) e o diálogo que define os valores.
-public sealed partial class MainWindow
+public sealed partial class JanelaPrincipal
 {
     /// <summary>
     /// Cartão branco de uma meta: valor gasto, "Categoria · meta R$ X", barra, percentual usado à esquerda e, à direita,
     /// o percentual restante ou quanto passou. Embaixo, chips com as despesas da categoria no mês.
     /// A barra é verde até 79%, âmbar de 80% a 100% e vermelha acima de 100%.
     /// </summary>
-    /// <param name="wide">Versão em lista (página de metas): acrescenta, à direita do valor, quanto ainda resta em reais.</param>
-    private Border GoalCard(GoalProgress goal, IReadOnlyList<Expense> expenses, bool wide = false)
+    /// <param name="larga">Versão em lista (página de metas): acrescenta, à direita do valor, quanto ainda resta em reais.</param>
+    private Border CartaoDeMeta(ProgressoDaMeta meta, IReadOnlyList<Despesa> despesas, bool larga = false)
     {
         // Arredonda para baixo: "79%" nunca aparece em âmbar e "100%" só fica vermelho quando de fato passou.
-        var used = (int)Math.Floor(goal.Ratio * 100); var tone = goal.Level switch { GoalLevel.Over => "negative", GoalLevel.Near => "warn", _ => "positive" };
-        var bar = new ProgressBar { Value = (double)Math.Min(100m, goal.Ratio * 100), Maximum = 100 }; if (goal.Level == GoalLevel.Over) bar.Classes.Add("over"); else if (goal.Level == GoalLevel.Near) bar.Classes.Add("warn");
-        var usedLabel = Text(goal.Level == GoalLevel.Over ? $"{used}% da meta" : $"{used}% usado", tone); usedLabel.Classes.Add("small"); usedLabel.Classes.Add("strong");
+        var usado = (int)Math.Floor(meta.Fracao * 100); var tom = meta.Nivel switch { NivelDaMeta.Acima => "negative", NivelDaMeta.Perto => "warn", _ => "positive" };
+        var barra = new ProgressBar { Value = (double)Math.Min(100m, meta.Fracao * 100), Maximum = 100 }; if (meta.Nivel == NivelDaMeta.Acima) barra.Classes.Add("over"); else if (meta.Nivel == NivelDaMeta.Perto) barra.Classes.Add("warn");
+        var rotuloDeUsado = Texto(meta.Nivel == NivelDaMeta.Acima ? $"{usado}% da meta" : $"{usado}% usado", tom); rotuloDeUsado.Classes.Add("small"); rotuloDeUsado.Classes.Add("strong");
         // Na lista, o valor que passou já aparece no topo do cartão; aqui fica o percentual.
-        var rest = Text(goal.Level != GoalLevel.Over ? $"{100 - used}% restante" : wide ? $"{used - 100}% acima" : $"Acima em {Money.Format(goal.Spent - goal.Goal)}", goal.Level == GoalLevel.Over ? "negative" : "muted"); rest.Classes.Add("small"); rest.TextAlignment = TextAlignment.Right;
-        var labels = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") }; Grid.SetColumn(rest, 1); labels.Children.Add(usedLabel); labels.Children.Add(rest);
-        var chips = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, -6) };
-        var inCategory = expenses.Where(e => e.Category == goal.Category).OrderByDescending(e => e.Amount).ToList();
+        var resto = Texto(meta.Nivel != NivelDaMeta.Acima ? $"{100 - usado}% restante" : larga ? $"{usado - 100}% acima" : $"Acima em {Dinheiro.Formatar(meta.Gasto - meta.Meta)}", meta.Nivel == NivelDaMeta.Acima ? "negative" : "muted"); resto.Classes.Add("small"); resto.TextAlignment = TextAlignment.Right;
+        var rotulos = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") }; Grid.SetColumn(resto, 1); rotulos.Children.Add(rotuloDeUsado); rotulos.Children.Add(resto);
+        var etiquetas = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, -6) };
+        var naCategoria = despesas.Where(e => e.Categoria == meta.Categoria).OrderByDescending(e => e.Valor).ToList();
         // Até três despesas, as maiores primeiro; o restante vira "+N".
-        foreach (var e in inCategory.Take(3)) { var chip = Chip(e.Title); ((TextBlock)chip.Child!).TextTrimming = TextTrimming.CharacterEllipsis; chip.MaxWidth = 150; chip.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(chip); }
-        if (inCategory.Count > 3) { var extra = Chip($"+{inCategory.Count - 3}", "status"); extra.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(extra); }
-        if (inCategory.Count == 0) { var none = Chip("Sem despesas no mês"); none.Margin = new Thickness(0, 0, 6, 6); chips.Children.Add(none); }
-        var head = Stack(Text(Money.Format(goal.Spent), "money"), Text($"{goal.Category} · meta {Money.Format(goal.Goal)}", "support").WithClass("small")); head.Spacing = 2;
+        foreach (var e in naCategoria.Take(3)) { var etiqueta = Etiqueta(e.Titulo); ((TextBlock)etiqueta.Child!).TextTrimming = TextTrimming.CharacterEllipsis; etiqueta.MaxWidth = 150; etiqueta.Margin = new Thickness(0, 0, 6, 6); etiquetas.Children.Add(etiqueta); }
+        if (naCategoria.Count > 3) { var extra = Etiqueta($"+{naCategoria.Count - 3}", "status"); extra.Margin = new Thickness(0, 0, 6, 6); etiquetas.Children.Add(extra); }
+        if (naCategoria.Count == 0) { var nenhum = Etiqueta("Sem despesas no mês"); nenhum.Margin = new Thickness(0, 0, 6, 6); etiquetas.Children.Add(nenhum); }
+        var cabeca = Pilha(Texto(Dinheiro.Formatar(meta.Gasto), "money"), Texto($"{meta.Categoria} · meta {Dinheiro.Formatar(meta.Meta)}", "support").ComClasse("small")); cabeca.Spacing = 2;
         // Menu "⋯" do cartão: editar as metas ou abrir as despesas da categoria.
-        var more = Button("Ações da meta de " + goal.Category, () => { }, "square", "More", iconOnly: true); more.VerticalAlignment = VerticalAlignment.Top;
+        var mais = Botao("Ações da meta de " + meta.Categoria, () => { }, "square", "More", soIcone: true); mais.VerticalAlignment = VerticalAlignment.Top;
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        menu.Items.Add(MenuAction("Editar metas", "Target", () => _ = Run(ManageGoals)));
-        menu.Items.Add(MenuAction("Ver despesas de " + goal.Category, "List", () => { filter = ""; statusFilter = 0; categoryFilter = BudgetRules.AllCategories(data).IndexOf(goal.Category) + 1; GoTo(2); }));
-        more.Flyout = menu; Grid.SetColumn(more, 1);
-        Control top = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { head, more } };
-        if (wide)
+        menu.Items.Add(AcaoDeMenu("Editar metas", "Target", () => _ = Executar(GerenciarMetas)));
+        menu.Items.Add(AcaoDeMenu("Ver despesas de " + meta.Categoria, "List", () => { filtro = ""; filtroDeSituacao = 0; filtroDeCategoria = RegrasDoOrcamento.TodasAsCategorias(dados).IndexOf(meta.Categoria) + 1; IrPara(2); }));
+        mais.Flyout = menu; Grid.SetColumn(mais, 1);
+        Control topo = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { cabeca, mais } };
+        if (larga)
         {
             // Na lista há espaço para o valor que resta (ou que passou), alinhado à direita.
-            var left = Text(Money.Format(Math.Abs(goal.Goal - goal.Spent)), "strong"); left.FontSize = 16; left.TextAlignment = TextAlignment.Right; if (goal.Level == GoalLevel.Over) left.Classes.Add("negative");
-            var caption = Text(goal.Level == GoalLevel.Over ? "Acima da meta" : "Restante", "muted").WithClass("small"); caption.TextAlignment = TextAlignment.Right;
-            var side = Stack(caption, left); side.Spacing = 2; Grid.SetColumn(side, 2);
-            var icon = IconCircle(CategoryIconName(goal.Category)); icon.Margin = new Thickness(0, 0, 14, 0); Grid.SetColumn(head, 1);
-            ((Grid)top).Children.Clear(); side.Margin = new Thickness(0, 0, 14, 0); Grid.SetColumn(more, 3);
-            top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Children = { icon, head, side, more } };
+            var esquerda = Texto(Dinheiro.Formatar(Math.Abs(meta.Meta - meta.Gasto)), "strong"); esquerda.FontSize = 16; esquerda.TextAlignment = TextAlignment.Right; if (meta.Nivel == NivelDaMeta.Acima) esquerda.Classes.Add("negative");
+            var legenda = Texto(meta.Nivel == NivelDaMeta.Acima ? "Acima da meta" : "Restante", "muted").ComClasse("small"); legenda.TextAlignment = TextAlignment.Right;
+            var lado = Pilha(legenda, esquerda); lado.Spacing = 2; Grid.SetColumn(lado, 2);
+            var icone = CirculoComIcone(NomeDoIconeDaCategoria(meta.Categoria)); icone.Margin = new Thickness(0, 0, 14, 0); Grid.SetColumn(cabeca, 1);
+            ((Grid)topo).Children.Clear(); lado.Margin = new Thickness(0, 0, 14, 0); Grid.SetColumn(mais, 3);
+            topo = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Children = { icone, cabeca, lado, mais } };
         }
-        var panel = Stack(top, bar, labels, chips); panel.Spacing = 6;
-        bar.Margin = new Thickness(0, 6, 0, 0);
-        var card = Card(panel, "solid"); AutomationProperties.SetName(card, $"Meta de {goal.Category}: {Money.Format(goal.Spent)} de {Money.Format(goal.Goal)}, {used}% usado"); return card;
+        var painel = Pilha(topo, barra, rotulos, etiquetas); painel.Spacing = 6;
+        barra.Margin = new Thickness(0, 6, 0, 0);
+        var cartao = Cartao(painel, "solid"); AutomationProperties.SetName(cartao, $"Meta de {meta.Categoria}: {Dinheiro.Formatar(meta.Gasto)} de {Dinheiro.Formatar(meta.Meta)}, {usado}% usado"); return cartao;
     }
     /// <summary>
     /// Diálogo de metas: um campo por categoria; vazio significa "sem meta". A meta vale para todos os meses.
     /// </summary>
-    private async Task ManageGoals()
+    private async Task GerenciarMetas()
     {
-        var inputs = BudgetRules.AllCategories(data).Select(c => (Name: c, Box: Input(data.Goals.FirstOrDefault(g => g.Category == c)?.Amount.ToString("0.00", Money.Culture), "Sem meta", 12))).ToList();
-        var rows = new StackPanel { Spacing = 8 };
-        foreach (var (name, box) in inputs)
+        var entradas = RegrasDoOrcamento.TodasAsCategorias(dados).Select(c => (Nome: c, Caixa: CampoDeTexto(dados.Metas.FirstOrDefault(g => g.Categoria == c)?.Valor.ToString("0.00", Dinheiro.Cultura), "Sem meta", 12))).ToList();
+        var fileiras = new StackPanel { Spacing = 8 };
+        foreach (var (nome, caixa) in entradas)
         {
-            AutomationProperties.SetName(box, "Meta de " + name);
-            var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,190") }; Grid.SetColumn(label, 1); Grid.SetColumn(box, 2); row.Children.Add(IconCircle(CategoryIconName(name))); row.Children.Add(label); row.Children.Add(box); rows.Children.Add(row);
+            AutomationProperties.SetName(caixa, "Meta de " + nome);
+            var rotulo = new TextBlock { Text = nome, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
+            var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,190") }; Grid.SetColumn(rotulo, 1); Grid.SetColumn(caixa, 2); fileira.Children.Add(CirculoComIcone(NomeDoIconeDaCategoria(nome))); fileira.Children.Add(rotulo); fileira.Children.Add(caixa); fileiras.Children.Add(fileira);
         }
-        var error = Text("", "error");
-        var panel = Stack(Heading("Metas por categoria", "Defina quanto quer gastar por mês em cada categoria. A meta vale para todos os meses; deixe em branco para não ter meta."), rows, error);
-        var dialog = Dialog("Metas por categoria", panel, 620); dialog.Height = 700;
-        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar metas", () =>
+        var erro = Texto("", "error");
+        var painel = Pilha(Cabecalho("Metas por categoria", "Defina quanto quer gastar por mês em cada categoria. A meta vale para todos os meses; deixe em branco para não ter meta."), fileiras, erro);
+        var dialogo = Dialogo("Metas por categoria", painel, 620); dialogo.Height = 700;
+        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close()), Botao("Salvar metas", () =>
         {
             try
             {
                 // Lê e valida tudo antes de gravar: uma meta com erro não deixa salvar as outras pela metade.
-                var parsed = inputs.Select(i => (i.Name, Amount: string.IsNullOrWhiteSpace(i.Box.Text) ? (decimal?)null : Money.Parse(i.Box.Text, "Meta de " + i.Name, true))).ToList();
-                Commit(d => { foreach (var (name, amount) in parsed) { if (amount is { } value) GoalEngine.Set(d, name, value); else GoalEngine.Clear(d, name); } }); dialog.Close();
+                var interpretadas = entradas.Select(i => (i.Nome, Valor: string.IsNullOrWhiteSpace(i.Caixa.Text) ? (decimal?)null : Dinheiro.Interpretar(i.Caixa.Text, "Meta de " + i.Nome, true))).ToList();
+                Gravar(d => { foreach (var (nome, valor) in interpretadas) { if (valor is { } valorLido) MotorDeMetas.Definir(d, nome, valorLido); else MotorDeMetas.Limpar(d, nome); } }); dialogo.Close();
             }
-            catch (Exception ex) { error.Text = FriendlyError(ex); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); }
         }, "primary")));
-        await dialog.ShowDialog(this);
+        await dialogo.ShowDialog(this);
     }
 }

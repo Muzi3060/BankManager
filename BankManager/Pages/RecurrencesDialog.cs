@@ -2,65 +2,65 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using BankManager.Core;
-using static BankManager.Ui;
+using BankManager.Nucleo;
+using static BankManager.Componentes;
 
 namespace BankManager;
 // Diálogo "Despesas recorrentes": lista os modelos mensais e permite encerrar ou remover cada um.
-public sealed partial class MainWindow
+public sealed partial class JanelaPrincipal
 {
     /// <summary>
     /// Linhas da lista de recorrências, usadas no diálogo e na aba de "Previsões e metas". Encerrar para a geração depois do mês
     /// selecionado; remover um modelo já encerrado o tira da lista sem apagar o histórico.
     /// </summary>
-    /// <param name="owner">Janela sobre a qual as confirmações abrem.</param>
-    /// <param name="act">Executa a ação com o tratamento de erros de quem chama (e, no diálogo, refaz a lista).</param>
-    private Control RecurrenceRows(Func<Window> owner, Func<Func<Task>, Task> act)
+    /// <param name="dono">Janela sobre a qual as confirmações abrem.</param>
+    /// <param name="agir">Executa a ação com o tratamento de erros de quem chama (e, no diálogo, refaz a lista).</param>
+    private Control LinhasDeRecorrencia(Func<Window> dono, Func<Func<Task>, Task> agir)
     {
-        var rows = new StackPanel();
-        foreach (var recurrence in data.Recurrences.OrderBy(r => r.EndMonth is not null).ThenBy(r => r.Title))
+        var fileiras = new StackPanel();
+        foreach (var recorrencia in dados.Recorrencias.OrderBy(r => r.MesFinal is not null).ThenBy(r => r.Titulo))
         {
-            if (rows.Children.Count > 0) rows.Children.Add(Divider());
-            var detail = $"{recurrence.Category} · todo dia {recurrence.DayOfMonth} · {Money.Format(recurrence.Amount)} · desde {recurrence.StartMonth.ToString("MM/yyyy")}";
-            var who = Stack(new TextBlock { Text = recurrence.Title, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Text(detail, "muted").WithClass("small")); who.Spacing = 1; who.VerticalAlignment = VerticalAlignment.Center; who.Margin = new Thickness(12, 0);
-            Control status = recurrence.EndMonth is { } end ? Chip($"Encerrada em {end:MM/yyyy}", "status") : Chip("Ativa", "positive");
-            status.Margin = new Thickness(0, 0, 12, 0);
-            var id = recurrence.Id;
-            var action = recurrence.EndMonth is null
-                ? Button("Encerrar", () => _ = act(async () =>
+            if (fileiras.Children.Count > 0) fileiras.Children.Add(Divisoria());
+            var detalhe = $"{recorrencia.Categoria} · todo dia {recorrencia.DiaDoMes} · {Dinheiro.Formatar(recorrencia.Valor)} · desde {recorrencia.MesInicial.ToString("MM/yyyy")}";
+            var quem = Pilha(new TextBlock { Text = recorrencia.Titulo, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Texto(detalhe, "muted").ComClasse("small")); quem.Spacing = 1; quem.VerticalAlignment = VerticalAlignment.Center; quem.Margin = new Thickness(12, 0);
+            Control situacao = recorrencia.MesFinal is { } fim ? Etiqueta($"Encerrada em {fim:MM/yyyy}", "status") : Etiqueta("Ativa", "positive");
+            situacao.Margin = new Thickness(0, 0, 12, 0);
+            var id = recorrencia.Id;
+            var acao = recorrencia.MesFinal is null
+                ? Botao("Encerrar", () => _ = agir(async () =>
                 {
                     // O mês selecionado na janela principal vira a última cobrança; os meses em aberto depois dele saem.
-                    var last = month.ToString("MMMM 'de' yyyy", Money.Culture);
-                    if (await Confirm(owner(), "Encerrar recorrência?", $"Encerrar “{recurrence.Title}”? A última cobrança será em {last} (o mês selecionado). Meses em aberto depois dele são removidos; o que já foi pago continua no histórico.")) Commit(d => RecurrenceEngine.End(d, id, month));
+                    var ultimo = mes.ToString("MMMM 'de' yyyy", Dinheiro.Cultura);
+                    if (await Confirmar(dono(), "Encerrar recorrência?", $"Encerrar “{recorrencia.Titulo}”? A última cobrança será em {ultimo} (o mês selecionado). Meses em aberto depois dele são removidos; o que já foi pago continua no histórico.")) Gravar(d => MotorDeRecorrencias.Encerrar(d, id, mes));
                 }))
-                : Button("Remover", () => _ = act(async () =>
+                : Botao("Remover", () => _ = agir(async () =>
                 {
-                    if (await Confirm(owner(), "Remover recorrência?", $"Remover “{recurrence.Title}” da lista? Os lançamentos já criados continuam como despesas comuns.")) Commit(d => RecurrenceEngine.Remove(d, id));
+                    if (await Confirmar(dono(), "Remover recorrência?", $"Remover “{recorrencia.Titulo}” da lista? Os lançamentos já criados continuam como despesas comuns.")) Gravar(d => MotorDeRecorrencias.Remover(d, id));
                 }), "ghost danger");
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(0, 10) };
-            Grid.SetColumn(who, 1); Grid.SetColumn(status, 2); Grid.SetColumn(action, 3); row.Children.Add(IconCircle(CategoryIconName(recurrence.Category))); row.Children.Add(who); row.Children.Add(status); row.Children.Add(action); rows.Children.Add(row);
+            var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(0, 10) };
+            Grid.SetColumn(quem, 1); Grid.SetColumn(situacao, 2); Grid.SetColumn(acao, 3); fileira.Children.Add(CirculoComIcone(NomeDoIconeDaCategoria(recorrencia.Categoria))); fileira.Children.Add(quem); fileira.Children.Add(situacao); fileira.Children.Add(acao); fileiras.Children.Add(fileira);
         }
-        if (data.Recurrences.Count == 0) rows.Children.Add(Text("Nenhuma despesa recorrente ainda. Ao criar uma despesa, marque “Repetir todo mês”.", "muted"));
-        return rows;
+        if (dados.Recorrencias.Count == 0) fileiras.Children.Add(Texto("Nenhuma despesa recorrente ainda. Ao criar uma despesa, marque “Repetir todo mês”.", "muted"));
+        return fileiras;
     }
     /// <summary>
     /// Abre a lista de despesas que se repetem todo mês em um diálogo (atalho a partir da página de despesas).
     /// </summary>
-    private async Task ManageRecurrences()
+    private async Task GerenciarRecorrencias()
     {
-        var holder = new ContentControl(); var error = Text("", "error");
-        Window? dialog = null;
+        var suporte = new ContentControl(); var erro = Texto("", "error");
+        Window? dialogo = null;
         // Executa a ação, mostra um erro simples no próprio diálogo e atualiza a lista.
-        async Task Act(Func<Task> action)
+        async Task Agir(Func<Task> acao)
         {
-            try { error.Text = ""; await action(); }
-            catch (Exception ex) { error.Text = FriendlyError(ex); }
-            holder.Content = RecurrenceRows(() => dialog!, Act);
+            try { erro.Text = ""; await acao(); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); }
+            suporte.Content = LinhasDeRecorrencia(() => dialogo!, Agir);
         }
-        holder.Content = RecurrenceRows(() => dialog!, Act);
-        var panel = Stack(Heading("Despesas recorrentes", "Contas que se repetem todo mês. Cada mês é uma despesa comum: você pode pagar, editar ou excluir um mês sem afetar os outros."), holder, error);
-        dialog = Dialog("Despesas recorrentes", panel, 720); dialog.Height = 560;
-        panel.Children.Add(Row(Button("Fechar", () => dialog.Close(), "primary")));
-        await dialog.ShowDialog(this);
+        suporte.Content = LinhasDeRecorrencia(() => dialogo!, Agir);
+        var painel = Pilha(Cabecalho("Despesas recorrentes", "Contas que se repetem todo mês. Cada mês é uma despesa comum: você pode pagar, editar ou excluir um mês sem afetar os outros."), suporte, erro);
+        dialogo = Dialogo("Despesas recorrentes", painel, 720); dialogo.Height = 560;
+        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primary")));
+        await dialogo.ShowDialog(this);
     }
 }

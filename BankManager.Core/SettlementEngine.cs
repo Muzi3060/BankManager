@@ -1,16 +1,16 @@
-namespace BankManager.Core;
+namespace BankManager.Nucleo;
 
 /// <summary>
-/// Uma dívida entre duas pessoas: <paramref name="DebtorId"/> deve <paramref name="Amount"/> a <paramref name="CreditorId"/>.
+/// Uma dívida entre duas pessoas: <paramref name="IdDoDevedor"/> deve <paramref name="Valor"/> a <paramref name="IdDoCredor"/>.
 /// </summary>
-/// <param name="DebtorId">Quem deve.</param>
-/// <param name="CreditorId">Quem tem a receber.</param>
-/// <param name="Amount">Valor líquido, sempre positivo.</param>
-public sealed record Debt(Guid DebtorId, Guid CreditorId, decimal Amount);
+/// <param name="IdDoDevedor">Quem deve.</param>
+/// <param name="IdDoCredor">Quem tem a receber.</param>
+/// <param name="Valor">Valor líquido, sempre positivo.</param>
+public sealed record Divida(Guid IdDoDevedor, Guid IdDoCredor, decimal Valor);
 /// <summary>
 /// Calcula "quem deve a quem" a partir de quem pagou cada despesa e dos acertos já registrados. Não altera os dados.
 /// </summary>
-public static class SettlementEngine
+public static class MotorDeAcertos
 {
     /// <summary>
     /// Saldo acumulado entre cada par de pessoas, somando todos os meses.
@@ -21,23 +21,23 @@ public static class SettlementEngine
     /// compensadas entre si: se Ana pagou R$ 200 por Bruno e Bruno pagou R$ 120 por Ana, resta Bruno devendo R$ 80. Acertos acima do
     /// devido invertem o sentido. Como o rateio proporcional depende da renda de cada mês, editar uma renda antiga muda o valor devido.
     /// </remarks>
-    public static List<Debt> Debts(BudgetData data)
+    public static List<Divida> Dividas(DadosDoOrcamento dados)
     {
         // owed[(devedor, credor)] = quanto o devedor já "tomou emprestado" do credor, antes de compensar o sentido contrário.
-        var owed = new Dictionary<(Guid, Guid), decimal>();
-        void Add(Guid debtor, Guid creditor, decimal amount) => owed[(debtor, creditor)] = owed.GetValueOrDefault((debtor, creditor)) + amount;
-        foreach (var expense in data.Expenses.Where(e => e.Paid && e.PaidBy is not null))
-            foreach (var (person, share) in FinanceEngine.Allocate(data, expense).Amounts.Where(a => a.Key != expense.PaidBy)) Add(person, expense.PaidBy!.Value, share);
+        var devido = new Dictionary<(Guid, Guid), decimal>();
+        void Adicionar(Guid devedor, Guid credor, decimal valor) => devido[(devedor, credor)] = devido.GetValueOrDefault((devedor, credor)) + valor;
+        foreach (var despesa in dados.Despesas.Where(e => e.Paga && e.PagaPor is not null))
+            foreach (var (pessoa, compartilhar) in MotorFinanceiro.Ratear(dados, despesa).Valores.Where(a => a.Key != despesa.PagaPor)) Adicionar(pessoa, despesa.PagaPor!.Value, compartilhar);
         // Quem pagou um acerto reduz a própria dívida com quem recebeu.
-        foreach (var settlement in data.Settlements) Add(settlement.PayerId, settlement.ReceiverId, -settlement.Amount);
-        var result = new List<Debt>();
-        foreach (var (a, b) in owed.Keys.Select(k => k.Item1.CompareTo(k.Item2) < 0 ? k : (k.Item2, k.Item1)).Distinct())
+        foreach (var acerto in dados.Acertos) Adicionar(acerto.IdDoPagador, acerto.IdDoRecebedor, -acerto.Valor);
+        var resultado = new List<Divida>();
+        foreach (var (a, b) in devido.Keys.Select(k => k.Item1.CompareTo(k.Item2) < 0 ? k : (k.Item2, k.Item1)).Distinct())
         {
             // net > 0: a deve a b; net < 0: b deve a a.
-            var net = owed.GetValueOrDefault((a, b)) - owed.GetValueOrDefault((b, a));
-            if (net > 0) result.Add(new Debt(a, b, net)); else if (net < 0) result.Add(new Debt(b, a, -net));
+            var liquido = devido.GetValueOrDefault((a, b)) - devido.GetValueOrDefault((b, a));
+            if (liquido > 0) resultado.Add(new Divida(a, b, liquido)); else if (liquido < 0) resultado.Add(new Divida(b, a, -liquido));
         }
         // Ordem estável: maiores dívidas primeiro, desempate por identificador.
-        return result.OrderByDescending(d => d.Amount).ThenBy(d => d.DebtorId).ThenBy(d => d.CreditorId).ToList();
+        return resultado.OrderByDescending(d => d.Valor).ThenBy(d => d.IdDoDevedor).ThenBy(d => d.IdDoCredor).ToList();
     }
 }

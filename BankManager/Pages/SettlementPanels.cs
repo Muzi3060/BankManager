@@ -5,144 +5,144 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
-using BankManager.Core;
-using static BankManager.Ui;
+using BankManager.Nucleo;
+using static BankManager.Componentes;
 
 namespace BankManager;
 // Quem pagou e acerto de contas: a pergunta "Quem pagou?", o cartão da visão geral, o registro de acertos e o histórico.
-public sealed partial class MainWindow
+public sealed partial class JanelaPrincipal
 {
     /// <summary>
     /// Nome de uma pessoa pelo identificador; um registro órfão (não deveria existir) aparece como "—".
     /// </summary>
-    private string NameOf(Guid id) => data.People.FirstOrDefault(p => p.Id == id)?.Name ?? "—";
+    private string NomeDe(Guid id) => dados.Pessoas.FirstOrDefault(p => p.Id == id)?.Nome ?? "—";
     /// <summary>
     /// Pergunta quem pagou uma despesa e em que dia (padrão: hoje). Com uma só pessoa cadastrada não pergunta: ela pagou hoje, e a
     /// data pode ser corrigida ao editar a despesa. Em despesa individual, o responsável vem destacado.
     /// </summary>
     /// <returns>Se o usuário escolheu (falso ao cancelar), a pessoa (nula em "Não informar") e a data do pagamento.</returns>
-    private async Task<(bool Chosen, Guid? Payer, DateOnly PaidDate)> AskPayer(Expense expense)
+    private async Task<(bool Escolheu, Guid? Pagador, DateOnly DataDoPagamento)> PerguntarQuemPagou(Despesa despesa)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        if (data.People.Count == 1) return (true, data.People[0].Id, today);
-        var result = (Chosen: false, Payer: (Guid?)null, PaidDate: today);
-        Window? dialog = null; var error = Text("", "error");
-        var date = Input(today.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        if (dados.Pessoas.Count == 1) return (true, dados.Pessoas[0].Id, hoje);
+        var resultado = (Escolheu: false, Pagador: (Guid?)null, DataDoPagamento: hoje);
+        Window? dialogo = null; var erro = Texto("", "error");
+        var data = CampoDeTexto(hoje.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
         // Só fecha com uma data válida; caso contrário, mostra o erro e deixa corrigir.
-        void Choose(Guid? payer)
+        void Escolher(Guid? pagador)
         {
-            try { result = (true, payer, ParseDate(date.Text, "Data do pagamento")); dialog!.Close(); }
-            catch (Exception ex) { error.Text = FriendlyError(ex); }
+            try { resultado = (true, pagador, InterpretarData(data.Text, "Data do pagamento")); dialogo!.Close(); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); }
         }
-        var suggested = expense.Split == SplitMode.Individual && expense.Participants.Count == 1 ? expense.Participants[0] : (Guid?)null;
-        var panel = Stack(Heading("Quem pagou?", $"{expense.Title} · {Money.Format(expense.Amount)}"), Field("Data do pagamento (dd/mm/aaaa)", date), error);
-        foreach (var person in data.People)
+        var sugerido = despesa.Divisao == ModoDeDivisao.Individual && despesa.Participantes.Count == 1 ? despesa.Participantes[0] : (Guid?)null;
+        var painel = Pilha(Cabecalho("Quem pagou?", $"{despesa.Titulo} · {Dinheiro.Formatar(despesa.Valor)}"), Campo("Data do pagamento (dd/mm/aaaa)", data), erro);
+        foreach (var pessoa in dados.Pessoas)
         {
-            var id = person.Id; var button = Button(person.Name, () => Choose(id), id == suggested ? "primary" : null); button.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(button);
+            var id = pessoa.Id; var botao = Botao(pessoa.Nome, () => Escolher(id), id == sugerido ? "primary" : null); botao.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(botao);
         }
-        var none = Button("Não informar", () => Choose(null), "ghost"); none.HorizontalAlignment = HorizontalAlignment.Stretch; panel.Children.Add(none);
-        panel.Children.Add(Text("Quem pagou entra no acerto de contas: quem não pagou deve a sua parte a quem pagou. Sem informar, a despesa fica fora do acerto.", "muted"));
-        panel.Children.Add(Button("Cancelar", () => dialog!.Close(), "ghost"));
-        dialog = Dialog("Quem pagou?", panel, 460); dialog.Height = Math.Min(760, 440 + 50 * data.People.Count);
-        await dialog.ShowDialog(this);
-        return result;
+        var nenhum = Botao("Não informar", () => Escolher(null), "ghost"); nenhum.HorizontalAlignment = HorizontalAlignment.Stretch; painel.Children.Add(nenhum);
+        painel.Children.Add(Texto("Quem pagou entra no acerto de contas: quem não pagou deve a sua parte a quem pagou. Sem informar, a despesa fica fora do acerto.", "muted"));
+        painel.Children.Add(Botao("Cancelar", () => dialogo!.Close(), "ghost"));
+        dialogo = Dialogo("Quem pagou?", painel, 460); dialogo.Height = Math.Min(760, 440 + 50 * dados.Pessoas.Count);
+        await dialogo.ShowDialog(this);
+        return resultado;
     }
     /// <summary>
     /// Cartão "Acerto de contas": quem deve a quem (saldo acumulado de todos os meses), com os avatares das duas pessoas
     /// e a ação de registrar um acerto. Sem dívidas, mostra "Tudo certo por aqui".
     /// </summary>
-    /// <param name="history">Mostra o link "Histórico" (a aba de acerto já traz o histórico na própria página).</param>
-    private Control SettlementCard(bool history = true)
+    /// <param name="historico">Mostra o link "Histórico" (a aba de acerto já traz o histórico na própria página).</param>
+    private Control CartaoDeAcerto(bool historico = true)
     {
-        var debts = SettlementEngine.Debts(data);
-        var panel = Stack(SectionHeading("Acerto de contas", history && data.Settlements.Count > 0 ? Button("Histórico", () => _ = Run(ShowSettlements), "link") : null)); panel.Spacing = 10;
-        if (debts.Count == 0)
+        var dividas = MotorDeAcertos.Dividas(dados);
+        var painel = Pilha(TituloDeSecao("Acerto de contas", historico && dados.Acertos.Count > 0 ? Botao("Histórico", () => _ = Executar(MostrarAcertos), "link") : null)); painel.Spacing = 10;
+        if (dividas.Count == 0)
         {
-            var anyPayer = data.Settlements.Count > 0 || data.Expenses.Any(e => e.Paid && e.PaidBy is not null);
-            var empty = Stack(Text("Tudo certo por aqui", "strong"), Text(anyPayer ? "Ninguém deve nada a ninguém." : "Ao marcar uma despesa como paga, informe quem pagou. O BankManager mostra aqui quem deve a quem.", "muted")); empty.Spacing = 4;
-            panel.Children.Add(empty);
+            var algumPagador = dados.Acertos.Count > 0 || dados.Despesas.Any(e => e.Paga && e.PagaPor is not null);
+            var vazio = Pilha(Texto("Tudo certo por aqui", "strong"), Texto(algumPagador ? "Ninguém deve nada a ninguém." : "Ao marcar uma despesa como paga, informe quem pagou. O BankManager mostra aqui quem deve a quem.", "muted")); vazio.Spacing = 4;
+            painel.Children.Add(vazio);
         }
-        foreach (var debt in debts)
+        foreach (var divida in dividas)
         {
-            if (debt != debts[0]) panel.Children.Add(Divider());
-            var (debtor, creditor) = (NameOf(debt.DebtorId), NameOf(debt.CreditorId));
+            if (divida != dividas[0]) painel.Children.Add(Divisoria());
+            var (devedor, credor) = (NomeDe(divida.IdDoDevedor), NomeDe(divida.IdDoCredor));
             // Avatares com uma seta entre eles: quem deve (neutro) paga a quem recebe (em destaque).
-            var arrow = Icon("ArrowRight", 18); arrow.Margin = new Thickness(12, 0);
-            var avatars = new StackPanel { Orientation = Orientation.Horizontal }; avatars.Children.Add(Avatar(debtor).WithClass("large")); avatars.Children.Add(arrow); avatars.Children.Add(Avatar(creditor, strong: true).WithClass("large"));
+            var seta = Icone("ArrowRight", 18); seta.Margin = new Thickness(12, 0);
+            var avatares = new StackPanel { Orientation = Orientation.Horizontal }; avatares.Children.Add(Avatar(devedor).ComClasse("large")); avatares.Children.Add(seta); avatares.Children.Add(Avatar(credor, forte: true).ComClasse("large"));
             // Só o valor em negrito; o nome de automação traz a frase completa (leitores de tela e testes).
-            var sentence = new TextBlock { TextWrapping = TextWrapping.Wrap };
-            sentence.Inlines!.Add(new Run(debtor + " deve ")); sentence.Inlines.Add(new Run(Money.Format(debt.Amount)) { FontWeight = FontWeight.SemiBold }); sentence.Inlines.Add(new Run(" a " + creditor));
-            AutomationProperties.SetName(sentence, $"{debtor} deve {Money.Format(debt.Amount)} a {creditor}");
-            var settle = Button("Registrar acerto", () => _ = Run(() => RegisterSettlement(debt)), "ink"); settle.HorizontalAlignment = HorizontalAlignment.Left;
-            var block = Stack(avatars, sentence, settle); block.Spacing = 12; settle.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(block);
+            var frase = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            frase.Inlines!.Add(new Run(devedor + " deve ")); frase.Inlines.Add(new Run(Dinheiro.Formatar(divida.Valor)) { FontWeight = FontWeight.SemiBold }); frase.Inlines.Add(new Run(" a " + credor));
+            AutomationProperties.SetName(frase, $"{devedor} deve {Dinheiro.Formatar(divida.Valor)} a {credor}");
+            var acertar = Botao("Registrar acerto", () => _ = Executar(() => RegistrarAcerto(divida)), "ink"); acertar.HorizontalAlignment = HorizontalAlignment.Left;
+            var bloco = Pilha(avatares, frase, acertar); bloco.Spacing = 12; acertar.Margin = new Thickness(0, 6, 0, 0); painel.Children.Add(bloco);
         }
-        if (debts.Count > 0) panel.Children.Add(Text("Saldo acumulado de todos os meses, já descontados os acertos registrados.", "muted").WithClass("small"));
-        return Card(panel);
+        if (dividas.Count > 0) painel.Children.Add(Texto("Saldo acumulado de todos os meses, já descontados os acertos registrados.", "muted").ComClasse("small"));
+        return Cartao(painel);
     }
     /// <summary>
     /// Registra um pagamento entre duas pessoas. Parte de uma dívida (quem deve paga a quem recebe, no valor devido, editável para pagamentos parciais).
     /// </summary>
-    private async Task RegisterSettlement(Debt? suggestion = null)
+    private async Task RegistrarAcerto(Divida? sugestao = null)
     {
-        var names = data.People.Select(p => p.Name).ToList();
-        var from = Combo(names, suggestion is null ? 0 : data.People.FindIndex(p => p.Id == suggestion.DebtorId));
-        var to = Combo(names, suggestion is null ? Math.Min(1, names.Count - 1) : data.People.FindIndex(p => p.Id == suggestion.CreditorId));
-        var amount = Input(suggestion?.Amount.ToString("0.00", Money.Culture), "Ex.: 200,00", 12);
-        var date = Input(DateTime.Today.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
-        var error = Text("", "error");
-        var panel = Stack(Heading("Registrar acerto", "Um pagamento entre duas pessoas para quitar o que uma deve à outra."),
-            Columns(Field("Quem pagou", from), Field("Quem recebeu", to)), Columns(Field("Valor (R$)", amount, "Pode ser menor que o devido."), Field("Data (dd/mm/aaaa)", date)), error);
-        var dialog = Dialog("Registrar acerto", panel, 600); dialog.Height = 480;
-        panel.Children.Add(Row(Button("Cancelar", () => dialog.Close()), Button("Salvar acerto", () =>
+        var nomes = dados.Pessoas.Select(p => p.Nome).ToList();
+        var de = ListaDeOpcoes(nomes, sugestao is null ? 0 : dados.Pessoas.FindIndex(p => p.Id == sugestao.IdDoDevedor));
+        var para = ListaDeOpcoes(nomes, sugestao is null ? Math.Min(1, nomes.Count - 1) : dados.Pessoas.FindIndex(p => p.Id == sugestao.IdDoCredor));
+        var valor = CampoDeTexto(sugestao?.Valor.ToString("0.00", Dinheiro.Cultura), "Ex.: 200,00", 12);
+        var data = CampoDeTexto(DateTime.Today.ToString("dd/MM/yyyy"), "dd/mm/aaaa", 10);
+        var erro = Texto("", "error");
+        var painel = Pilha(Cabecalho("Registrar acerto", "Um pagamento entre duas pessoas para quitar o que uma deve à outra."),
+            Colunas(Campo("Quem pagou", de), Campo("Quem recebeu", para)), Colunas(Campo("Valor (R$)", valor, "Pode ser menor que o devido."), Campo("Data (dd/mm/aaaa)", data)), erro);
+        var dialogo = Dialogo("Registrar acerto", painel, 600); dialogo.Height = 480;
+        painel.Children.Add(Linha(Botao("Cancelar", () => dialogo.Close()), Botao("Salvar acerto", () =>
         {
             try
             {
-                if (from.SelectedIndex == to.SelectedIndex) throw new BudgetException("Escolha duas pessoas diferentes.");
-                if (!DateOnly.TryParseExact(date.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) throw new BudgetException("Data: informe uma data válida no formato dd/mm/aaaa.");
-                var settlement = new Settlement { PayerId = data.People[from.SelectedIndex].Id, ReceiverId = data.People[to.SelectedIndex].Id, Amount = Money.Parse(amount.Text, "Valor", true), Date = day };
-                Commit(d => d.Settlements.Add(settlement)); dialog.Close();
+                if (de.SelectedIndex == para.SelectedIndex) throw new ErroDeOrcamento("Escolha duas pessoas diferentes.");
+                if (!DateOnly.TryParseExact(data.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dia)) throw new ErroDeOrcamento("Data: informe uma data válida no formato dd/mm/aaaa.");
+                var acerto = new Acerto { IdDoPagador = dados.Pessoas[de.SelectedIndex].Id, IdDoRecebedor = dados.Pessoas[para.SelectedIndex].Id, Valor = Dinheiro.Interpretar(valor.Text, "Valor", true), Data = dia };
+                Gravar(d => d.Acertos.Add(acerto)); dialogo.Close();
             }
-            catch (Exception ex) { error.Text = FriendlyError(ex); }
+            catch (Exception ex) { erro.Text = ErroAmigavel(ex); }
         }, "primary")));
-        await dialog.ShowDialog(this);
+        await dialogo.ShowDialog(this);
     }
     /// <summary>
     /// Linhas do histórico de acertos, do mais recente ao mais antigo, com a opção de excluir um registrado por engano (a dívida volta).
     /// Usadas no diálogo de histórico e na aba de acerto de "Previsões e metas".
     /// </summary>
-    /// <param name="owner">Janela sobre a qual a confirmação abre.</param>
-    /// <param name="after">Chamado depois de uma exclusão, para o diálogo refazer a lista (a página se refaz sozinha).</param>
-    private Control SettlementRows(Func<Window> owner, Action after)
+    /// <param name="dono">Janela sobre a qual a confirmação abre.</param>
+    /// <param name="depois">Chamado depois de uma exclusão, para o diálogo refazer a lista (a página se refaz sozinha).</param>
+    private Control LinhasDeAcerto(Func<Window> dono, Action depois)
     {
-        var rows = new StackPanel();
-        foreach (var s in data.Settlements.OrderByDescending(x => x.Date))
+        var fileiras = new StackPanel();
+        foreach (var s in dados.Acertos.OrderByDescending(x => x.Data))
         {
-            if (rows.Children.Count > 0) rows.Children.Add(Divider());
+            if (fileiras.Children.Count > 0) fileiras.Children.Add(Divisoria());
             var id = s.Id;
-            var text = Text($"{s.Date:dd/MM/yyyy} · {NameOf(s.PayerId)} pagou a {NameOf(s.ReceiverId)}"); text.VerticalAlignment = VerticalAlignment.Center;
-            var amount = Text(Money.Format(s.Amount), "strong"); amount.VerticalAlignment = VerticalAlignment.Center; amount.Margin = new Thickness(16, 0);
-            var delete = Button("Excluir acerto", () => _ = Run(async () =>
+            var texto = Texto($"{s.Data:dd/MM/yyyy} · {NomeDe(s.IdDoPagador)} pagou a {NomeDe(s.IdDoRecebedor)}"); texto.VerticalAlignment = VerticalAlignment.Center;
+            var valor = Texto(Dinheiro.Formatar(s.Valor), "strong"); valor.VerticalAlignment = VerticalAlignment.Center; valor.Margin = new Thickness(16, 0);
+            var excluir = Botao("Excluir acerto", () => _ = Executar(async () =>
             {
-                if (await Confirm(owner(), "Excluir acerto?", "O acerto sai do histórico e a dívida correspondente volta a aparecer.")) Commit(d => d.Settlements.RemoveAll(x => x.Id == id));
-                after();
-            }), "ghost round danger", "Trash", iconOnly: true);
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 6) };
-            Grid.SetColumn(amount, 1); Grid.SetColumn(delete, 2); row.Children.Add(text); row.Children.Add(amount); row.Children.Add(delete); rows.Children.Add(row);
+                if (await Confirmar(dono(), "Excluir acerto?", "O acerto sai do histórico e a dívida correspondente volta a aparecer.")) Gravar(d => d.Acertos.RemoveAll(x => x.Id == id));
+                depois();
+            }), "ghost round danger", "Trash", soIcone: true);
+            var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 6) };
+            Grid.SetColumn(valor, 1); Grid.SetColumn(excluir, 2); fileira.Children.Add(texto); fileira.Children.Add(valor); fileira.Children.Add(excluir); fileiras.Children.Add(fileira);
         }
-        if (data.Settlements.Count == 0) rows.Children.Add(Text("Nenhum acerto registrado ainda.", "muted"));
-        return rows;
+        if (dados.Acertos.Count == 0) fileiras.Children.Add(Texto("Nenhum acerto registrado ainda.", "muted"));
+        return fileiras;
     }
     /// <summary>
     /// Abre o histórico de acertos em um diálogo (atalho a partir do cartão da visão geral).
     /// </summary>
-    private async Task ShowSettlements()
+    private async Task MostrarAcertos()
     {
-        var holder = new ContentControl(); Window? dialog = null;
-        void Refresh() => holder.Content = SettlementRows(() => dialog!, Refresh);
-        Refresh();
-        var panel = Stack(Heading("Histórico de acertos", "Pagamentos já feitos entre as pessoas."), holder);
-        dialog = Dialog("Histórico de acertos", panel, 640); dialog.Height = 520;
-        panel.Children.Add(Row(Button("Fechar", () => dialog.Close(), "primary")));
-        await dialog.ShowDialog(this);
+        var suporte = new ContentControl(); Window? dialogo = null;
+        void Atualizar() => suporte.Content = LinhasDeAcerto(() => dialogo!, Atualizar);
+        Atualizar();
+        var painel = Pilha(Cabecalho("Histórico de acertos", "Pagamentos já feitos entre as pessoas."), suporte);
+        dialogo = Dialogo("Histórico de acertos", painel, 640); dialogo.Height = 520;
+        painel.Children.Add(Linha(Botao("Fechar", () => dialogo.Close(), "primary")));
+        await dialogo.ShowDialog(this);
     }
 }

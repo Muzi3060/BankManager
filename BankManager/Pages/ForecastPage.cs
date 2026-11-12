@@ -2,93 +2,93 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using BankManager.Core;
-using static BankManager.Ui;
+using BankManager.Nucleo;
+using static BankManager.Componentes;
 
 namespace BankManager;
 // Página "Previsões e metas": um submenu reúne as metas por categoria, a previsão do próximo mês, as despesas recorrentes e o acerto de contas.
-public sealed partial class MainWindow
+public sealed partial class JanelaPrincipal
 {
     /// <summary>
     /// Monta a página com o submenu interno. A aba escolhida fica guardada na janela, para sobreviver a um salvamento.
     /// Recorrentes e acerto continuam acessíveis também de onde já estavam (Despesas e Visão geral).
     /// </summary>
-    private Control ForecastPage()
+    private Control PaginaDePrevisoes()
     {
-        var tabs = Segmented(["Metas por categoria", "Previsão do próximo mês", "Despesas recorrentes", "Acerto de contas"], forecastTab, i => { forecastTab = i; Render(); });
-        var panel = Stack(PageHeader("Previsões e metas", "Metas, previsão, contas que se repetem e acerto de contas."), tabs); panel.Spacing = 18;
-        foreach (var block in forecastTab switch { 1 => ForecastTab(), 2 => RecurrencesTab(), 3 => SettlementTab(), _ => GoalsTab() }) panel.Children.Add(block);
-        return panel;
+        var abas = Segmentado(["Metas por categoria", "Previsão do próximo mês", "Despesas recorrentes", "Acerto de contas"], abaDePrevisoes, i => { abaDePrevisoes = i; Desenhar(); });
+        var painel = Pilha(CabecalhoDaPagina("Previsões e metas", "Metas, previsão, contas que se repetem e acerto de contas."), abas); painel.Spacing = 18;
+        foreach (var bloco in abaDePrevisoes switch { 1 => AbaDePrevisao(), 2 => AbaDeRecorrencias(), 3 => AbaDeAcerto(), _ => AbaDeMetas() }) painel.Children.Add(bloco);
+        return painel;
     }
     /// <summary>
     /// Estado vazio padrão de uma aba: título, explicação e, se houver, uma ação.
     /// </summary>
-    private static Border EmptyCard(string title, string body, Button? action = null)
+    private static Border CartaoVazio(string titulo, string corpo, Button? acao = null)
     {
-        var empty = Stack(Text(title, "section"), Text(body, "muted")); empty.Spacing = 8; empty.Margin = new Thickness(4, 18);
-        if (action is not null) { action.HorizontalAlignment = HorizontalAlignment.Left; empty.Children.Add(action); }
-        return Card(empty);
+        var vazio = Pilha(Texto(titulo, "section"), Texto(corpo, "muted")); vazio.Spacing = 8; vazio.Margin = new Thickness(4, 18);
+        if (acao is not null) { acao.HorizontalAlignment = HorizontalAlignment.Left; vazio.Children.Add(acao); }
+        return Cartao(vazio);
     }
     /// <summary>
     /// Aba de metas: um cartão branco por meta, em lista, com valor gasto, meta, restante, barra e as despesas da categoria.
     /// </summary>
-    private IEnumerable<Control> GoalsTab()
+    private IEnumerable<Control> AbaDeMetas()
     {
-        var goals = GoalEngine.Progress(data, month); var expenses = FinanceEngine.Expenses(data, month);
-        if (goals.Count == 0) { yield return EmptyCard("Nenhuma meta ainda", "Defina quanto quer gastar por mês em uma categoria, como Mercado ou Lazer. A barra fica verde até 79%, âmbar de 80% a 100% e vermelha quando passa do limite.", Button("Criar primeira meta", () => _ = Run(ManageGoals), "ink")); yield break; }
-        var over = goals.Count(g => g.Level == GoalLevel.Over);
-        var summary = Text($"{goals.Count} {(goals.Count == 1 ? "meta" : "metas")} em {month.ToString("MMMM 'de' yyyy", Money.Culture)}" + (over > 0 ? $" · {over} acima do limite" : " · todas dentro do limite"), "muted"); summary.VerticalAlignment = VerticalAlignment.Center;
-        var manage = Button("Gerenciar metas", () => _ = Run(ManageGoals), "ink", "Target"); Grid.SetColumn(manage, 1);
-        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; top.Children.Add(summary); top.Children.Add(manage); yield return top;
-        foreach (var goal in goals) yield return GoalCard(goal, expenses, wide: true);
-        yield return Text("A meta é mensal e vale para todos os meses. Ela soma todas as despesas da categoria no mês, pagas ou em aberto.", "muted");
+        var metas = MotorDeMetas.Progresso(dados, mes); var despesas = MotorFinanceiro.Despesas(dados, mes);
+        if (metas.Count == 0) { yield return CartaoVazio("Nenhuma meta ainda", "Defina quanto quer gastar por mês em uma categoria, como Mercado ou Lazer. A barra fica verde até 79%, âmbar de 80% a 100% e vermelha quando passa do limite.", Botao("Criar primeira meta", () => _ = Executar(GerenciarMetas), "ink")); yield break; }
+        var acima = metas.Count(g => g.Nivel == NivelDaMeta.Acima);
+        var resumo = Texto($"{metas.Count} {(metas.Count == 1 ? "meta" : "metas")} em {mes.ToString("MMMM 'de' yyyy", Dinheiro.Cultura)}" + (acima > 0 ? $" · {acima} acima do limite" : " · todas dentro do limite"), "muted"); resumo.VerticalAlignment = VerticalAlignment.Center;
+        var gerenciar = Botao("Gerenciar metas", () => _ = Executar(GerenciarMetas), "ink", "Target"); Grid.SetColumn(gerenciar, 1);
+        var topo = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; topo.Children.Add(resumo); topo.Children.Add(gerenciar); yield return topo;
+        foreach (var meta in metas) yield return CartaoDeMeta(meta, despesas, larga: true);
+        yield return Texto("A meta é mensal e vale para todos os meses. Ela soma todas as despesas da categoria no mês, pagas ou em aberto.", "muted");
     }
     /// <summary>
     /// Aba de previsão: estimativa para o mês seguinte ao selecionado, por categoria, com a explicação do cálculo em uma seção que abre e fecha.
     /// </summary>
-    private IEnumerable<Control> ForecastTab()
+    private IEnumerable<Control> AbaDePrevisao()
     {
-        var target = month.AddMonths(1); var predictions = FinanceEngine.Forecasts(data, target);
-        yield return Text($"Estimativa para {target.ToString("MMMM 'de' yyyy", Money.Culture)}, a partir do histórico até o mês selecionado.", "muted");
+        var destino = mes.AddMonths(1); var previsoes = MotorFinanceiro.Previsoes(dados, destino);
+        yield return Texto($"Estimativa para {destino.ToString("MMMM 'de' yyyy", Dinheiro.Cultura)}, a partir do histórico até o mês selecionado.", "muted");
         // Dois números lado a lado: quanto se espera gastar e quanto já está lançado.
-        Control Stat(string label, decimal value, string hint) { var stat = Stack(Text(label, "muted"), Text(Money.Format(value), "kpi"), Text(hint, "muted").WithClass("small")); stat.Spacing = 2; return stat; }
-        yield return Card(Columns(Stat("Estimativa total", predictions.Sum(f => f.Estimate), "Histórico + compromissos conhecidos"), Stat("Já lançado no próximo mês", FinanceEngine.Expenses(data, target).Sum(e => e.Amount), "Inclui parcelas com vencimento no mês")));
-        if (predictions.Count == 0) yield return EmptyCard("Ainda não há o que prever", "Adicione despesas para começar. Um mês com R$ 1.000,00 em mercado gera uma estimativa de R$ 1.000,00 para o próximo mês.");
+        Control Indicador(string rotulo, decimal valorLido, string dica) { var indicador = Pilha(Texto(rotulo, "muted"), Texto(Dinheiro.Formatar(valorLido), "kpi"), Texto(dica, "muted").ComClasse("small")); indicador.Spacing = 2; return indicador; }
+        yield return Cartao(Colunas(Indicador("Estimativa total", previsoes.Sum(f => f.Estimativa), "Histórico + compromissos conhecidos"), Indicador("Já lançado no próximo mês", MotorFinanceiro.Despesas(dados, destino).Sum(e => e.Valor), "Inclui parcelas com vencimento no mês")));
+        if (previsoes.Count == 0) yield return CartaoVazio("Ainda não há o que prever", "Adicione despesas para começar. Um mês com R$ 1.000,00 em mercado gera uma estimativa de R$ 1.000,00 para o próximo mês.");
         else
         {
-            var rows = new StackPanel { Spacing = 0 };
-            foreach (var prediction in predictions)
+            var fileiras = new StackPanel { Spacing = 0 };
+            foreach (var previsao in previsoes)
             {
-                if (rows.Children.Count > 0) rows.Children.Add(Divider());
-                var info = Stack(new TextBlock { Text = prediction.Category, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Text($"Média {Money.Format(prediction.Historical)} · {prediction.Months} {(prediction.Months == 1 ? "mês" : "meses")} de base · já lançado {Money.Format(prediction.Scheduled)}", "muted").WithClass("small")); info.Spacing = 1; info.VerticalAlignment = VerticalAlignment.Center; info.Margin = new Thickness(12, 0);
-                var amount = Text(Money.Format(prediction.Estimate), "strong"); amount.VerticalAlignment = VerticalAlignment.Center; amount.TextAlignment = TextAlignment.Right; amount.Width = 120;
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(0, 10) }; Grid.SetColumn(info, 1); row.Children.Add(IconCircle(CategoryIconName(prediction.Category))); row.Children.Add(info);
-                if (prediction.Months < 3) { var chip = Chip("Pouco histórico", "warn"); Grid.SetColumn(chip, 2); row.Children.Add(chip); }
-                Grid.SetColumn(amount, 3); row.Children.Add(amount); rows.Children.Add(row);
+                if (fileiras.Children.Count > 0) fileiras.Children.Add(Divisoria());
+                var informacao = Pilha(new TextBlock { Text = previsao.Categoria, FontWeight = FontWeight.SemiBold, FontSize = 13 }, Texto($"Média {Dinheiro.Formatar(previsao.Historico)} · {previsao.Meses} {(previsao.Meses == 1 ? "mês" : "meses")} de base · já lançado {Dinheiro.Formatar(previsao.Agendado)}", "muted").ComClasse("small")); informacao.Spacing = 1; informacao.VerticalAlignment = VerticalAlignment.Center; informacao.Margin = new Thickness(12, 0);
+                var valor = Texto(Dinheiro.Formatar(previsao.Estimativa), "strong"); valor.VerticalAlignment = VerticalAlignment.Center; valor.TextAlignment = TextAlignment.Right; valor.Width = 120;
+                var fileira = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Margin = new Thickness(0, 10) }; Grid.SetColumn(informacao, 1); fileira.Children.Add(CirculoComIcone(NomeDoIconeDaCategoria(previsao.Categoria))); fileira.Children.Add(informacao);
+                if (previsao.Meses < 3) { var etiqueta = Etiqueta("Pouco histórico", "warn"); Grid.SetColumn(etiqueta, 2); fileira.Children.Add(etiqueta); }
+                Grid.SetColumn(valor, 3); fileira.Children.Add(valor); fileiras.Children.Add(fileira);
             }
-            yield return Card(rows);
+            yield return Cartao(fileiras);
         }
-        var how = Card(Collapsible("Como chegamos a esses valores", "Usamos a média de até 3 meses anteriores ao mês previsto. Desde o primeiro mês registrado, meses sem gastos contam como zero. Compras parceladas ficam fora da média: somamos apenas as parcelas que vencem no mês previsto.\n\nEm cada categoria, consideramos o maior valor entre a média e os gastos à vista já lançados; depois somamos as parcelas. Assim, evitamos contar duas vezes um gasto já previsto. São estimativas, não garantias de gastos futuros.")); how.Padding = new Thickness(6);
-        yield return how;
+        var como = Cartao(Recolhivel("Como chegamos a esses valores", "Usamos a média de até 3 meses anteriores ao mês previsto. Desde o primeiro mês registrado, meses sem gastos contam como zero. Compras parceladas ficam fora da média: somamos apenas as parcelas que vencem no mês previsto.\n\nEm cada categoria, consideramos o maior valor entre a média e os gastos à vista já lançados; depois somamos as parcelas. Assim, evitamos contar duas vezes um gasto já previsto. São estimativas, não garantias de gastos futuros.")); como.Padding = new Thickness(6);
+        yield return como;
     }
     /// <summary>
     /// Aba de recorrentes: a mesma lista do diálogo "Despesas recorrentes", direto na página.
     /// </summary>
-    private IEnumerable<Control> RecurrencesTab()
+    private IEnumerable<Control> AbaDeRecorrencias()
     {
-        yield return Text("Contas que se repetem todo mês. Cada mês é uma despesa comum: você pode pagar, editar ou excluir um mês sem afetar os outros.", "muted");
-        if (data.Recurrences.Count == 0) yield return EmptyCard("Nenhuma despesa recorrente ainda", "Para aluguel, internet e assinaturas: ao criar uma despesa, marque “Repetir todo mês”.", Button("Nova despesa", () => _ = Run(() => EditExpense()), "ink", "Plus"));
+        yield return Texto("Contas que se repetem todo mês. Cada mês é uma despesa comum: você pode pagar, editar ou excluir um mês sem afetar os outros.", "muted");
+        if (dados.Recorrencias.Count == 0) yield return CartaoVazio("Nenhuma despesa recorrente ainda", "Para aluguel, internet e assinaturas: ao criar uma despesa, marque “Repetir todo mês”.", Botao("Nova despesa", () => _ = Executar(() => EditarDespesa()), "ink", "Plus"));
         // Na página, erros vão para o aviso global e a lista se refaz sozinha quando o salvamento reconstrói a tela.
-        else yield return Card(RecurrenceRows(() => this, action => Run(action)));
+        else yield return Cartao(LinhasDeRecorrencia(() => this, acao => Executar(acao)));
     }
     /// <summary>
     /// Aba de acerto: quem deve a quem e o histórico de acertos já registrados.
     /// </summary>
-    private IEnumerable<Control> SettlementTab()
+    private IEnumerable<Control> AbaDeAcerto()
     {
-        if (data.People.Count < 2) { yield return EmptyCard("O acerto precisa de duas pessoas", "Quando mais de uma pessoa divide as despesas, o BankManager mostra aqui quem deve a quem. Cadastre outra pessoa em Pessoas e rendas."); yield break; }
-        yield return SettlementCard(history: false);
-        var historyPanel = Stack(Text("Histórico de acertos", "section"), SettlementRows(() => this, () => { })); historyPanel.Spacing = 8;
-        yield return Card(historyPanel);
+        if (dados.Pessoas.Count < 2) { yield return CartaoVazio("O acerto precisa de duas pessoas", "Quando mais de uma pessoa divide as despesas, o BankManager mostra aqui quem deve a quem. Cadastre outra pessoa em Pessoas e rendas."); yield break; }
+        yield return CartaoDeAcerto(historico: false);
+        var painelDoHistorico = Pilha(Texto("Histórico de acertos", "section"), LinhasDeAcerto(() => this, () => { })); painelDoHistorico.Spacing = 8;
+        yield return Cartao(painelDoHistorico);
     }
 }

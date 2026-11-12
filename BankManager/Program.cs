@@ -4,7 +4,7 @@ namespace BankManager;
 /// <summary>
 /// Ponto de entrada do executável desktop; configura o Avalonia e mantém seu ciclo de vida.
 /// </summary>
-internal static class Program
+internal static class Programa
 {
     /// <summary>
     /// Inicia a aplicação em uma thread STA, necessária à integração com recursos nativos do desktop no Windows.
@@ -14,5 +14,5 @@ internal static class Program
     /// <summary>
     /// Seleciona o backend do sistema, registra a fonte Inter e habilita diagnóstico pelo mecanismo de Trace.
     /// </summary>
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
+    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Aplicativo>().UsePlatformDetect().WithInterFont().LogToTrace();
 }
