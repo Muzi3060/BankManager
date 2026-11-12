@@ -27,7 +27,7 @@ public sealed partial class MainWindow
         // Planilhas: exportar as despesas e importar um extrato bancário, ambos em CSV.
         var sheets = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var button in new[] { Button("Exportar despesas (CSV)", () => _ = Run(ExportCsv)), Button("Importar extrato (CSV)", () => _ = Run(ImportStatement)), Button("Compartilhar despesas", () => { GoTo(2); StartSelecting(); }) }) { button.Margin = new Thickness(0, 0, 8, 8); sheets.Children.Add(button); }
-        var sharedImport = Button("Importar despesas compartilhadas", () => { }, icon: "Download"); sharedImport.IsVisible = false; sharedImport.HorizontalAlignment = HorizontalAlignment.Left;
+        var sharedImport = Button("Importar despesas compartilhadas", () => _ = Run(ImportShared), icon: "Download"); sharedImport.HorizontalAlignment = HorizontalAlignment.Left;
         var yourData = Card(Stack(Text("Seus dados", "section"), Text("Tudo fica salvo só neste computador. Exporte um backup de vez em quando e guarde em outro lugar, como um pendrive.", "muted"), Text("Pasta dos dados", "muted"), folder, wrap,
             // Separado do backup de propósito: importar um backup SUBSTITUI a base; importar despesas compartilhadas só ADICIONA.
             Text("Despesas recebidas de outra pessoa", "muted"), sharedImport,

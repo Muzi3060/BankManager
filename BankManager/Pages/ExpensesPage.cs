@@ -112,7 +112,7 @@ public sealed partial class MainWindow
         else
         {
             // Quem recebeu um arquivo de outra pessoa pode começar por ele: as despesas são adicionadas, nada é substituído.
-            var actions = Row(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus")); actions.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(actions);
+            var actions = Row(Button("Nova despesa", () => _ = Run(() => EditExpense()), "primary", "Plus"), Button("Importar despesas compartilhadas", () => _ = Run(ImportShared), icon: "Download")); actions.HorizontalAlignment = HorizontalAlignment.Center; panel.Children.Add(actions);
         }
         return panel;
     }
